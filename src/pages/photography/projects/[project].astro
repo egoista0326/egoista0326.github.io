@@ -1,0 +1,48 @@
+---
+import { getCollection } from 'astro:content';
+import SiteLayout from '../../../layouts/SiteLayout.astro';
+import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
+import {
+  photographyProjects,
+  type PhotographyProject
+} from '../../../data/photography';
+import { getPhotosBySlugs, type PhotoEntry } from '../../../lib/photography';
+
+interface Props {
+  project: PhotographyProject;
+  photos: PhotoEntry[];
+}
+
+export async function getStaticPaths() {
+  const photos = await getCollection('photos');
+
+  return photographyProjects.map((project) => ({
+    params: { project: project.slug },
+    props: {
+      project,
+      photos: getPhotosBySlugs(photos, project.photoSlugs)
+    }
+  }));
+}
+
+const { project, photos } = Astro.props;
+---
+
+<SiteLayout title={`${project.title} | Photography`} description={project.summary}>
+  <section class="photography-section gallery-heading" aria-labelledby="project-title">
+    <p><a class="photo-back-link" href="/photography/">Back to Photography</a></p>
+    <p class="metadata-kicker">Photography Project</p>
+    <h1 id="project-title">{project.title}</h1>
+    <dl class="project-detail-meta">
+      <div>
+        <dt>Start date</dt>
+        <dd>{project.startDate}</dd>
+      </div>
+    </dl>
+    <p class="section-copy">{project.description}</p>
+  </section>
+
+  <section class="photography-section" aria-label={`${project.title} photographs`}>
+    <PhotoGrid photos={photos} emptyMessage="No photographs have been added to this project yet." />
+  </section>
+</SiteLayout>

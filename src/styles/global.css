@@ -295,6 +295,67 @@ main {
   color: var(--color-muted);
 }
 
+.photography-news-list {
+  display: grid;
+  gap: var(--space-md);
+  max-width: 720px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photography-news-list li {
+  display: grid;
+  grid-template-columns: minmax(64px, max-content) minmax(0, 1fr);
+  gap: var(--space-md);
+  align-items: baseline;
+}
+
+.photography-news-list li span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.photography-project-list {
+  display: grid;
+  gap: var(--space-md);
+  max-width: 760px;
+}
+
+.photography-project-entry {
+  display: grid;
+  gap: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-md);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.photography-project-entry:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.photography-project-heading {
+  display: grid;
+  gap: var(--space-xs) var(--space-lg);
+  align-items: baseline;
+}
+
+.photography-project-heading span:first-child {
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.photography-project-heading span:last-child,
+.photography-project-summary {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .gallery-heading {
   margin-top: 0;
   padding-top: 0;
@@ -366,17 +427,21 @@ main {
 }
 
 .photo-grid {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  align-items: start;
-  gap: var(--space-lg);
+  display: block;
+  column-count: 1;
+  column-gap: var(--space-lg);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .photo-grid-item {
+  display: inline-block;
+  width: 100%;
   min-width: 0;
+  margin: 0 0 var(--space-xl);
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .photo-grid-link {
@@ -467,12 +532,8 @@ main {
 }
 
 .photo-detail.is-portrait {
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
   align-items: start;
-}
-
-.photo-detail.is-portrait .photo-detail-meta {
-  order: -1;
 }
 
 .photo-detail.is-landscape,
@@ -560,6 +621,32 @@ main {
   grid-column: 2;
   justify-self: end;
   text-align: right;
+}
+
+.project-detail-meta {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-md);
+}
+
+.project-detail-meta div {
+  display: grid;
+  grid-template-columns: minmax(80px, max-content) minmax(0, 1fr);
+  gap: var(--space-md);
+}
+
+.project-detail-meta dt {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.project-detail-meta dd {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .rednote-dialog {
@@ -697,9 +784,18 @@ p {
     max-width: none;
   }
 
-  .category-entry-list,
-  .photo-grid {
+  .photography-project-heading {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .category-entry-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .photo-grid {
+    column-count: 2;
   }
 }
 
@@ -740,8 +836,11 @@ p {
     font-size: 42px;
   }
 
-  .category-entry-list,
-  .photo-grid {
+  .category-entry-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .photo-grid {
+    column-count: 3;
   }
 }

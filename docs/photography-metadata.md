@@ -43,10 +43,28 @@ Update `width`, `height`, and `orientation` whenever the image file changes. The
 ## Browsing Routes
 
 - `/photography/` is the standalone photography landing page with category entries, selected works, and a tag entry.
+- `/photography/projects/[project]/` shows one photography project with its description, start date, and selected project photographs.
 - `/photography/category/[category]/` shows a gallery for one work type such as `still-life`, `landscape`, or `street`.
 - `/photography/tags/` lists the controlled browsing tags, with locations first.
 - `/photography/tags/[group]/[slug]/` shows a gallery for one controlled tag value.
 - `/photography/[slug]/` is the independent URL for a single photograph.
+
+## Photography Intro, News, and Projects
+
+Photography-side profile text, news items, and project definitions live in `src/data/photography.ts`. Keep this data separate from the academic homepage so photography visitors can understand the photo section without switching sections.
+
+To add or edit a photography project:
+
+1. Open `src/data/photography.ts`.
+2. Update the `photographyProjects` list with `slug`, `title`, `startDate`, `summary`, `description`, and `photoSlugs`.
+3. Make sure each value in `photoSlugs` matches a photo `slug` from `src/content/photos/`.
+4. Run `npm run build`.
+
+The project URL is generated from `slug`, for example `slug: urban-isolation` becomes `/photography/projects/urban-isolation/`.
+
+## Gallery Layout
+
+Photo grids use a CSS multi-column masonry pattern. This keeps mixed portrait and landscape photographs flowing naturally without forcing every row to share the same top edge. The item wrapper uses `break-inside: avoid` so the image and caption stay together.
 
 ## Category Covers
 

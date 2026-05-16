@@ -1,7 +1,11 @@
 ---
 import { getCollection } from 'astro:content';
 import SiteLayout from '../../layouts/SiteLayout.astro';
-import { photographyProfile } from '../../data/photography';
+import {
+  photographyNews,
+  photographyProfile,
+  photographyProjects
+} from '../../data/photography';
 import { photographyCategoryCovers } from '../../data/photographyCategoryCovers';
 import { photographyCategories } from '../../data/photographyVocab';
 import CategoryEntry from '../../components/photography/CategoryEntry.astro';
@@ -38,6 +42,37 @@ const categoryEntries = photographyCategories.map((category) => {
       <button class="rednote-trigger" type="button" data-rednote-open aria-label="Show Rednote Card">
         {profile.rednote.label}
       </button>
+    </div>
+  </section>
+
+  <section class="photography-section" aria-labelledby="photography-news-title">
+    <h2 id="photography-news-title">News</h2>
+    <ul class="photography-news-list">
+      {
+        photographyNews.map((item) => (
+          <li>
+            <span class="news-year">{item.date}</span>
+            <span>{item.text}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="photography-section" aria-labelledby="photography-projects-title">
+    <h2 id="photography-projects-title">Projects</h2>
+    <div class="photography-project-list">
+      {
+        photographyProjects.map((project) => (
+          <a class="photography-project-entry" href={`/photography/projects/${project.slug}/`}>
+            <span class="photography-project-heading">
+              <span>{project.title}</span>
+              <span>Start date {project.startDate}</span>
+            </span>
+            <span class="photography-project-summary">{project.summary}</span>
+          </a>
+        ))
+      }
     </div>
   </section>
 

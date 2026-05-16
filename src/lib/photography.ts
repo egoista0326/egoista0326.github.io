@@ -93,6 +93,14 @@ const getPhotoTagValue = (photo: PhotoEntry, group: TagGroupSlug) => photo.data[
 export const getPhotosByTag = (photos: PhotoEntry[], group: TagGroupSlug, slug: string) =>
   sortPhotosForDisplay(photos.filter((photo) => getPhotoTagValue(photo, group) === slug));
 
+export const getPhotosBySlugs = (photos: PhotoEntry[], photoSlugs: readonly string[]) => {
+  const photosBySlug = new Map(photos.map((photo) => [getPhotoSlug(photo), photo]));
+
+  return photoSlugs
+    .map((slug) => photosBySlug.get(slug))
+    .filter((photo): photo is PhotoEntry => Boolean(photo));
+};
+
 const tagGroupDefinitions = [
   {
     slug: 'location',
