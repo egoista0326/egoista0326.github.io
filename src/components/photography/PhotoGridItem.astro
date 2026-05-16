@@ -1,0 +1,35 @@
+---
+import {
+  getPhotoAlt,
+  getPhotoDisplayMeta,
+  getPhotoHref,
+  isVisibleTitle,
+  type PhotoEntry
+} from '../../lib/photography';
+
+interface Props {
+  photo: PhotoEntry;
+}
+
+const { photo } = Astro.props;
+const meta = getPhotoDisplayMeta(photo);
+const showTitle = isVisibleTitle(photo.data.title);
+---
+
+<li class="photo-grid-item">
+  <a class="photo-grid-link" href={getPhotoHref(photo)}>
+    <img
+      class="photo-grid-image"
+      src={photo.data.image}
+      alt={getPhotoAlt(photo)}
+      width={photo.data.width}
+      height={photo.data.height}
+      loading="lazy"
+    />
+    <span class="photo-grid-caption">
+      {showTitle ? <span class="photo-grid-title">{meta.title}</span> : null}
+      <span>{meta.category}</span>
+      {meta.location ? <span>{meta.location}</span> : null}
+    </span>
+  </a>
+</li>

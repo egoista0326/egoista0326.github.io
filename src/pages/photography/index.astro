@@ -1,8 +1,28 @@
 ---
+import { getCollection } from 'astro:content';
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import { photographyProfile } from '../../data/photography';
+import { photographyCategories } from '../../data/photographyVocab';
+import CategoryEntry from '../../components/photography/CategoryEntry.astro';
+import PhotoGrid from '../../components/photography/PhotoGrid.astro';
+import {
+  getCategoryHref,
+  getPhotosByCategory,
+  sortPhotosForDisplay
+} from '../../lib/photography';
 
 const profile = photographyProfile;
+const photos = sortPhotosForDisplay(await getCollection('photos'));
+const featuredPhotos = photos.filter((photo) => photo.data.featured);
+const categoryEntries = photographyCategories.map((category) => {
+  const categoryPhotos = getPhotosByCategory(photos, category.slug);
+
+  return {
+    category,
+    photos: categoryPhotos,
+    cover: categoryPhotos[0]
+  };
+});
 ---
 
 <SiteLayout title="Photography" description={profile.intro}>
@@ -14,22 +34,41 @@ const profile = photographyProfile;
       <a href={profile.instagram.url} target="_blank" rel="noreferrer">
         {profile.instagram.label}
       </a>
-      <button class="rednote-trigger" type="button" data-rednote-open>
+      <button class="rednote-trigger" type="button" data-rednote-open aria-label="Show Rednote Card">
         {profile.rednote.label}
       </button>
     </div>
   </section>
 
-  <section class="photography-work-types" aria-labelledby="work-types-title">
-    <h2 id="work-types-title">{profile.workTypeLabel}</h2>
-    <ul class="work-type-list" aria-label={profile.workTypeLabel}>
-      {profile.workTypes.map((workType) => <li>{workType.label}</li>)}
-    </ul>
+  <section class="photography-section" aria-labelledby="categories-title">
+    <h2 id="categories-title">Categories</h2>
+    <p class="section-copy">Browse photographs by subject before moving into selected works.</p>
+    <div class="category-entry-list">
+      {
+        categoryEntries.map(({ category, photos: categoryPhotos, cover }) => (
+          <CategoryEntry
+            href={getCategoryHref(category.slug)}
+            label={category.label}
+            count={categoryPhotos.length}
+            cover={cover}
+          />
+        ))
+      }
+    </div>
   </section>
 
-  <section class="photography-empty" aria-labelledby="photography-empty-title">
-    <h2 id="photography-empty-title">Selected works are being prepared.</h2>
-    <p>Photo metadata is being structured now; selected works will appear here after image import.</p>
+  <section class="photography-section" aria-labelledby="selected-works-title">
+    <h2 id="selected-works-title">Selected Works</h2>
+    <PhotoGrid
+      photos={featuredPhotos}
+      emptyMessage="A small development set is being used to shape the browsing experience; the full selected import comes next."
+    />
+  </section>
+
+  <section class="photography-section tag-entry" aria-labelledby="tag-entry-title">
+    <h2 id="tag-entry-title">Tags</h2>
+    <p class="section-copy">Browse by location, camera, lens, and weather.</p>
+    <a class="text-link" href="/photography/tags/">Photography Tags</a>
   </section>
 
   <dialog class="rednote-dialog" data-rednote-dialog aria-labelledby="rednote-title">

@@ -1,0 +1,63 @@
+---
+import { getCollection } from 'astro:content';
+import SiteLayout from '../../../../layouts/SiteLayout.astro';
+import PhotoGrid from '../../../../components/photography/PhotoGrid.astro';
+import {
+  getPhotosByTag,
+  getUsedTagGroups,
+  type PhotoEntry,
+  type TagGroupSlug
+} from '../../../../lib/photography';
+
+interface TagPage {
+  group: TagGroupSlug;
+  groupLabel: string;
+  tag: {
+    slug: string;
+    label: string;
+    href: string;
+    count: number;
+  };
+  photos: PhotoEntry[];
+}
+
+interface Props {
+  page: TagPage;
+}
+
+export async function getStaticPaths() {
+  const photos = await getCollection('photos');
+
+  return getUsedTagGroups(photos).flatMap((group) =>
+    group.tags.map((tag) => ({
+      params: {
+        group: group.slug,
+        slug: tag.slug
+      },
+      props: {
+        page: {
+          group: group.slug,
+          groupLabel: group.label,
+          tag,
+          photos: getPhotosByTag(photos, group.slug, tag.slug)
+        }
+      }
+    }))
+  );
+}
+
+const { page } = Astro.props;
+---
+
+<SiteLayout title={`${page.tag.label} Photography`} description={`Photographs tagged ${page.tag.label}.`}>
+  <section class="photography-section gallery-heading" aria-labelledby="tag-title">
+    <p><a class="photo-back-link" href="/photography/tags/">Back to Photography Tags</a></p>
+    <p class="metadata-kicker">{page.groupLabel}</p>
+    <h1 id="tag-title">{page.tag.label}</h1>
+    <p class="section-copy">{page.photos.length} photograph{page.photos.length === 1 ? '' : 's'} with this tag.</p>
+  </section>
+
+  <section class="photography-section" aria-label={`${page.tag.label} photographs`}>
+    <PhotoGrid photos={page.photos} emptyMessage="No photographs with this tag yet." />
+  </section>
+</SiteLayout>

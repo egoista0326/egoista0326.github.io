@@ -1,0 +1,38 @@
+---
+import { getCollection } from 'astro:content';
+import SiteLayout from '../../../layouts/SiteLayout.astro';
+import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
+import { photographyCategories } from '../../../data/photographyVocab';
+import { getPhotosByCategory, type PhotoEntry } from '../../../lib/photography';
+
+interface Props {
+  category: (typeof photographyCategories)[number];
+  photos: PhotoEntry[];
+}
+
+export async function getStaticPaths() {
+  const photos = await getCollection('photos');
+
+  return photographyCategories.map((category) => ({
+    params: { category: category.slug },
+    props: {
+      category,
+      photos: getPhotosByCategory(photos, category.slug)
+    }
+  }));
+}
+
+const { category, photos } = Astro.props;
+---
+
+<SiteLayout title={`${category.label} Photography`} description={`Selected ${category.label.toLowerCase()} photographs.`}>
+  <section class="photography-section gallery-heading" aria-labelledby="category-title">
+    <p><a class="photo-back-link" href="/photography/">Back to Photography</a></p>
+    <h1 id="category-title">{category.label}</h1>
+    <p class="section-copy">{photos.length} photograph{photos.length === 1 ? '' : 's'} in this category.</p>
+  </section>
+
+  <section class="photography-section" aria-label={`${category.label} photographs`}>
+    <PhotoGrid photos={photos} emptyMessage="No photographs in this category yet." />
+  </section>
+</SiteLayout>

@@ -1,0 +1,23 @@
+---
+import PhotoGridItem from './PhotoGridItem.astro';
+import type { PhotoEntry } from '../../lib/photography';
+
+interface Props {
+  photos: PhotoEntry[];
+  emptyMessage?: string;
+}
+
+const { photos, emptyMessage } = Astro.props;
+---
+
+{
+  photos.length > 0 ? (
+    <ul class="photo-grid">
+      {photos.map((photo) => (
+        <PhotoGridItem photo={photo} />
+      ))}
+    </ul>
+  ) : emptyMessage ? (
+    <p class="photo-grid-empty">{emptyMessage}</p>
+  ) : null
+}

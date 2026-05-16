@@ -1,0 +1,33 @@
+---
+import { getPhotoAlt, getPhotoHref, type PhotoEntry } from '../../lib/photography';
+
+interface Props {
+  href: string;
+  label: string;
+  count?: number;
+  cover?: PhotoEntry;
+}
+
+const { href, label, count, cover } = Astro.props;
+const countLabel =
+  typeof count === 'number' ? `${count} photograph${count === 1 ? '' : 's'}` : '';
+---
+
+<a class="category-entry" href={href}>
+  {
+    cover ? (
+      <img
+        class="category-entry-image"
+        src={cover.data.image}
+        alt={getPhotoAlt(cover)}
+        width={cover.data.width}
+        height={cover.data.height}
+        loading="lazy"
+      />
+    ) : null
+  }
+  <span class="category-entry-copy">
+    <span class="category-entry-label">{label}</span>
+    {countLabel ? <span class="category-entry-count">{countLabel}</span> : null}
+  </span>
+</a>

@@ -1,0 +1,48 @@
+---
+interface TagLink {
+  slug: string;
+  label: string;
+  href: string;
+  count: number;
+}
+
+interface Props {
+  label: string;
+  tags: TagLink[];
+  priority?: 'primary' | 'secondary';
+}
+
+const { label, tags, priority = 'secondary' } = Astro.props;
+---
+
+{
+  tags.length > 0 && priority === 'primary' ? (
+    <section class="tag-group" data-priority="primary" aria-labelledby={`${label.toLowerCase()}-tags`}>
+      <h2 id={`${label.toLowerCase()}-tags`}>{label}</h2>
+      <ul class="tag-link-list">
+        {tags.map((tag) => (
+          <li>
+            <a class="tag-link" href={tag.href}>
+              <span>{tag.label}</span>
+              <span>{tag.count}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ) : tags.length > 0 ? (
+    <section class="tag-group" aria-labelledby={`${label.toLowerCase()}-tags`}>
+      <h2 id={`${label.toLowerCase()}-tags`}>{label}</h2>
+      <ul class="tag-link-list">
+        {tags.map((tag) => (
+          <li>
+            <a class="tag-link" href={tag.href}>
+              <span>{tag.label}</span>
+              <span>{tag.count}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ) : null
+}

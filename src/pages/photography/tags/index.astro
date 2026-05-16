@@ -1,0 +1,43 @@
+---
+import { getCollection } from 'astro:content';
+import SiteLayout from '../../../layouts/SiteLayout.astro';
+import TagGroup from '../../../components/photography/TagGroup.astro';
+import { getUsedTagGroups, type TagGroupSlug } from '../../../lib/photography';
+
+const photos = await getCollection('photos');
+const usedGroups = getUsedTagGroups(photos);
+const groupOrder = [
+  { slug: 'location', label: 'Locations', priority: 'primary' },
+  { slug: 'camera', label: 'Camera', priority: 'secondary' },
+  { slug: 'lens', label: 'Lens', priority: 'secondary' },
+  { slug: 'weather', label: 'Weather', priority: 'secondary' }
+] as const satisfies readonly {
+  slug: TagGroupSlug;
+  label: string;
+  priority: 'primary' | 'secondary';
+}[];
+---
+
+<SiteLayout title="Photography Tags" description="Browse photographs by controlled metadata tags.">
+  <section class="photography-section gallery-heading" aria-labelledby="tags-title">
+    <p><a class="photo-back-link" href="/photography/">Back to Photography</a></p>
+    <h1 id="tags-title">Photography Tags</h1>
+    <p class="section-copy">Browse by location, camera, lens, and weather.</p>
+  </section>
+
+  <div class="tag-groups">
+    {
+      groupOrder.map((definition) => {
+        const group = usedGroups.find((usedGroup) => usedGroup.slug === definition.slug);
+
+        return (
+          <TagGroup
+            label={definition.label}
+            tags={group?.tags ?? []}
+            priority={definition.priority}
+          />
+        );
+      })
+    }
+  </div>
+</SiteLayout>
