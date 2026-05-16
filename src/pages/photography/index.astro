@@ -1,12 +1,73 @@
 ---
 import SiteLayout from '../../layouts/SiteLayout.astro';
+import { photographyProfile } from '../../data/photography';
 
-const placeholder = 'A selected photography portfolio is being prepared.';
+const profile = photographyProfile;
 ---
 
-<SiteLayout title="Photography" description={placeholder}>
-  <section class="placeholder-page" aria-labelledby="page-title">
-    <h1 id="page-title">Photography</h1>
-    <p>{placeholder}</p>
+<SiteLayout title="Photography" description={profile.intro}>
+  <section class="photography-intro" aria-labelledby="page-title">
+    <h1 id="page-title">{profile.title}</h1>
+    <p>{profile.intro}</p>
+    <div class="photography-contact" aria-label="Photography contact">
+      <a href={`mailto:${profile.email}`}>{profile.email}</a>
+      <a href={profile.instagram.url} target="_blank" rel="noreferrer">
+        {profile.instagram.label}
+      </a>
+      <button class="rednote-trigger" type="button" data-rednote-open>
+        {profile.rednote.label}
+      </button>
+    </div>
   </section>
+
+  <section class="photography-work-types" aria-labelledby="work-types-title">
+    <h2 id="work-types-title">{profile.workTypeLabel}</h2>
+    <ul class="work-type-list" aria-label={profile.workTypeLabel}>
+      {profile.workTypes.map((workType) => <li>{workType.label}</li>)}
+    </ul>
+  </section>
+
+  <section class="photography-empty" aria-labelledby="photography-empty-title">
+    <h2 id="photography-empty-title">Selected works are being prepared.</h2>
+    <p>Photo metadata is being structured now; selected works will appear here after image import.</p>
+  </section>
+
+  <dialog class="rednote-dialog" data-rednote-dialog aria-labelledby="rednote-title">
+    <div class="rednote-dialog-inner">
+      <h2 id="rednote-title">{profile.rednote.title}</h2>
+      <p class="muted">{profile.rednote.displayName} | Rednote ID {profile.rednote.id}</p>
+      <img
+        class="rednote-card"
+        src={profile.rednote.cardImage}
+        alt={profile.rednote.alt}
+        loading="lazy"
+      />
+      <form method="dialog">
+        <button class="dialog-close" type="submit" data-rednote-close>
+          {profile.rednote.closeLabel}
+        </button>
+      </form>
+    </div>
+  </dialog>
+
+  <script>
+    const openButton = document.querySelector('[data-rednote-open]');
+    const dialog = document.querySelector('[data-rednote-dialog]');
+
+    if (openButton instanceof HTMLButtonElement && dialog instanceof HTMLDialogElement) {
+      openButton.addEventListener('click', () => {
+        dialog.showModal();
+      });
+
+      dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) {
+          dialog.close();
+        }
+      });
+
+      dialog.addEventListener('close', () => {
+        openButton.focus();
+      });
+    }
+  </script>
 </SiteLayout>

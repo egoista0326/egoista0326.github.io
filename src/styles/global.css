@@ -193,6 +193,125 @@ main {
   padding: var(--space-xl) 0 var(--space-2xl);
 }
 
+.photography-intro {
+  width: 100%;
+  max-width: 720px;
+  padding: var(--space-sm) 0 var(--space-xl);
+}
+
+.photography-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  align-items: center;
+  margin-top: var(--space-lg);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.rednote-trigger,
+.dialog-close {
+  min-height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.rednote-trigger {
+  padding: 0 var(--space-md);
+}
+
+.rednote-trigger:focus-visible,
+.dialog-close:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.photography-work-types,
+.photography-empty {
+  width: 100%;
+  margin-top: var(--space-xl);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.work-type-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-type-list li {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0 var(--space-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.photography-empty {
+  max-width: 680px;
+}
+
+.photography-empty h2 {
+  max-width: 30ch;
+  margin-bottom: var(--space-sm);
+}
+
+.photography-empty p {
+  max-width: 42ch;
+  color: var(--color-muted);
+}
+
+.rednote-dialog {
+  width: min(420px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.rednote-dialog::backdrop {
+  background: rgb(31 41 51 / 0.36);
+}
+
+.rednote-dialog-inner {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.rednote-card {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.dialog-close {
+  width: 100%;
+  padding: 0 var(--space-md);
+}
+
 h1,
 h2,
 h3,
