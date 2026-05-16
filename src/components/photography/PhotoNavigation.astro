@@ -1,0 +1,29 @@
+---
+import { getPhotoHref, isVisibleTitle, type PhotoEntry } from '../../lib/photography';
+
+interface Props {
+  previous?: PhotoEntry;
+  next?: PhotoEntry;
+}
+
+const { previous, next } = Astro.props;
+---
+
+{
+  previous || next ? (
+    <nav class="photo-nav" aria-label="Photo navigation">
+      {previous ? (
+        <a class="photo-nav-link" href={getPhotoHref(previous)}>
+          <span>Previous</span>
+          {isVisibleTitle(previous.data.title) ? <span>{previous.data.title}</span> : null}
+        </a>
+      ) : null}
+      {next ? (
+        <a class="photo-nav-link photo-nav-next" href={getPhotoHref(next)}>
+          <span>Next</span>
+          {isVisibleTitle(next.data.title) ? <span>{next.data.title}</span> : null}
+        </a>
+      ) : null}
+    </nav>
+  ) : null
+}

@@ -1,0 +1,63 @@
+---
+import { getCollection } from 'astro:content';
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import PhotoMetadata from '../../components/photography/PhotoMetadata.astro';
+import PhotoNavigation from '../../components/photography/PhotoNavigation.astro';
+import {
+  getAdjacentPhotos,
+  getPhotoAlt,
+  getPhotoSlug,
+  isVisibleTitle,
+  sortPhotosForDisplay,
+  type PhotoEntry
+} from '../../lib/photography';
+
+interface Props {
+  photo: PhotoEntry;
+  previous?: PhotoEntry;
+  next?: PhotoEntry;
+}
+
+export async function getStaticPaths() {
+  const photos = sortPhotosForDisplay(await getCollection('photos'));
+
+  return photos.map((photo) => {
+    const adjacentPhotos = getAdjacentPhotos(photos, getPhotoSlug(photo));
+
+    return {
+      params: { slug: getPhotoSlug(photo) },
+      props: {
+        photo,
+        previous: adjacentPhotos.previous,
+        next: adjacentPhotos.next
+      }
+    };
+  });
+}
+
+const { photo, previous, next } = Astro.props;
+const pageTitle = isVisibleTitle(photo.data.title) ? `${photo.data.title} | Photography` : 'Photography';
+---
+
+<SiteLayout title={pageTitle} description={getPhotoAlt(photo)}>
+  <section class="photo-detail-shell" aria-label="Photograph detail">
+    <p><a class="photo-back-link" href="/photography/">Back to Photography</a></p>
+    <div class:list={['photo-detail', `is-${photo.data.orientation}`]}>
+      <div class="photo-detail-image-wrap">
+        <img
+          class="photo-detail-image"
+          src={photo.data.image}
+          alt={getPhotoAlt(photo)}
+          width={photo.data.width}
+          height={photo.data.height}
+          loading="eager"
+          decoding="async"
+        />
+      </div>
+      <aside class="photo-detail-meta" aria-label="Photograph metadata">
+        <PhotoMetadata photo={photo} />
+        <PhotoNavigation previous={previous} next={next} />
+      </aside>
+    </div>
+  </section>
+</SiteLayout>

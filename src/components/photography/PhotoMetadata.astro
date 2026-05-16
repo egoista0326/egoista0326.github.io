@@ -1,0 +1,32 @@
+---
+import { getPhotoDisplayMeta, isVisibleTitle, type PhotoEntry } from '../../lib/photography';
+
+interface Props {
+  photo: PhotoEntry;
+}
+
+const { photo } = Astro.props;
+const meta = getPhotoDisplayMeta(photo);
+const metadataRows = [
+  { label: 'Type', value: meta.category },
+  { label: 'Location', value: meta.location },
+  { label: 'Camera', value: meta.camera },
+  { label: 'Lens', value: meta.lens },
+  { label: 'Weather', value: meta.weather }
+].filter((row) => row.value !== '');
+---
+
+<div class="photo-metadata">
+  {isVisibleTitle(photo.data.title) ? <h1>{photo.data.title}</h1> : null}
+  <dl class="metadata-list">
+    {
+      metadataRows.map((row) => (
+        <div class="metadata-row">
+          <dt>{row.label}</dt>
+          <dd>{row.value}</dd>
+        </div>
+      ))
+    }
+  </dl>
+  {photo.data.note ? <p class="photo-note">{photo.data.note}</p> : null}
+</div>

@@ -445,6 +445,111 @@ main {
   line-height: 1.4;
 }
 
+.photo-detail-shell {
+  width: 100%;
+}
+
+.photo-detail {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.photo-detail.is-landscape {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  align-items: start;
+}
+
+.photo-detail.is-portrait,
+.photo-detail.is-square {
+  max-width: 760px;
+}
+
+.photo-detail-image-wrap {
+  min-width: 0;
+}
+
+.photo-detail-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.photo-detail-meta {
+  min-width: 0;
+}
+
+.photo-metadata h1 {
+  margin-bottom: var(--space-lg);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.metadata-list {
+  display: grid;
+  margin: 0;
+}
+
+.metadata-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.metadata-row dt {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.metadata-row dd {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.photo-note {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.photo-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+}
+
+.photo-nav-link {
+  min-height: 40px;
+  display: grid;
+  align-content: center;
+  gap: var(--space-xs);
+  color: var(--color-accent);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.photo-nav-link span:last-child {
+  color: var(--color-muted);
+}
+
+.photo-nav-next {
+  justify-items: end;
+  text-align: right;
+}
+
 .rednote-dialog {
   width: min(420px, calc(100vw - 40px));
   max-height: calc(100vh - 40px);
@@ -578,6 +683,29 @@ p {
   .site-footer {
     flex-direction: row;
     max-width: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .photo-detail,
+  .photo-detail.is-landscape,
+  .photo-detail.is-portrait,
+  .photo-detail.is-square {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+
+  .photo-detail-meta {
+    order: 2;
+  }
+
+  .photo-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-nav-next {
+    justify-items: start;
+    text-align: left;
   }
 }
 

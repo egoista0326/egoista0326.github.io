@@ -32,7 +32,7 @@ language: en
 ---
 ```
 
-Use `title: Untitled` when a photo has no title. The public photography pages should hide the literal title `Untitled` instead of displaying it.
+Use `title: Untitled` when a photo has no title.
 
 ## Edit a Photo
 
@@ -40,7 +40,19 @@ Edit the matching Markdown file in `src/content/photos/`. The filename can stay 
 
 Update `width`, `height`, and `orientation` whenever the image file changes. The browsing pages use these fields to preserve natural proportions and avoid layout shifts. Use `order` to control the display order; lower numbers appear earlier, with date and slug used as tie-breakers.
 
-## Development Samples
+## Browsing Routes
+
+- `/photography/` is the standalone photography landing page with category entries, selected works, and a tag entry.
+- `/photography/category/[category]/` shows a gallery for one work type such as `still-life`, `landscape`, or `street`.
+- `/photography/tags/` lists the controlled browsing tags, with locations first.
+- `/photography/tags/[group]/[slug]/` shows a gallery for one controlled tag value.
+- `/photography/[slug]/` is the independent URL for a single photograph.
+
+## Title Display Rule
+
+`title: Untitled` is allowed in metadata so unfinished records remain explicit, but the public photography pages must not render the literal title. If a photo has no real title, the title line is omitted and the page continues with category, location, camera, lens, weather, and optional note.
+
+## Phase 4 Development Samples
 
 The current Phase 4 files under `public/assets/photography/works/` are a small development sample set used to shape category, tag, grid, and detail-page layouts. They are not the full selected archive.
 
@@ -63,4 +75,4 @@ Do not invent new values inside individual Markdown files without first updating
 
 `note is optional and is not a tag`. Use it for one short caption-like sentence, not for filtering.
 
-`title: Untitled` is allowed in metadata, but public pages should omit that title instead of showing it.
+Route behavior is generated from metadata. Changing `slug`, `category`, or a controlled tag changes the generated browsing paths after the next build.
