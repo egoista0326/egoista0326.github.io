@@ -1,11 +1,38 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
-import { site } from '../data/site';
+import { newsItems, projectPlaceholder, site } from '../data/site';
 ---
 
 <SiteLayout title={site.title} description={site.description}>
-  <section class="placeholder-page" aria-labelledby="page-title">
+  <section class="academic-intro" aria-labelledby="page-title">
     <h1 id="page-title">Jiaxin Li</h1>
-    <p class="muted">Academic homepage is being prepared.</p>
+    <p class="role-line">{site.role}</p>
+    <p class="academic-bio">{site.bio}</p>
+    <div class="contact-links" aria-label="Academic links">
+      <a href="mailto:ljx2986519980@gmail.com">Email</a>
+      <a href="https://github.com/egoista0326">GitHub</a>
+    </div>
+  </section>
+
+  <section class="academic-section" aria-labelledby="news-heading">
+    <h2 id="news-heading">News</h2>
+    <ol class="news-list">
+      {
+        newsItems.map((item) => (
+          <li>
+            <span class="news-year">{item.year}</span>
+            <span>{item.text}</span>
+          </li>
+        ))
+      }
+    </ol>
+  </section>
+
+  <section class="academic-section" aria-labelledby="projects-heading">
+    <h2 id="projects-heading">Projects</h2>
+    <div class="empty-state">
+      <h3>{projectPlaceholder.heading}</h3>
+      <p>{projectPlaceholder.body}</p>
+    </div>
   </section>
 </SiteLayout>
