@@ -1,0 +1,34 @@
+---
+import { navItems, site } from '../data/site';
+
+interface Props {
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+const normalize = (path: string) => (path === '/' ? path : path.replace(/\/$/, '/'));
+const activePath = normalize(currentPath);
+const isActive = (href: string) => {
+  if (href === '/') return activePath === '/';
+  return activePath.startsWith(href);
+};
+---
+
+<header class="site-header">
+  <a class="site-mark" href="/" aria-label={`${site.name} academic homepage`}>
+    {site.name}
+  </a>
+  <nav class="site-nav" aria-label="Primary navigation">
+    {
+      navItems.map((item) => (
+        <a
+          href={item.href}
+          class:list={['nav-link', { 'is-active': isActive(item.href) }]}
+          aria-current={isActive(item.href) ? 'page' : undefined}
+        >
+          {item.label}
+        </a>
+      ))
+    }
+  </nav>
+</header>

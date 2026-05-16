@@ -1,0 +1,31 @@
+---
+import Head from '../components/Head.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head title={title} description={description} />
+  </head>
+  <body>
+    <div class="site-shell">
+      <SiteHeader currentPath={Astro.url.pathname} />
+      <main>
+        <slot />
+      </main>
+      <footer class="site-footer">
+        <span>&copy; {new Date().getFullYear()} Jiaxin Li</span>
+        <a href="mailto:ljx2986519980@gmail.com">ljx2986519980@gmail.com</a>
+      </footer>
+    </div>
+  </body>
+</html>
