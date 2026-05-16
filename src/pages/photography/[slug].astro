@@ -20,9 +20,10 @@ interface Props {
 
 export async function getStaticPaths() {
   const photos = sortPhotosForDisplay(await getCollection('photos'));
+  const featuredPhotos = sortPhotosForDisplay(photos.filter((photo) => photo.data.featured));
 
   return photos.map((photo) => {
-    const adjacentPhotos = getAdjacentPhotos(photos, getPhotoSlug(photo));
+    const adjacentPhotos = getAdjacentPhotos(featuredPhotos, getPhotoSlug(photo));
 
     return {
       params: { slug: getPhotoSlug(photo) },

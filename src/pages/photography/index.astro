@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import { photographyProfile } from '../../data/photography';
+import { photographyCategoryCovers } from '../../data/photographyCategoryCovers';
 import { photographyCategories } from '../../data/photographyVocab';
 import CategoryEntry from '../../components/photography/CategoryEntry.astro';
 import PhotoGrid from '../../components/photography/PhotoGrid.astro';
@@ -20,7 +21,7 @@ const categoryEntries = photographyCategories.map((category) => {
   return {
     category,
     photos: categoryPhotos,
-    cover: categoryPhotos[0]
+    cover: photographyCategoryCovers[category.slug]
   };
 });
 ---

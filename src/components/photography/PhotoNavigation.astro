@@ -1,5 +1,5 @@
 ---
-import { getPhotoHref, isVisibleTitle, type PhotoEntry } from '../../lib/photography';
+import { getPhotoDisplayMeta, getPhotoHref, type PhotoEntry } from '../../lib/photography';
 
 interface Props {
   previous?: PhotoEntry;
@@ -7,21 +7,32 @@ interface Props {
 }
 
 const { previous, next } = Astro.props;
+const getNavLabel = (photo: PhotoEntry) => {
+  const meta = getPhotoDisplayMeta(photo);
+
+  return meta.title || [meta.category, meta.location].filter(Boolean).join(', ');
+};
 ---
 
 {
   previous || next ? (
     <nav class="photo-nav" aria-label="Photo navigation">
       {previous ? (
-        <a class="photo-nav-link" href={getPhotoHref(previous)}>
-          <span>Previous</span>
-          {isVisibleTitle(previous.data.title) ? <span>{previous.data.title}</span> : null}
+        <a
+          class="photo-nav-link"
+          href={getPhotoHref(previous)}
+          aria-label={`Previous selected work: ${getNavLabel(previous)}`}
+        >
+          <span>Previous selected work</span>
         </a>
       ) : null}
       {next ? (
-        <a class="photo-nav-link photo-nav-next" href={getPhotoHref(next)}>
-          <span>Next</span>
-          {isVisibleTitle(next.data.title) ? <span>{next.data.title}</span> : null}
+        <a
+          class="photo-nav-link photo-nav-next"
+          href={getPhotoHref(next)}
+          aria-label={`Next selected work: ${getNavLabel(next)}`}
+        >
+          <span>Next selected work</span>
         </a>
       ) : null}
     </nav>

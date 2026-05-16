@@ -48,6 +48,17 @@ Update `width`, `height`, and `orientation` whenever the image file changes. The
 - `/photography/tags/[group]/[slug]/` shows a gallery for one controlled tag value.
 - `/photography/[slug]/` is the independent URL for a single photograph.
 
+## Category Covers
+
+The category cards on `/photography/` use fixed-ratio cover windows defined in `src/data/photographyCategoryCovers.ts`. These images are independent from photo metadata and can be replaced later with dedicated category-cover files.
+
+To update a category cover:
+
+1. Add the cover image under `public/assets/photography/works/` or a future dedicated cover folder.
+2. Open `src/data/photographyCategoryCovers.ts`.
+3. Update the matching category entry with `image`, `alt`, `width`, `height`, and optional `objectPosition`.
+4. Run `npm run build`.
+
 ## Title Display Rule
 
 `title: Untitled` is allowed in metadata so unfinished records remain explicit, but the public photography pages must not render the literal title. If a photo has no real title, the title line is omitted and the page continues with category, location, camera, lens, weather, and optional note.

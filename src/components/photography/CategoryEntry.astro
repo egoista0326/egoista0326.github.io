@@ -1,11 +1,11 @@
 ---
-import { getPhotoAlt, getPhotoHref, type PhotoEntry } from '../../lib/photography';
+import type { CategoryCover } from '../../data/photographyCategoryCovers';
 
 interface Props {
   href: string;
   label: string;
   count?: number;
-  cover?: PhotoEntry;
+  cover?: CategoryCover;
 }
 
 const { href, label, count, cover } = Astro.props;
@@ -16,14 +16,17 @@ const countLabel =
 <a class="category-entry" href={href}>
   {
     cover ? (
-      <img
-        class="category-entry-image"
-        src={cover.data.image}
-        alt={getPhotoAlt(cover)}
-        width={cover.data.width}
-        height={cover.data.height}
-        loading="lazy"
-      />
+      <span class="category-entry-image-frame">
+        <img
+          class="category-entry-image"
+          src={cover.image}
+          alt={cover.alt}
+          width={cover.width}
+          height={cover.height}
+          loading="lazy"
+          style={cover.objectPosition ? `object-position: ${cover.objectPosition}` : undefined}
+        />
+      </span>
     ) : null
   }
   <span class="category-entry-copy">
