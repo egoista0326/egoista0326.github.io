@@ -1,7 +1,9 @@
 export const site = {
   name: 'Jiaxin Li',
   title: 'Jiaxin Li',
-  description: 'Personal website for Jiaxin Li.',
+  description: 'Academic homepage for Jiaxin Li.',
+  role: 'MSc student in Robotics, Systems and Control at ETH Zurich',
+  bio: "I am an MSc student in Robotics, Systems and Control at ETH Zurich. I received my bachelor's degree from Shanghai Jiao Tong University in 2025.",
   email: 'ljx2986519980@gmail.com',
   github: 'https://github.com/egoista0326',
   photographyPlaceholder: 'A selected photography portfolio is being prepared.',
@@ -17,7 +19,7 @@ export const navItems = [
 export const newsItems = [
   {
     year: '2025',
-    text: 'Started MSc at ETH Zurich.'
+    text: 'Started MSc in Robotics, Systems and Control at ETH Zurich.'
   }
 ];
 
