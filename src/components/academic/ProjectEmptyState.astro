@@ -1,0 +1,17 @@
+---
+interface EmptyState {
+  heading: string;
+  body: string;
+}
+
+interface Props {
+  empty: EmptyState;
+}
+
+const { empty } = Astro.props;
+---
+
+<div class="empty-state">
+  <h3>{empty.heading}</h3>
+  <p>{empty.body}</p>
+</div>

@@ -1,0 +1,12 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<section class="academic-section" aria-labelledby={`${title.toLowerCase()}-heading`}>
+  <h2 id={`${title.toLowerCase()}-heading`}>{title}</h2>
+  <slot />
+</section>

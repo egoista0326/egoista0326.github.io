@@ -1,0 +1,23 @@
+---
+interface NewsItem {
+  year: string;
+  text: string;
+}
+
+interface Props {
+  items: NewsItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<ol class="news-list">
+  {
+    items.map((item) => (
+      <li>
+        <span class="news-year">{item.year}</span>
+        <span>{item.text}</span>
+      </li>
+    ))
+  }
+</ol>
