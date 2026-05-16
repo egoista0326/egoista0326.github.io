@@ -42,6 +42,11 @@ a:focus-visible {
   outline-offset: 4px;
 }
 
+::selection {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
 .site-shell {
   width: 100%;
   max-width: 920px;
@@ -93,6 +98,73 @@ a:focus-visible {
 
 main {
   min-height: 56vh;
+}
+
+.academic-intro {
+  max-width: 760px;
+  padding: var(--space-sm) 0 var(--space-xl);
+}
+
+.role-line {
+  margin-bottom: var(--space-md);
+  color: var(--color-muted);
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.academic-bio {
+  margin-bottom: var(--space-lg);
+}
+
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.academic-section {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.news-list {
+  display: grid;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.news-list li {
+  display: grid;
+  grid-template-columns: minmax(56px, max-content) minmax(0, 1fr);
+  gap: var(--space-md);
+  align-items: baseline;
+}
+
+.news-year {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.empty-state {
+  max-width: 680px;
+  padding-left: var(--space-md);
+  border-left: 2px solid var(--color-border);
+}
+
+.empty-state h3 {
+  margin-bottom: var(--space-sm);
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .placeholder-page {
@@ -155,6 +227,15 @@ p {
 
   .site-header {
     margin-bottom: var(--space-2xl);
+  }
+
+  .academic-intro {
+    padding-top: var(--space-md);
+    padding-bottom: var(--space-2xl);
+  }
+
+  .academic-section {
+    margin-top: var(--space-2xl);
   }
 }
 
