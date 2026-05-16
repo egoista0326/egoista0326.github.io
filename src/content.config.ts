@@ -21,6 +21,10 @@ const photos = defineCollection({
     slug: z.string(),
     category: z.enum(categorySlugs),
     image: z.string().default(''),
+    alt: z.string().default(''),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    orientation: z.enum(['landscape', 'portrait', 'square']),
     date: z.string().optional().default(''),
     year: z.string().optional().default(''),
     location: optionalLocation,
@@ -28,6 +32,7 @@ const photos = defineCollection({
     lens: optionalLens,
     weather: optionalWeather,
     featured: z.boolean().default(false),
+    order: z.number().int().default(0),
     note: z.string().optional().default(''),
     language: z.enum(['en', 'zh']).default('en')
   })
