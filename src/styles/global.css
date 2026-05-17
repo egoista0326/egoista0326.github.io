@@ -629,6 +629,15 @@ body[data-photography-lang="zh"] .photography-intro-body [data-lang-panel="en"] 
   text-wrap: pretty;
 }
 
+body:not([data-photography-lang="zh"]) .project-description > [data-lang-inline="en"],
+body:not([data-photography-lang="zh"]) .photography-project-summary > [data-lang-inline="en"],
+body[data-photography-lang="zh"] .project-description > [data-lang-inline="zh"],
+body[data-photography-lang="zh"] .photography-project-summary > [data-lang-inline="zh"] {
+  display: block;
+  text-align: inherit;
+  text-align-last: inherit;
+}
+
 .gallery-heading {
   margin-top: 0;
   padding-top: 0;
@@ -1196,16 +1205,19 @@ p {
   .photography-intro.has-intro-image p {
     hyphens: none;
     max-width: none;
-    text-align: left;
+    text-align: justify;
+    text-align-last: left;
   }
 
   .project-description {
     hyphens: none;
-    text-align: left;
+    text-align: justify;
+    text-align-last: left;
   }
 
   .photography-project-summary {
-    text-align: left;
+    text-align: justify;
+    text-align-last: left;
   }
 
   .photography-intro-media::after {
