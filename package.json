@@ -6,10 +6,14 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "qa:release": "node scripts/qa_release.mjs",
     "astro": "astro"
   },
   "dependencies": {
     "astro": "6.3.3",
     "masonry-layout": "^4.2.2"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
   }
 }
