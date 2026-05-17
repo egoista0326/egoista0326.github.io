@@ -115,3 +115,15 @@ npm run build
 ```
 
 If the CV preview does not render in a browser, the direct `Open PDF` and `Download PDF` links should still work.
+
+## Last verified
+
+2026-05-17: `https://egoista0326.github.io/` was deployed with GitHub Actions Pages publishing. Local verification used:
+
+```bash
+node scripts/verify_photo_import.mjs
+npm run build
+npm run qa:release
+```
+
+Remote verification checked the successful `deploy.yml` workflow run and HTTP 200 responses for `/`, `/cv/`, `/photography/`, `/photography/dsc-0046/`, and `/assets/cv/jiaxin-li-cv.pdf`.
