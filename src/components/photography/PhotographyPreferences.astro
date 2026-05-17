@@ -1,0 +1,121 @@
+---
+import { photographyProfile } from '../../data/photography';
+
+const { landingCopy } = photographyProfile;
+---
+
+<div class="photography-preferences" aria-label={landingCopy.en.controls.preferences}>
+  <div class="photography-preference-group" role="group" aria-labelledby="photography-theme-label">
+    <span id="photography-theme-label" class="visually-hidden">
+      <span data-lang-inline="en">{landingCopy.en.controls.theme}</span>
+      <span data-lang-inline="zh">{landingCopy.zh.controls.theme}</span>
+    </span>
+    <span class="photography-segmented">
+      <button type="button" data-photography-theme-option="light" aria-pressed="true">
+        <span data-lang-inline="en">{landingCopy.en.controls.light}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.controls.light}</span>
+      </button>
+      <button type="button" data-photography-theme-option="dark" aria-pressed="false">
+        <span data-lang-inline="en">{landingCopy.en.controls.dark}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.controls.dark}</span>
+      </button>
+    </span>
+  </div>
+
+  <div class="photography-preference-group" role="group" aria-labelledby="photography-language-label">
+    <span id="photography-language-label" class="visually-hidden">
+      <span data-lang-inline="en">{landingCopy.en.controls.language}</span>
+      <span data-lang-inline="zh">{landingCopy.zh.controls.language}</span>
+    </span>
+    <span class="photography-segmented">
+      <button type="button" data-photography-lang-option="en" aria-pressed="true">
+        {landingCopy.en.controls.english}
+      </button>
+      <button type="button" data-photography-lang-option="zh" aria-pressed="false">
+        {landingCopy.zh.controls.chinese}
+      </button>
+    </span>
+  </div>
+</div>
+
+<script>
+  const themeButtons = Array.from(document.querySelectorAll('[data-photography-theme-option]'));
+  const languageButtons = Array.from(document.querySelectorAll('[data-photography-lang-option]'));
+  const themeStorageKey = 'photography-theme';
+  const languageStorageKey = 'photography-language';
+  const validThemes = new Set(['light', 'dark']);
+  const validLanguages = new Set(['en', 'zh']);
+
+  document.querySelectorAll('[data-lang-inline="en"], [data-lang-panel="en"]').forEach((element) => {
+    element.setAttribute('lang', 'en');
+  });
+  document.querySelectorAll('[data-lang-inline="zh"], [data-lang-panel="zh"]').forEach((element) => {
+    element.setAttribute('lang', 'zh-CN');
+  });
+
+  const readPreference = (key) => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+
+  const writePreference = (key, value) => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Preference storage is optional.
+    }
+  };
+
+  const syncPageAttributes = (name, value) => {
+    document.querySelectorAll('[data-photography-page]').forEach((page) => {
+      if (!(page instanceof HTMLElement)) return;
+      page.dataset[name] = value;
+    });
+  };
+
+  const applyTheme = (theme, shouldPersist = true) => {
+    if (!validThemes.has(theme)) return;
+
+    document.body.dataset.photographyTheme = theme;
+    syncPageAttributes('photographyTheme', theme);
+    themeButtons.forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) return;
+      button.setAttribute('aria-pressed', String(button.dataset.photographyThemeOption === theme));
+    });
+
+    if (shouldPersist) writePreference(themeStorageKey, theme);
+  };
+
+  const applyLanguage = (language, shouldPersist = true) => {
+    if (!validLanguages.has(language)) return;
+
+    document.body.dataset.photographyLang = language;
+    syncPageAttributes('photographyLang', language);
+    languageButtons.forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) return;
+      button.setAttribute('aria-pressed', String(button.dataset.photographyLangOption === language));
+    });
+
+    document.dispatchEvent(new CustomEvent('photography-language-change', { detail: { language } }));
+
+    if (shouldPersist) writePreference(languageStorageKey, language);
+  };
+
+  const storedTheme = readPreference(themeStorageKey);
+  const storedLanguage = readPreference(languageStorageKey);
+  applyTheme(validThemes.has(storedTheme || '') ? storedTheme : 'light', false);
+  applyLanguage(validLanguages.has(storedLanguage || '') ? storedLanguage : 'en', false);
+
+  themeButtons.forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) return;
+    button.addEventListener('click', () => applyTheme(button.dataset.photographyThemeOption || 'light'));
+  });
+
+  languageButtons.forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) return;
+    button.addEventListener('click', () => applyLanguage(button.dataset.photographyLangOption || 'en'));
+  });
+</script>

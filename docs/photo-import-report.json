@@ -1,13 +1,13 @@
 {
-  "source": "/Users/lijiaxin/Desktop/Untitled Export",
+  "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average",
   "dry_run": false,
-  "included_count": 37,
-  "excluded_count": 6,
+  "included_count": 105,
+  "excluded_count": 1,
   "included": [
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC0013.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0013.jpg",
       "slug": "dsc-0013",
-      "category": "still-life",
+      "category": "abstract",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0013.webp",
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0013.md",
       "width": 2400,
@@ -15,9 +15,19 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC0027.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0019.jpg",
+      "slug": "dsc-0019",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0019.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0019.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0027.jpg",
       "slug": "dsc-0027",
-      "category": "still-life",
+      "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0027.webp",
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0027.md",
       "width": 2400,
@@ -25,7 +35,57 @@
       "orientation": "square"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC0155.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0035.jpg",
+      "slug": "dsc-0035",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0035.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0035.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0047.jpg",
+      "slug": "dsc-0047",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0047.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0047.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0090.jpg",
+      "slug": "dsc-0090",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0090.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0090.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0095.jpg",
+      "slug": "dsc-0095",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0095.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0095.md",
+      "width": 2400,
+      "height": 1800,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0152.jpg",
+      "slug": "dsc-0152-iceland",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0152-iceland.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0152-iceland.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0155.jpg",
       "slug": "dsc-0155",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0155.webp",
@@ -35,7 +95,27 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC0255.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0213.jpg",
+      "slug": "dsc-0213",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0213.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0213.md",
+      "width": 2400,
+      "height": 1937,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0244.jpg",
+      "slug": "dsc-0244",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0244.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0244.md",
+      "width": 2033,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0255.jpg",
       "slug": "dsc-0255",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0255.webp",
@@ -45,7 +125,7 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC0275.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0275.jpg",
       "slug": "dsc-0275",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0275.webp",
@@ -55,7 +135,47 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC0761.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0430.jpg",
+      "slug": "dsc-0430-iceland",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0430-iceland.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0430-iceland.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0534.jpg",
+      "slug": "dsc-0534",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0534.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0534.md",
+      "width": 2400,
+      "height": 2400,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0585.jpg",
+      "slug": "dsc-0585",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0585.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0585.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0714.jpg",
+      "slug": "dsc-0714",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0714.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0714.md",
+      "width": 2400,
+      "height": 1656,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0761.jpg",
       "slug": "dsc-0761",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0761.webp",
@@ -65,9 +185,9 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC0817.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0817.jpg",
       "slug": "dsc-0817",
-      "category": "still-life",
+      "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0817.webp",
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0817.md",
       "width": 2400,
@@ -75,9 +195,29 @@
       "orientation": "square"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC0838.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0822.jpg",
+      "slug": "dsc-0822",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0822.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0822.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0827.jpg",
+      "slug": "dsc-0827",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0827.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0827.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0838.jpg",
       "slug": "dsc-0838",
-      "category": "still-life",
+      "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0838.webp",
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0838.md",
       "width": 2273,
@@ -85,7 +225,17 @@
       "orientation": "square"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC0855.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0839.jpg",
+      "slug": "dsc-0839",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0839.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0839.md",
+      "width": 2400,
+      "height": 2400,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0855.jpg",
       "slug": "dsc-0855",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0855.webp",
@@ -95,9 +245,79 @@
       "orientation": "square"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC2233.jpg",
-      "slug": "dsc-2233",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0859.jpg",
+      "slug": "dsc-0859",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0859.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0859.md",
+      "width": 2400,
+      "height": 2400,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0876.jpg",
+      "slug": "dsc-0876",
       "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0876.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0876.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC1897.jpg",
+      "slug": "dsc-1897",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-1897.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-1897.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC1931.jpg",
+      "slug": "dsc-1931",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-1931.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-1931.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC1973.jpg",
+      "slug": "dsc-1973",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-1973.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-1973.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2194.jpg",
+      "slug": "dsc-2194",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2194.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2194.md",
+      "width": 1535,
+      "height": 1803,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2224.jpg",
+      "slug": "dsc-2224",
+      "category": "still-life",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2224.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2224.md",
+      "width": 1913,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2233.jpg",
+      "slug": "dsc-2233",
+      "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2233.webp",
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2233.md",
       "width": 2400,
@@ -105,7 +325,27 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC2440.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2264.jpg",
+      "slug": "dsc-2264",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2264.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2264.md",
+      "width": 2400,
+      "height": 2400,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2333.jpg",
+      "slug": "dsc-2333",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2333.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2333.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2440.jpg",
       "slug": "dsc-2440",
       "category": "still-life",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2440.webp",
@@ -115,7 +355,7 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC2488.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2488.jpg",
       "slug": "dsc-2488",
       "category": "still-life",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2488.webp",
@@ -125,7 +365,7 @@
       "orientation": "square"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC2583.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2583.jpg",
       "slug": "dsc-2583",
       "category": "still-life",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2583.webp",
@@ -135,7 +375,27 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC2682.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2618.jpg",
+      "slug": "dsc-2618",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2618.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2618.md",
+      "width": 2400,
+      "height": 1500,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2649.jpg",
+      "slug": "dsc-2649",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2649.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2649.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2682.jpg",
       "slug": "dsc-2682",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2682.webp",
@@ -145,17 +405,87 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC2799.jpg",
-      "slug": "dsc-2799",
-      "category": "street",
-      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2799.webp",
-      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2799.md",
-      "width": 1920,
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2702.jpg",
+      "slug": "dsc-2702",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2702.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2702.md",
+      "width": 1800,
       "height": 2400,
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/_DSC2862.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2712.jpg",
+      "slug": "dsc-2712",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2712.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2712.md",
+      "width": 2400,
+      "height": 2400,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2721.jpg",
+      "slug": "dsc-2721",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2721.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2721.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2723.jpg",
+      "slug": "dsc-2723",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2723.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2723.md",
+      "width": 2400,
+      "height": 2326,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2725.jpg",
+      "slug": "dsc-2725",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2725.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2725.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2731.jpg",
+      "slug": "dsc-2731",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2731.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2731.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2759.jpg",
+      "slug": "dsc-2759",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2759.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2759.md",
+      "width": 1600,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2799.jpg",
+      "slug": "dsc-2799",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2799.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2799.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2862.jpg",
       "slug": "dsc-2862",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2862.webp",
@@ -165,7 +495,17 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_0046.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC2871.jpg",
+      "slug": "dsc-2871",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-2871.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-2871.md",
+      "width": 2382,
+      "height": 2382,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0046.jpg",
       "slug": "dsc-0046",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0046.webp",
@@ -175,7 +515,7 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_0086.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0086.jpg",
       "slug": "dsc-0086",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0086.webp",
@@ -185,7 +525,7 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_0152.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0152.jpg",
       "slug": "dsc-0152",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0152.webp",
@@ -195,17 +535,47 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_0163.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0154.jpg",
+      "slug": "dsc-0154",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0154.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0154.md",
+      "width": 2400,
+      "height": 1349,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0163.jpg",
       "slug": "dsc-0163",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0163.webp",
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0163.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0173.jpg",
+      "slug": "dsc-0173",
+      "category": "still-life",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0173.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0173.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0294.jpg",
+      "slug": "dsc-0294",
+      "category": "still-life",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0294.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0294.md",
       "width": 2400,
       "height": 2400,
       "orientation": "square"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_0325.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0325.jpg",
       "slug": "dsc-0325",
       "category": "still-life",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0325.webp",
@@ -215,7 +585,17 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_0458.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0430.jpg",
+      "slug": "dsc-0430",
+      "category": "still-life",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0430.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0430.md",
+      "width": 2400,
+      "height": 1800,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_0458.jpg",
       "slug": "dsc-0458",
       "category": "still-life",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0458.webp",
@@ -225,17 +605,77 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_5751.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_5751.jpg",
       "slug": "dsc-5751",
-      "category": "street",
+      "category": "architecture",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-5751.webp",
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-5751.md",
-      "width": 1440,
-      "height": 1920,
+      "width": 1800,
+      "height": 2400,
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8339.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_7810.jpg",
+      "slug": "dsc-7810",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-7810.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-7810.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_7871.jpg",
+      "slug": "dsc-7871",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-7871.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-7871.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_7971.jpg",
+      "slug": "dsc-7971",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-7971.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-7971.md",
+      "width": 1414,
+      "height": 1414,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_7997.jpg",
+      "slug": "dsc-7997",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-7997.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-7997.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8044.jpg",
+      "slug": "dsc-8044",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8044.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-8044.md",
+      "width": 2400,
+      "height": 1600,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8072.jpg",
+      "slug": "dsc-8072",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8072.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-8072.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8339.jpg",
       "slug": "dsc-8339",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8339.webp",
@@ -245,7 +685,7 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8341.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8341.jpg",
       "slug": "dsc-8341",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8341.webp",
@@ -255,7 +695,7 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8404.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8404.jpg",
       "slug": "dsc-8404",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8404.webp",
@@ -265,17 +705,17 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8550.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8550.jpg",
       "slug": "dsc-8550",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8550.webp",
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-8550.md",
-      "width": 1350,
+      "width": 1800,
       "height": 2400,
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8596.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8596.jpg",
       "slug": "dsc-8596",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8596.webp",
@@ -285,7 +725,7 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8616.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8616.jpg",
       "slug": "dsc-8616",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8616.webp",
@@ -295,7 +735,7 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8652.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8652.jpg",
       "slug": "dsc-8652",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8652.webp",
@@ -305,7 +745,17 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8715.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8662.jpg",
+      "slug": "dsc-8662",
+      "category": "landscape",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8662.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-8662.md",
+      "width": 2400,
+      "height": 2400,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8715.jpg",
       "slug": "dsc-8715",
       "category": "landscape",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8715.webp",
@@ -315,7 +765,17 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8853.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8777.jpg",
+      "slug": "dsc-8777",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8777.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-8777.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8853.jpg",
       "slug": "dsc-8853",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8853.webp",
@@ -325,7 +785,7 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_8872.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8872.jpg",
       "slug": "dsc-8872",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8872.webp",
@@ -335,7 +795,157 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_9266.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_8997.jpg",
+      "slug": "dsc-8997",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8997.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-8997.md",
+      "width": 2400,
+      "height": 1349,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9067.jpg",
+      "slug": "dsc-9067",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9067.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9067.md",
+      "width": 2400,
+      "height": 1699,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9132.jpg",
+      "slug": "dsc-9132",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9132.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9132.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9133.jpg",
+      "slug": "dsc-9133",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9133.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9133.md",
+      "width": 2400,
+      "height": 1349,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9135.jpg",
+      "slug": "dsc-9135",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9135.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9135.md",
+      "width": 1739,
+      "height": 2319,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9144.jpg",
+      "slug": "dsc-9144",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9144.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9144.md",
+      "width": 2400,
+      "height": 2400,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9149.jpg",
+      "slug": "dsc-9149",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9149.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9149.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9170.jpg",
+      "slug": "dsc-9170",
+      "category": "still-life",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9170.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9170.md",
+      "width": 2400,
+      "height": 1800,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9173.jpg",
+      "slug": "dsc-9173",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9173.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9173.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9182.jpg",
+      "slug": "dsc-9182",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9182.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9182.md",
+      "width": 2400,
+      "height": 1349,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9185.jpg",
+      "slug": "dsc-9185",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9185.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9185.md",
+      "width": 2400,
+      "height": 1544,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9195.jpg",
+      "slug": "dsc-9195",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9195.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9195.md",
+      "width": 1886,
+      "height": 1886,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9227.jpg",
+      "slug": "dsc-9227",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9227.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9227.md",
+      "width": 1349,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9257.jpg",
+      "slug": "dsc-9257",
+      "category": "abstract",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9257.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9257.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9263.jpg",
+      "slug": "dsc-9263",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9263.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9263.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9266.jpg",
       "slug": "dsc-9266",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9266.webp",
@@ -345,7 +955,17 @@
       "orientation": "landscape"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_9547.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9283.jpg",
+      "slug": "dsc-9283",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9283.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9283.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9547.jpg",
       "slug": "dsc-9547",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9547.webp",
@@ -355,7 +975,57 @@
       "orientation": "square"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_9871.jpg",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9586.jpg",
+      "slug": "dsc-9586",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9586.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9586.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9595.jpg",
+      "slug": "dsc-9595",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9595.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9595.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9605.jpg",
+      "slug": "dsc-9605",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9605.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9605.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9608.jpg",
+      "slug": "dsc-9608",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9608.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9608.md",
+      "width": 2400,
+      "height": 1350,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9691.jpg",
+      "slug": "dsc-9691",
+      "category": "architecture",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9691.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9691.md",
+      "width": 1360,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9871.jpg",
       "slug": "dsc-9871",
       "category": "street",
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9871.webp",
@@ -365,23 +1035,28 @@
       "orientation": "portrait"
     },
     {
-      "source": "/Users/lijiaxin/Desktop/Untitled Export/DSC_9971.jpg",
-      "slug": "dsc-9971",
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9897.jpg",
+      "slug": "dsc-9897",
       "category": "street",
-      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9971.webp",
-      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9971.md",
-      "width": 1800,
-      "height": 2400,
-      "orientation": "portrait"
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9897.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9897.md",
+      "width": 2400,
+      "height": 1800,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/DSC_9912.jpg",
+      "slug": "dsc-9912",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-9912.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-9912.md",
+      "width": 2400,
+      "height": 1349,
+      "orientation": "landscape"
     }
   ],
   "excluded": [
-    "/Users/lijiaxin/Desktop/Untitled Export/.DS_Store [explicitly excluded]",
-    "/Users/lijiaxin/Desktop/Untitled Export/bw_conversion_review [directory ignored]",
-    "/Users/lijiaxin/Desktop/Untitled Export/contact_sheet_all_photos.jpg [explicitly excluded]",
-    "/Users/lijiaxin/Desktop/Untitled Export/docs [directory ignored]",
-    "/Users/lijiaxin/Desktop/Untitled Export/forphotographeronly [directory ignored]",
-    "/Users/lijiaxin/Desktop/Untitled Export/forphotographeronly_contest_candidates_2026-05-14.json [explicitly excluded]"
+    "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/.DS_Store [explicitly excluded]"
   ],
   "settings": {
     "asset_dir": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works",

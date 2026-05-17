@@ -1,0 +1,57 @@
+---
+import { getCollection } from 'astro:content';
+import SiteLayout from '../../../layouts/SiteLayout.astro';
+import PhotoDetailView from '../../../components/photography/PhotoDetailView.astro';
+import { photographySelectedWorkSlugs } from '../../../data/photography';
+import {
+  getAdjacentPhotosInOrder,
+  getPhotoAlt,
+  getPhotoSlug,
+  getPhotosBySlugs,
+  getSelectedPhotoHref,
+  isVisibleTitle,
+  sortPhotosForDisplay,
+  type PhotoEntry
+} from '../../../lib/photography';
+
+interface Props {
+  photo: PhotoEntry;
+  previous?: PhotoEntry;
+  next?: PhotoEntry;
+}
+
+export async function getStaticPaths() {
+  const photos = sortPhotosForDisplay(await getCollection('photos'));
+  const selectedPhotos = getPhotosBySlugs(photos, photographySelectedWorkSlugs);
+
+  return selectedPhotos.map((photo) => {
+    const adjacentPhotos = getAdjacentPhotosInOrder(selectedPhotos, getPhotoSlug(photo));
+
+    return {
+      params: { slug: getPhotoSlug(photo) },
+      props: {
+        photo,
+        previous: adjacentPhotos.previous,
+        next: adjacentPhotos.next
+      }
+    };
+  });
+}
+
+const { photo, previous, next } = Astro.props;
+const pageTitle = isVisibleTitle(photo.data.title) ? `${photo.data.title} | Photography` : 'Photography';
+const previousHref = previous ? getSelectedPhotoHref(previous) : undefined;
+const nextHref = next ? getSelectedPhotoHref(next) : undefined;
+---
+
+<SiteLayout title={pageTitle} description={getPhotoAlt(photo)}>
+  <PhotoDetailView
+    photo={photo}
+    previous={previous}
+    previousHref={previousHref}
+    next={next}
+    nextHref={nextHref}
+    backHref="/photography/#selected-works-title"
+    backLabel="Back to Selected Works"
+  />
+</SiteLayout>

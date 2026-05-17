@@ -3,18 +3,18 @@ import {
   getVocabularyLabel,
   photographyCameras,
   photographyCategories,
+  photographyConditions,
   photographyLenses,
   photographyLocations,
-  photographyWeather,
   type CameraSlug,
   type CategorySlug,
+  type ConditionSlug,
   type LensSlug,
-  type LocationSlug,
-  type WeatherSlug
+  type LocationSlug
 } from '../data/photographyVocab';
 
 export type PhotoEntry = CollectionEntry<'photos'>;
-export type TagGroupSlug = 'location' | 'camera' | 'lens' | 'weather';
+export type TagGroupSlug = 'location' | 'camera' | 'lens' | 'condition';
 
 type VocabularyTag = {
   slug: string;
@@ -39,9 +39,28 @@ export const getPhotoSlug = (photo: PhotoEntry) => photo.data.slug;
 
 export const getPhotoHref = (photo: PhotoEntry) => `/photography/${getPhotoSlug(photo)}/`;
 
+export const getSelectedPhotoHref = (photo: PhotoEntry) => `/photography/selected/${getPhotoSlug(photo)}/`;
+
 export const getCategoryHref = (category: CategorySlug) => `/photography/category/${category}/`;
 
+export const getCategoryPhotoHref = (category: CategorySlug, photo: PhotoEntry) =>
+  `${getCategoryHref(category)}${getPhotoSlug(photo)}/`;
+
 export const getTagHref = (group: TagGroupSlug, slug: string) => `/photography/tags/${group}/${slug}/`;
+
+const uniqueValues = <T extends string>(values: readonly (T | '')[]) =>
+  Array.from(new Set(values.filter((value): value is T => value !== '')));
+
+const getVocabularyLabels = <T extends string>(
+  entries: readonly { slug: T; label: string }[],
+  slugs: readonly T[]
+) => slugs.map((slug) => getVocabularyLabel(entries, slug)).filter(Boolean).join(', ');
+
+export const getPhotoCategories = (photo: PhotoEntry) =>
+  uniqueValues<CategorySlug>([photo.data.category, ...photo.data.categories]);
+
+export const getPhotoConditions = (photo: PhotoEntry) =>
+  uniqueValues<ConditionSlug>([photo.data.condition, ...photo.data.conditions]);
 
 export const getPhotoAlt = (photo: PhotoEntry) => {
   if (photo.data.alt.trim() !== '') {
@@ -78,20 +97,27 @@ export const sortPhotosForDisplay = (photos: PhotoEntry[]) =>
 
 export const getPhotoDisplayMeta = (photo: PhotoEntry) => ({
   title: isVisibleTitle(photo.data.title) ? photo.data.title : '',
-  category: getVocabularyLabel(photographyCategories, photo.data.category),
+  category: getVocabularyLabels(photographyCategories, getPhotoCategories(photo)),
   location: getVocabularyLabel(photographyLocations, photo.data.location),
   camera: getVocabularyLabel(photographyCameras, photo.data.camera),
   lens: getVocabularyLabel(photographyLenses, photo.data.lens),
-  weather: getVocabularyLabel(photographyWeather, photo.data.weather)
+  condition: getVocabularyLabels(photographyConditions, getPhotoConditions(photo))
 });
 
 export const getPhotosByCategory = (photos: PhotoEntry[], category: CategorySlug) =>
-  sortPhotosForDisplay(photos.filter((photo) => photo.data.category === category));
+  sortPhotosForDisplay(photos.filter((photo) => getPhotoCategories(photo).includes(category)));
 
-const getPhotoTagValue = (photo: PhotoEntry, group: TagGroupSlug) => photo.data[group];
+const getPhotoTagValues = (photo: PhotoEntry, group: TagGroupSlug): string[] => {
+  if (group === 'condition') {
+    return getPhotoConditions(photo);
+  }
+
+  const value = photo.data[group];
+  return value === '' ? [] : [value];
+};
 
 export const getPhotosByTag = (photos: PhotoEntry[], group: TagGroupSlug, slug: string) =>
-  sortPhotosForDisplay(photos.filter((photo) => getPhotoTagValue(photo, group) === slug));
+  sortPhotosForDisplay(photos.filter((photo) => getPhotoTagValues(photo, group).includes(slug)));
 
 export const getPhotosBySlugs = (photos: PhotoEntry[], photoSlugs: readonly string[]) => {
   const photosBySlug = new Map(photos.map((photo) => [getPhotoSlug(photo), photo]));
@@ -100,6 +126,13 @@ export const getPhotosBySlugs = (photos: PhotoEntry[], photoSlugs: readonly stri
     .map((slug) => photosBySlug.get(slug))
     .filter((photo): photo is PhotoEntry => Boolean(photo));
 };
+
+export const getPhotoSearchTags = (photo: PhotoEntry) => ({
+  location: photo.data.location === '' ? [] : [photo.data.location],
+  camera: photo.data.camera === '' ? [] : [photo.data.camera],
+  lens: photo.data.lens === '' ? [] : [photo.data.lens],
+  condition: getPhotoConditions(photo)
+});
 
 const tagGroupDefinitions = [
   {
@@ -118,15 +151,15 @@ const tagGroupDefinitions = [
     entries: photographyLenses
   },
   {
-    slug: 'weather',
-    label: 'Weather',
-    entries: photographyWeather
+    slug: 'condition',
+    label: 'Conditions',
+    entries: photographyConditions
   }
 ] as const satisfies readonly {
   slug: TagGroupSlug;
   label: string;
   entries: readonly {
-    slug: LocationSlug | CameraSlug | LensSlug | WeatherSlug;
+    slug: LocationSlug | CameraSlug | LensSlug | ConditionSlug;
     label: string;
   }[];
 }[];
@@ -136,7 +169,7 @@ export const getUsedTagGroups = (photos: PhotoEntry[]) =>
     .map((group) => {
       const tags = group.entries
         .map((entry) => {
-          const count = photos.filter((photo) => getPhotoTagValue(photo, group.slug) === entry.slug).length;
+          const count = photos.filter((photo) => getPhotoTagValues(photo, group.slug).includes(entry.slug)).length;
 
           return {
             slug: entry.slug,
@@ -155,8 +188,7 @@ export const getUsedTagGroups = (photos: PhotoEntry[]) =>
     })
     .filter((group) => group.tags.length > 0);
 
-export const getAdjacentPhotos = (photos: PhotoEntry[], currentSlug: string) => {
-  const orderedPhotos = sortPhotosForDisplay(photos);
+export const getAdjacentPhotosInOrder = (orderedPhotos: PhotoEntry[], currentSlug: string) => {
   const currentIndex = orderedPhotos.findIndex((photo) => getPhotoSlug(photo) === currentSlug);
 
   return {
@@ -167,3 +199,6 @@ export const getAdjacentPhotos = (photos: PhotoEntry[], currentSlug: string) => 
         : undefined
   };
 };
+
+export const getAdjacentPhotos = (photos: PhotoEntry[], currentSlug: string) =>
+  getAdjacentPhotosInOrder(sortPhotosForDisplay(photos), currentSlug);

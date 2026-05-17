@@ -47,14 +47,32 @@ export async function getStaticPaths() {
 }
 
 const { page } = Astro.props;
+const groupLabelsZh: Partial<Record<TagGroupSlug, string>> = {
+  location: '地点',
+  camera: '相机',
+  lens: '镜头',
+  condition: '拍摄条件'
+};
+const groupLabelZh = groupLabelsZh[page.group] ?? page.groupLabel;
 ---
 
 <SiteLayout title={`${page.tag.label} Photography`} description={`Photographs tagged ${page.tag.label}.`}>
   <section class="photography-section gallery-heading" aria-labelledby="tag-title">
-    <p><a class="photo-back-link" href="/photography/tags/">Back to Photography Tags</a></p>
-    <p class="metadata-kicker">{page.groupLabel}</p>
+    <p>
+      <a class="photo-back-link" href="/photography/tags/">
+        <span data-lang-inline="en">Back to Photography Tags</span>
+        <span data-lang-inline="zh">返回摄影标签</span>
+      </a>
+    </p>
+    <p class="metadata-kicker">
+      <span data-lang-inline="en">{page.groupLabel}</span>
+      <span data-lang-inline="zh">{groupLabelZh}</span>
+    </p>
     <h1 id="tag-title">{page.tag.label}</h1>
-    <p class="section-copy">{page.photos.length} photograph{page.photos.length === 1 ? '' : 's'} with this tag.</p>
+    <p class="section-copy">
+      <span data-lang-inline="en">{page.photos.length} photograph{page.photos.length === 1 ? '' : 's'} with this tag.</span>
+      <span data-lang-inline="zh">此标签下共有 {page.photos.length} 张照片。</span>
+    </p>
   </section>
 
   <section class="photography-section" aria-label={`${page.tag.label} photographs`}>

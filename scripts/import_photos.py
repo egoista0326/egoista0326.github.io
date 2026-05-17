@@ -34,6 +34,10 @@ EXCLUDED_MARKERS = (
 DEFAULT_CATEGORY = "street"
 DEFAULT_CAMERA = "nikon-zf"
 DEFAULT_LANGUAGE = "en"
+LEGACY_CONDITIONS = {
+    "sunny-day": ("clear", []),
+    "rainy-night": ("rain", ["night"]),
+}
 MAX_LONG_EDGE = 2400
 WEBP_QUALITY = 88
 
@@ -67,12 +71,13 @@ def slugify_source(path: Path) -> str:
     return stem or "photo"
 
 
-def inventory_source(source_dir: Path) -> tuple[list[SourcePhoto], list[str]]:
+def inventory_source(source_dir: Path, manifest: dict[str, dict[str, Any]] | None = None) -> tuple[list[SourcePhoto], list[str]]:
     if not source_dir.exists():
         raise FileNotFoundError(f"Source directory does not exist: {source_dir}")
     included: list[SourcePhoto] = []
     excluded: list[str] = []
     seen_slugs: dict[str, Path] = {}
+    manifest = manifest or {}
 
     for path in sorted(source_dir.iterdir(), key=lambda item: item.name.lower()):
         name = path.name
@@ -91,7 +96,7 @@ def inventory_source(source_dir: Path) -> tuple[list[SourcePhoto], list[str]]:
             excluded.append(f"{marker_path} [not an image candidate]")
             continue
 
-        slug = slugify_source(path)
+        slug = str(manifest.get(path.name, {}).get("slug") or slugify_source(path))
         if slug in seen_slugs:
             raise ValueError(f"Slug collision for {path} and {seen_slugs[slug]}: {slug}")
         seen_slugs[slug] = path
@@ -158,7 +163,8 @@ def default_entry(photo: SourcePhoto, order: int) -> dict[str, Any]:
         "location": "",
         "camera": DEFAULT_CAMERA,
         "lens": "",
-        "weather": "",
+        "condition": "",
+        "conditions": [],
         "featured": True,
         "order": order,
         "note": "",
@@ -184,17 +190,37 @@ def yaml_value(value: Any) -> str:
         return "true" if value else "false"
     if isinstance(value, int):
         return str(value)
+    if isinstance(value, list):
+        return json.dumps(value, ensure_ascii=False)
     if value is None:
         return '""'
     return json.dumps(str(value), ensure_ascii=False)
 
 
+def condition_fields(entry: dict[str, Any]) -> tuple[str, list[str]]:
+    condition = str(entry.get("condition", "") or "")
+    conditions = entry.get("conditions", [])
+    if not isinstance(conditions, list):
+        conditions = []
+    normalized_conditions = [str(value) for value in conditions if value]
+
+    legacy_weather = str(entry.get("weather", "") or "")
+    if not condition and legacy_weather:
+        condition, legacy_extra = LEGACY_CONDITIONS.get(legacy_weather, (legacy_weather, []))
+        normalized_conditions.extend(legacy_extra)
+
+    deduped_conditions = list(dict.fromkeys(value for value in normalized_conditions if value != condition))
+    return condition, deduped_conditions
+
+
 def metadata_frontmatter(entry: dict[str, Any], width: int, height: int, orientation: str) -> str:
     slug = entry["slug"]
+    condition, conditions = condition_fields(entry)
     fields: list[tuple[str, Any]] = [
         ("title", entry.get("title", "Untitled")),
         ("slug", slug),
         ("category", entry.get("category", DEFAULT_CATEGORY)),
+        ("categories", entry.get("categories", [])),
         ("image", f"/assets/photography/works/{slug}.webp"),
         ("alt", entry.get("alt", "")),
         ("width", width),
@@ -205,7 +231,8 @@ def metadata_frontmatter(entry: dict[str, Any], width: int, height: int, orienta
         ("location", entry.get("location", "")),
         ("camera", entry.get("camera", DEFAULT_CAMERA)),
         ("lens", entry.get("lens", "")),
-        ("weather", entry.get("weather", "")),
+        ("condition", condition),
+        ("conditions", conditions),
         ("featured", entry.get("featured", True)),
         ("order", entry.get("order", 0)),
         ("note", entry.get("note", "")),
@@ -255,8 +282,8 @@ def write_report(report_path: Path | None, report: dict[str, Any]) -> None:
 def run() -> int:
     args = parse_args()
     source_dir = args.source.expanduser().resolve()
-    included, excluded = inventory_source(source_dir)
     manifest = load_manifest(args.manifest)
+    included, excluded = inventory_source(source_dir, manifest)
 
     if args.manifest is not None:
         source_names = {photo.path.name for photo in included}

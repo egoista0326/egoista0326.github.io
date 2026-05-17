@@ -4,15 +4,15 @@ import { z } from 'astro/zod';
 import {
   cameraSlugs,
   categorySlugs,
+  conditionSlugs,
   lensSlugs,
-  locationSlugs,
-  weatherSlugs
+  locationSlugs
 } from './data/photographyVocab';
 
 const optionalCamera = z.enum(cameraSlugs).or(z.literal('')).default('');
 const optionalLens = z.enum(lensSlugs).or(z.literal('')).default('');
 const optionalLocation = z.enum(locationSlugs).or(z.literal('')).default('');
-const optionalWeather = z.enum(weatherSlugs).or(z.literal('')).default('');
+const optionalCondition = z.enum(conditionSlugs).or(z.literal('')).default('');
 
 const photos = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/photos' }),
@@ -20,6 +20,7 @@ const photos = defineCollection({
     title: z.string().default('Untitled'),
     slug: z.string(),
     category: z.enum(categorySlugs),
+    categories: z.array(z.enum(categorySlugs)).default([]),
     image: z.string().default(''),
     alt: z.string().default(''),
     width: z.number().int().positive(),
@@ -30,7 +31,8 @@ const photos = defineCollection({
     location: optionalLocation,
     camera: optionalCamera,
     lens: optionalLens,
-    weather: optionalWeather,
+    condition: optionalCondition,
+    conditions: z.array(z.enum(conditionSlugs)).default([]),
     featured: z.boolean().default(false),
     order: z.number().int().default(0),
     note: z.string().optional().default(''),

@@ -1,43 +1,206 @@
 ---
 import { getCollection } from 'astro:content';
 import SiteLayout from '../../../layouts/SiteLayout.astro';
-import TagGroup from '../../../components/photography/TagGroup.astro';
-import { getUsedTagGroups, type TagGroupSlug } from '../../../lib/photography';
+import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
+import {
+  getPhotoHref,
+  getPhotoSearchTags,
+  getPhotoSlug,
+  getUsedTagGroups,
+  sortPhotosForDisplay,
+  type TagGroupSlug
+} from '../../../lib/photography';
 
-const photos = await getCollection('photos');
+const photos = sortPhotosForDisplay(await getCollection('photos'));
 const usedGroups = getUsedTagGroups(photos);
 const groupOrder = [
-  { slug: 'location', label: 'Locations', priority: 'primary' },
-  { slug: 'camera', label: 'Camera', priority: 'secondary' },
-  { slug: 'lens', label: 'Lens', priority: 'secondary' },
-  { slug: 'weather', label: 'Weather', priority: 'secondary' }
+  { slug: 'location', label: 'Locations', labelZh: '地点', priority: 'primary' },
+  { slug: 'camera', label: 'Camera', labelZh: '相机', priority: 'secondary' },
+  { slug: 'lens', label: 'Lens', labelZh: '镜头', priority: 'secondary' },
+  { slug: 'condition', label: 'Conditions', labelZh: '拍摄条件', priority: 'secondary' }
 ] as const satisfies readonly {
   slug: TagGroupSlug;
   label: string;
+  labelZh: string;
   priority: 'primary' | 'secondary';
 }[];
+const searchGroups = groupOrder.flatMap((definition) => {
+  const group = usedGroups.find((usedGroup) => usedGroup.slug === definition.slug);
+
+  return group
+    ? [
+        {
+          ...definition,
+          tags: group.tags
+        }
+      ]
+    : [];
+});
+const photoHrefs = Object.fromEntries(photos.map((photo) => [getPhotoSlug(photo), getPhotoHref(photo)]));
+const photoTags = Object.fromEntries(photos.map((photo) => [getPhotoSlug(photo), getPhotoSearchTags(photo)]));
 ---
 
 <SiteLayout title="Photography Tags" description="Browse photographs by controlled metadata tags.">
   <section class="photography-section gallery-heading" aria-labelledby="tags-title">
-    <p><a class="photo-back-link" href="/photography/">Back to Photography</a></p>
-    <h1 id="tags-title">Photography Tags</h1>
-    <p class="section-copy">Browse by location, camera, lens, and weather.</p>
+    <p>
+      <a class="photo-back-link" href="/photography/">
+        <span data-lang-inline="en">Back to Photography</span>
+        <span data-lang-inline="zh">返回摄影首页</span>
+      </a>
+    </p>
+    <h1 id="tags-title">
+      <span data-lang-inline="en">Photography Tags</span>
+      <span data-lang-inline="zh">摄影标签</span>
+    </h1>
+    <p class="section-copy">
+      <span data-lang-inline="en">Browse by location, camera, lens, and shooting conditions.</span>
+      <span data-lang-inline="zh">按地点、相机、镜头和拍摄条件组合筛选照片。</span>
+    </p>
   </section>
 
-  <div class="tag-groups">
-    {
-      groupOrder.map((definition) => {
-        const group = usedGroups.find((usedGroup) => usedGroup.slug === definition.slug);
+  <section class="tag-filter-panel" aria-labelledby="tag-filter-title">
+    <div class="tag-filter-heading">
+      <h2 id="tag-filter-title">
+        <span data-lang-inline="en">Filters</span>
+        <span data-lang-inline="zh">筛选</span>
+      </h2>
+      <button class="tag-filter-clear" type="button" data-tag-filter-clear>
+        <span data-lang-inline="en">Clear filters</span>
+        <span data-lang-inline="zh">清除筛选</span>
+      </button>
+    </div>
+    <form class="tag-filter-form" data-tag-filter-form>
+      {
+        searchGroups.map((group) => (
+          <fieldset class="tag-filter-group" data-filter-group={group.slug}>
+            <legend>
+              <span data-lang-inline="en">{group.label}</span>
+              <span data-lang-inline="zh">{group.labelZh}</span>
+            </legend>
+            <div class="tag-filter-options">
+              {group.tags.map((tag) => (
+                <label class="tag-filter-option">
+                  <input type="checkbox" name={group.slug} value={tag.slug} />
+                  <span>{tag.label}</span>
+                  <span>{tag.count}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ))
+      }
+    </form>
+  </section>
 
-        return (
-          <TagGroup
-            label={definition.label}
-            tags={group?.tags ?? []}
-            priority={definition.priority}
-          />
-        );
-      })
+  <section class="photography-section tag-search-results" aria-labelledby="tag-results-title">
+    <div class="tag-results-heading">
+      <h2 id="tag-results-title">
+        <span data-lang-inline="en">Results</span>
+        <span data-lang-inline="zh">结果</span>
+      </h2>
+      <p class="section-copy" data-tag-result-count>{photos.length} photographs</p>
+    </div>
+    <div data-tag-search-results>
+      <PhotoGrid
+        photos={photos}
+        photoHrefs={photoHrefs}
+        photoTags={photoTags}
+        emptyMessage="No photographs are available yet."
+      />
+    </div>
+    <p class="photo-grid-empty" data-tag-empty hidden>
+      <span data-lang-inline="en">No photographs match the selected filters.</span>
+      <span data-lang-inline="zh">没有照片符合当前筛选条件。</span>
+    </p>
+  </section>
+
+  <script>
+    const form = document.querySelector('[data-tag-filter-form]');
+    const resultCount = document.querySelector('[data-tag-result-count]');
+    const emptyMessage = document.querySelector('[data-tag-empty]');
+    const clearButton = document.querySelector('[data-tag-filter-clear]');
+    const resultGrid = document.querySelector('[data-tag-search-results] .photo-grid');
+    const resultItems = Array.from(document.querySelectorAll('[data-tag-search-results] .photo-grid-item'));
+
+    const getLanguage = () => document.body.dataset.photographyLang === 'zh' ? 'zh' : 'en';
+    const pluralize = (count) => {
+      if (getLanguage() === 'zh') return `${count} 张照片`;
+      return `${count} photograph${count === 1 ? '' : 's'}`;
+    };
+
+    const getSelectedFilters = () => {
+      if (!(form instanceof HTMLFormElement)) return new Map();
+
+      const selectedFilters = new Map();
+      const checkboxes = Array.from(form.querySelectorAll('input[type="checkbox"]'));
+
+      checkboxes.forEach((checkbox) => {
+        if (!(checkbox instanceof HTMLInputElement) || !checkbox.checked) return;
+
+        const values = selectedFilters.get(checkbox.name) ?? [];
+        values.push(checkbox.value);
+        selectedFilters.set(checkbox.name, values);
+      });
+
+      return selectedFilters;
+    };
+
+    const itemMatches = (item, selectedFilters) => {
+      if (!(item instanceof HTMLElement)) return false;
+
+      for (const [group, selectedValues] of selectedFilters) {
+        const itemValues = (item.dataset[group] ?? '').split(' ').filter(Boolean);
+
+        if (group === 'condition') {
+          if (!selectedValues.every((value) => itemValues.includes(value))) return false;
+          continue;
+        }
+
+        if (!selectedValues.some((value) => itemValues.includes(value))) return false;
+      }
+
+      return true;
+    };
+
+    const updateResults = () => {
+      const selectedFilters = getSelectedFilters();
+      let visibleCount = 0;
+
+      resultItems.forEach((item) => {
+        const isMatch = itemMatches(item, selectedFilters);
+        if (item instanceof HTMLElement) {
+          item.hidden = !isMatch;
+        }
+        if (isMatch) visibleCount += 1;
+      });
+
+      if (resultCount) {
+        resultCount.textContent = pluralize(visibleCount);
+      }
+
+      if (emptyMessage instanceof HTMLElement) {
+        emptyMessage.hidden = visibleCount > 0;
+      }
+
+      if (clearButton instanceof HTMLButtonElement) {
+        clearButton.disabled = selectedFilters.size === 0;
+      }
+
+      resultGrid?.dispatchEvent(new CustomEvent('photo-grid:relayout'));
+    };
+
+    if (form instanceof HTMLFormElement) {
+      form.addEventListener('change', updateResults);
     }
-  </div>
+
+    if (clearButton instanceof HTMLButtonElement && form instanceof HTMLFormElement) {
+      clearButton.addEventListener('click', () => {
+        form.reset();
+        updateResults();
+      });
+    }
+
+    document.addEventListener('photography-language-change', updateResults);
+    updateResults();
+  </script>
 </SiteLayout>

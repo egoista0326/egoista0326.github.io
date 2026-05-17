@@ -1,0 +1,66 @@
+---
+import { getCollection } from 'astro:content';
+import SiteLayout from '../../../../layouts/SiteLayout.astro';
+import PhotoDetailView from '../../../../components/photography/PhotoDetailView.astro';
+import { photographyCategories, type CategorySlug } from '../../../../data/photographyVocab';
+import {
+  getAdjacentPhotos,
+  getCategoryHref,
+  getCategoryPhotoHref,
+  getPhotoAlt,
+  getPhotoSlug,
+  getPhotosByCategory,
+  isVisibleTitle,
+  type PhotoEntry
+} from '../../../../lib/photography';
+
+interface Props {
+  category: (typeof photographyCategories)[number];
+  photo: PhotoEntry;
+  previous?: PhotoEntry;
+  next?: PhotoEntry;
+}
+
+export async function getStaticPaths() {
+  const photos = await getCollection('photos');
+
+  return photographyCategories.flatMap((category) => {
+    const categoryPhotos = getPhotosByCategory(photos, category.slug);
+
+    return categoryPhotos.map((photo) => {
+      const adjacentPhotos = getAdjacentPhotos(categoryPhotos, getPhotoSlug(photo));
+
+      return {
+        params: {
+          category: category.slug,
+          slug: getPhotoSlug(photo)
+        },
+        props: {
+          category,
+          photo,
+          previous: adjacentPhotos.previous,
+          next: adjacentPhotos.next
+        }
+      };
+    });
+  });
+}
+
+const { category, photo, previous, next } = Astro.props;
+const categorySlug = category.slug as CategorySlug;
+const pageTitle = isVisibleTitle(photo.data.title) ? `${photo.data.title} | ${category.label}` : `${category.label} Photography`;
+const previousHref = previous ? getCategoryPhotoHref(categorySlug, previous) : undefined;
+const nextHref = next ? getCategoryPhotoHref(categorySlug, next) : undefined;
+---
+
+<SiteLayout title={pageTitle} description={getPhotoAlt(photo)}>
+  <PhotoDetailView
+    photo={photo}
+    previous={previous}
+    previousHref={previousHref}
+    next={next}
+    nextHref={nextHref}
+    backHref={getCategoryHref(categorySlug)}
+    backLabel={`Back to ${category.label}`}
+  />
+</SiteLayout>

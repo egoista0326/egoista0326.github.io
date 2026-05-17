@@ -1,0 +1,52 @@
+---
+import PhotoMetadata from './PhotoMetadata.astro';
+import PhotoNavigation from './PhotoNavigation.astro';
+import { getPhotoAlt, isVisibleTitle, type PhotoEntry } from '../../lib/photography';
+
+interface Props {
+  photo: PhotoEntry;
+  previous?: PhotoEntry;
+  previousHref?: string;
+  next?: PhotoEntry;
+  nextHref?: string;
+  backHref?: string;
+  backLabel?: string;
+}
+
+const {
+  photo,
+  previous,
+  previousHref,
+  next,
+  nextHref,
+  backHref = '/photography/',
+  backLabel = 'Back to Photography'
+} = Astro.props;
+---
+
+<section class="photo-detail-shell" aria-label="Photograph detail">
+  {!isVisibleTitle(photo.data.title) ? <h1 class="visually-hidden">Photograph</h1> : null}
+  <p><a class="photo-back-link" href={backHref}>{backLabel}</a></p>
+  <div class:list={['photo-detail', `is-${photo.data.orientation}`]}>
+    <div class="photo-detail-image-wrap">
+      <img
+        class="photo-detail-image"
+        src={photo.data.image}
+        alt={getPhotoAlt(photo)}
+        width={photo.data.width}
+        height={photo.data.height}
+        loading="eager"
+        decoding="async"
+      />
+    </div>
+    <aside class="photo-detail-meta" aria-label="Photograph metadata">
+      <PhotoMetadata photo={photo} />
+      <PhotoNavigation
+        previous={previous}
+        previousHref={previousHref}
+        next={next}
+        nextHref={nextHref}
+      />
+    </aside>
+  </div>
+</section>

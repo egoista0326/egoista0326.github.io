@@ -4,7 +4,8 @@ import SiteLayout from '../../layouts/SiteLayout.astro';
 import {
   photographyNews,
   photographyProfile,
-  photographyProjects
+  photographyProjects,
+  photographySelectedWorkSlugs
 } from '../../data/photography';
 import { photographyCategoryCovers } from '../../data/photographyCategoryCovers';
 import { photographyCategories } from '../../data/photographyVocab';
@@ -12,13 +13,20 @@ import CategoryEntry from '../../components/photography/CategoryEntry.astro';
 import PhotoGrid from '../../components/photography/PhotoGrid.astro';
 import {
   getCategoryHref,
+  getPhotoSlug,
   getPhotosByCategory,
+  getPhotosBySlugs,
+  getSelectedPhotoHref,
   sortPhotosForDisplay
 } from '../../lib/photography';
 
 const profile = photographyProfile;
+const landingCopy = profile.landingCopy;
 const photos = sortPhotosForDisplay(await getCollection('photos'));
-const featuredPhotos = photos.filter((photo) => photo.data.featured);
+const selectedPhotos = getPhotosBySlugs(photos, photographySelectedWorkSlugs);
+const selectedPhotoHrefs = Object.fromEntries(
+  selectedPhotos.map((photo) => [getPhotoSlug(photo), getSelectedPhotoHref(photo)])
+);
 const categoryEntries = photographyCategories.map((category) => {
   const categoryPhotos = getPhotosByCategory(photos, category.slug);
 
@@ -28,88 +36,175 @@ const categoryEntries = photographyCategories.map((category) => {
     cover: photographyCategoryCovers[category.slug]
   };
 });
+const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.zh.copy.categories);
 ---
 
 <SiteLayout title="Photography" description={profile.intro}>
-  <section class="photography-intro" aria-labelledby="page-title">
-    <h1 id="page-title">{profile.title}</h1>
-    <p>{profile.intro}</p>
-    <div class="photography-contact" aria-label="Photography contact">
-      <a href={`mailto:${profile.email}`}>{profile.email}</a>
-      <a href={profile.instagram.url} target="_blank" rel="noreferrer">
-        {profile.instagram.label}
-      </a>
-      <button class="rednote-trigger" type="button" data-rednote-open aria-label="Show Rednote Card">
-        {profile.rednote.label}
-      </button>
-    </div>
-  </section>
-
-  <section class="photography-section" aria-labelledby="photography-news-title">
-    <h2 id="photography-news-title">News</h2>
-    <ul class="photography-news-list">
+  <div class="photography-page" data-photography-page data-photography-theme="light" data-photography-lang="en">
+    <section class:list={['photography-intro', profile.introImage.src ? 'has-intro-image' : '']} aria-labelledby="page-title">
       {
-        photographyNews.map((item) => (
-          <li>
-            <span class="news-year">{item.date}</span>
-            <span>{item.text}</span>
-          </li>
-        ))
+        profile.introImage.src ? (
+          <div class="photography-intro-media" aria-hidden="true">
+            <img
+              src={profile.introImage.src}
+              alt=""
+              width="1920"
+              height="1280"
+              loading="eager"
+              decoding="async"
+            />
+          </div>
+        ) : null
       }
-    </ul>
-  </section>
 
-  <section class="photography-section" aria-labelledby="photography-projects-title">
-    <h2 id="photography-projects-title">Projects</h2>
-    <div class="photography-project-list">
-      {
-        photographyProjects.map((project) => (
-          <a class="photography-project-entry" href={`/photography/projects/${project.slug}/`}>
-            <span class="photography-project-heading">
-              <span>{project.title}</span>
-              <span>Start date {project.startDate}</span>
-            </span>
-            <span class="photography-project-summary">{project.summary}</span>
+      <div class="photography-intro-copy">
+        <h1 id="page-title">
+          <span data-lang-inline="en">{landingCopy.en.title}</span>
+          <span data-lang-inline="zh">{landingCopy.zh.title}</span>
+        </h1>
+        <div class="photography-intro-body">
+          <div data-lang-panel="en" lang="en">
+            {
+              landingCopy.en.introParagraphs.map((paragraph) => (
+                <p>{paragraph}</p>
+              ))
+            }
+          </div>
+          <div data-lang-panel="zh" lang="zh-CN">
+            {
+              landingCopy.zh.introParagraphs.map((paragraph) => (
+                <p>{paragraph}</p>
+              ))
+            }
+          </div>
+        </div>
+        <div class="photography-contact" aria-label={landingCopy.en.contact.ariaLabel}>
+          <a href={`mailto:${profile.email}`}>{profile.email}</a>
+          <a href={profile.instagram.url} target="_blank" rel="noopener noreferrer">
+            <span data-lang-inline="en">{landingCopy.en.contact.instagram}</span>
+            <span data-lang-inline="zh">{landingCopy.zh.contact.instagram}</span>
           </a>
-        ))
-      }
-    </div>
-  </section>
+          <button class="rednote-trigger" type="button" data-rednote-open>
+            <span data-lang-inline="en">{landingCopy.en.contact.rednote}</span>
+            <span data-lang-inline="zh">{landingCopy.zh.contact.rednote}</span>
+          </button>
+        </div>
+      </div>
+    </section>
 
-  <section class="photography-section" aria-labelledby="categories-title">
-    <h2 id="categories-title">Categories</h2>
-    <p class="section-copy">Browse photographs by subject before moving into selected works.</p>
-    <div class="category-entry-list">
+    <section class="photography-section" aria-labelledby="photography-news-title">
+      <h2 id="photography-news-title">
+        <span data-lang-inline="en">{landingCopy.en.sections.news}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.sections.news}</span>
+      </h2>
+      <ul class="photography-news-list">
+        {
+          photographyNews.map((item) => (
+            <li>
+              <span class="news-year">{item.date}</span>
+              <span>
+                <span data-lang-inline="en">{item.text}</span>
+                <span data-lang-inline="zh">{item.textZh}</span>
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="photography-section" aria-labelledby="photography-projects-title">
+      <h2 id="photography-projects-title">
+        <span data-lang-inline="en">{landingCopy.en.sections.projects}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.sections.projects}</span>
+      </h2>
+      <div class="photography-project-list">
+        {
+          photographyProjects.map((project) => (
+            <a class="photography-project-entry" href={`/photography/projects/${project.slug}/`}>
+              <span class="photography-project-heading">
+                <span>
+                  <span data-lang-inline="en">{project.title}</span>
+                  <span data-lang-inline="zh">{project.titleZh}</span>
+                </span>
+                <span>
+                  <span data-lang-inline="en">{landingCopy.en.copy.projectStart}</span>
+                  <span data-lang-inline="zh">{landingCopy.zh.copy.projectStart}</span>
+                  {' '}
+                  {project.startDate}
+                </span>
+              </span>
+              <span class="photography-project-summary">
+                <span data-lang-inline="en">{project.summary}</span>
+                <span data-lang-inline="zh">{project.summaryZh}</span>
+              </span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="photography-section tag-entry" aria-labelledby="tag-entry-title">
+      <h2 id="tag-entry-title">
+        <span data-lang-inline="en">{landingCopy.en.sections.tags}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.sections.tags}</span>
+      </h2>
+      <p class="section-copy">
+        <span data-lang-inline="en">{landingCopy.en.copy.tags}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.copy.tags}</span>
+      </p>
+      <a class="text-link" href="/photography/tags/">
+        <span data-lang-inline="en">{landingCopy.en.copy.tagLink}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.copy.tagLink}</span>
+      </a>
+    </section>
+
+    <section class="photography-section" aria-labelledby="categories-title">
+      <h2 id="categories-title">
+        <span data-lang-inline="en">{landingCopy.en.sections.categories}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.sections.categories}</span>
+      </h2>
       {
-        categoryEntries.map(({ category, photos: categoryPhotos, cover }) => (
-          <CategoryEntry
-            href={getCategoryHref(category.slug)}
-            label={category.label}
-            count={categoryPhotos.length}
-            cover={cover}
-          />
-        ))
+        hasCategoriesCopy && (
+          <p class="section-copy">
+            <span data-lang-inline="en">{landingCopy.en.copy.categories}</span>
+            <span data-lang-inline="zh">{landingCopy.zh.copy.categories}</span>
+          </p>
+        )
       }
-    </div>
-  </section>
+      <div class="category-entry-list">
+        {
+          categoryEntries.map(({ category, photos: categoryPhotos, cover }) => (
+            <CategoryEntry
+              href={getCategoryHref(category.slug)}
+              label={landingCopy.en.categoryLabels[category.slug] ?? category.label}
+              labelZh={landingCopy.zh.categoryLabels[category.slug]}
+              count={categoryPhotos.length}
+              cover={cover}
+            />
+          ))
+        }
+      </div>
+    </section>
 
-  <section class="photography-section" aria-labelledby="selected-works-title">
-    <h2 id="selected-works-title">Selected Works</h2>
-    <PhotoGrid
-      photos={featuredPhotos}
-      emptyMessage="A small development set is being used to shape the browsing experience; the full selected import comes next."
-    />
-  </section>
-
-  <section class="photography-section tag-entry" aria-labelledby="tag-entry-title">
-    <h2 id="tag-entry-title">Tags</h2>
-    <p class="section-copy">Browse by location, camera, lens, and weather.</p>
-    <a class="text-link" href="/photography/tags/">Photography Tags</a>
-  </section>
+    <section class="photography-section" aria-labelledby="selected-works-title">
+      <h2 id="selected-works-title">
+        <span data-lang-inline="en">{landingCopy.en.sections.selectedWorks}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.sections.selectedWorks}</span>
+      </h2>
+      <PhotoGrid
+        photos={selectedPhotos}
+        photoHrefs={selectedPhotoHrefs}
+        emptyMessage={landingCopy.en.copy.selectedEmpty}
+      />
+    </section>
+  </div>
 
   <dialog class="rednote-dialog" data-rednote-dialog aria-labelledby="rednote-title">
     <div class="rednote-dialog-inner">
-      <h2 id="rednote-title">{profile.rednote.title}</h2>
+      <h2 id="rednote-title">
+        <span data-lang-inline="en">{profile.rednote.title}</span>
+        <span data-lang-inline="zh">小红书名片</span>
+      </h2>
       <p class="muted">{profile.rednote.displayName} | Rednote ID {profile.rednote.id}</p>
       <img
         class="rednote-card"
@@ -119,7 +214,8 @@ const categoryEntries = photographyCategories.map((category) => {
       />
       <form method="dialog">
         <button class="dialog-close" type="submit" data-rednote-close>
-          {profile.rednote.closeLabel}
+          <span data-lang-inline="en">{profile.rednote.closeLabel}</span>
+          <span data-lang-inline="zh">关闭</span>
         </button>
       </form>
     </div>

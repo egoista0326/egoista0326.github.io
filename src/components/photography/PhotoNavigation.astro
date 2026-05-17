@@ -3,10 +3,12 @@ import { getPhotoDisplayMeta, getPhotoHref, type PhotoEntry } from '../../lib/ph
 
 interface Props {
   previous?: PhotoEntry;
+  previousHref?: string;
   next?: PhotoEntry;
+  nextHref?: string;
 }
 
-const { previous, next } = Astro.props;
+const { previous, previousHref, next, nextHref } = Astro.props;
 const getNavLabel = (photo: PhotoEntry) => {
   const meta = getPhotoDisplayMeta(photo);
 
@@ -20,19 +22,19 @@ const getNavLabel = (photo: PhotoEntry) => {
       {previous ? (
         <a
           class="photo-nav-link"
-          href={getPhotoHref(previous)}
-          aria-label={`Previous selected work: ${getNavLabel(previous)}`}
+          href={previousHref ?? getPhotoHref(previous)}
+          aria-label={`Previous: ${getNavLabel(previous)}`}
         >
-          <span>Previous selected work</span>
+          <span>Previous</span>
         </a>
       ) : null}
       {next ? (
         <a
           class="photo-nav-link photo-nav-next"
-          href={getPhotoHref(next)}
-          aria-label={`Next selected work: ${getNavLabel(next)}`}
+          href={nextHref ?? getPhotoHref(next)}
+          aria-label={`Next: ${getNavLabel(next)}`}
         >
-          <span>Next selected work</span>
+          <span>Next</span>
         </a>
       ) : null}
     </nav>

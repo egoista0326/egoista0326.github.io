@@ -30,16 +30,33 @@ const { project, photos } = Astro.props;
 
 <SiteLayout title={`${project.title} | Photography`} description={project.summary}>
   <section class="photography-section gallery-heading" aria-labelledby="project-title">
-    <p><a class="photo-back-link" href="/photography/">Back to Photography</a></p>
-    <p class="metadata-kicker">Photography Project</p>
-    <h1 id="project-title">{project.title}</h1>
+    <p>
+      <a class="photo-back-link" href="/photography/">
+        <span data-lang-inline="en">Back to Photography</span>
+        <span data-lang-inline="zh">返回摄影</span>
+      </a>
+    </p>
+    <p class="metadata-kicker">
+      <span data-lang-inline="en">Photography Project</span>
+      <span data-lang-inline="zh">摄影项目</span>
+    </p>
+    <h1 id="project-title">
+      <span data-lang-inline="en">{project.title}</span>
+      <span data-lang-inline="zh">{project.titleZh}</span>
+    </h1>
     <dl class="project-detail-meta">
       <div>
-        <dt>Start date</dt>
+        <dt>
+          <span data-lang-inline="en">Start date</span>
+          <span data-lang-inline="zh">开始时间</span>
+        </dt>
         <dd>{project.startDate}</dd>
       </div>
     </dl>
-    <p class="section-copy">{project.description}</p>
+    <p class="section-copy project-description">
+      <span data-lang-inline="en">{project.description}</span>
+      <span data-lang-inline="zh">{project.descriptionZh}</span>
+    </p>
   </section>
 
   <section class="photography-section" aria-label={`${project.title} photographs`}>

@@ -4,13 +4,15 @@ import type { CategoryCover } from '../../data/photographyCategoryCovers';
 interface Props {
   href: string;
   label: string;
+  labelZh?: string;
   count?: number;
   cover?: CategoryCover;
 }
 
-const { href, label, count, cover } = Astro.props;
+const { href, label, labelZh, count, cover } = Astro.props;
 const countLabel =
   typeof count === 'number' ? `${count} photograph${count === 1 ? '' : 's'}` : '';
+const countLabelZh = typeof count === 'number' ? `${count} 张照片` : '';
 ---
 
 <a class="category-entry" href={href}>
@@ -30,7 +32,17 @@ const countLabel =
     ) : null
   }
   <span class="category-entry-copy">
-    <span class="category-entry-label">{label}</span>
-    {countLabel ? <span class="category-entry-count">{countLabel}</span> : null}
+    <span class="category-entry-label">
+      <span data-lang-inline="en">{label}</span>
+      {labelZh ? <span data-lang-inline="zh">{labelZh}</span> : null}
+    </span>
+    {
+      countLabel ? (
+        <span class="category-entry-count">
+          <span data-lang-inline="en">{countLabel}</span>
+          <span data-lang-inline="zh">{countLabelZh}</span>
+        </span>
+      ) : null
+    }
   </span>
 </a>

@@ -1,12 +1,14 @@
 ---
 import { getCollection } from 'astro:content';
 import SiteLayout from '../../layouts/SiteLayout.astro';
-import PhotoMetadata from '../../components/photography/PhotoMetadata.astro';
-import PhotoNavigation from '../../components/photography/PhotoNavigation.astro';
+import PhotoDetailView from '../../components/photography/PhotoDetailView.astro';
+import { photographySelectedWorkSlugs } from '../../data/photography';
 import {
-  getAdjacentPhotos,
+  getAdjacentPhotosInOrder,
   getPhotoAlt,
+  getPhotoHref,
   getPhotoSlug,
+  getPhotosBySlugs,
   isVisibleTitle,
   sortPhotosForDisplay,
   type PhotoEntry
@@ -20,10 +22,13 @@ interface Props {
 
 export async function getStaticPaths() {
   const photos = sortPhotosForDisplay(await getCollection('photos'));
-  const featuredPhotos = sortPhotosForDisplay(photos.filter((photo) => photo.data.featured));
+  const selectedPhotos = getPhotosBySlugs(photos, photographySelectedWorkSlugs);
 
   return photos.map((photo) => {
-    const adjacentPhotos = getAdjacentPhotos(featuredPhotos, getPhotoSlug(photo));
+    const isSelectedWork = selectedPhotos.some((selectedPhoto) => getPhotoSlug(selectedPhoto) === getPhotoSlug(photo));
+    const adjacentPhotos = isSelectedWork
+      ? getAdjacentPhotosInOrder(selectedPhotos, getPhotoSlug(photo))
+      : { previous: undefined, next: undefined };
 
     return {
       params: { slug: getPhotoSlug(photo) },
@@ -38,27 +43,16 @@ export async function getStaticPaths() {
 
 const { photo, previous, next } = Astro.props;
 const pageTitle = isVisibleTitle(photo.data.title) ? `${photo.data.title} | Photography` : 'Photography';
+const previousHref = previous ? getPhotoHref(previous) : undefined;
+const nextHref = next ? getPhotoHref(next) : undefined;
 ---
 
 <SiteLayout title={pageTitle} description={getPhotoAlt(photo)}>
-  <section class="photo-detail-shell" aria-label="Photograph detail">
-    <p><a class="photo-back-link" href="/photography/">Back to Photography</a></p>
-    <div class:list={['photo-detail', `is-${photo.data.orientation}`]}>
-      <div class="photo-detail-image-wrap">
-        <img
-          class="photo-detail-image"
-          src={photo.data.image}
-          alt={getPhotoAlt(photo)}
-          width={photo.data.width}
-          height={photo.data.height}
-          loading="eager"
-          decoding="async"
-        />
-      </div>
-      <aside class="photo-detail-meta" aria-label="Photograph metadata">
-        <PhotoMetadata photo={photo} />
-        <PhotoNavigation previous={previous} next={next} />
-      </aside>
-    </div>
-  </section>
+  <PhotoDetailView
+    photo={photo}
+    previous={previous}
+    previousHref={previousHref}
+    next={next}
+    nextHref={nextHref}
+  />
 </SiteLayout>

@@ -1,6 +1,7 @@
 ---
 import Head from '../components/Head.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import PhotographyPreferences from '../components/photography/PhotographyPreferences.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
+const isPhotography = Astro.url.pathname === '/photography/' || Astro.url.pathname.startsWith('/photography/');
 ---
 
 <!doctype html>
@@ -17,8 +19,33 @@ const { title, description } = Astro.props;
     <Head title={title} description={description} />
   </head>
   <body>
+    {
+      isPhotography ? (
+        <script is:inline>
+          {`
+            (() => {
+              try {
+                const storedTheme = window.localStorage.getItem('photography-theme');
+                const storedLanguage = window.localStorage.getItem('photography-language');
+
+                if (storedTheme === 'dark' || storedTheme === 'light') {
+                  document.body.dataset.photographyTheme = storedTheme;
+                }
+
+                if (storedLanguage === 'zh' || storedLanguage === 'en') {
+                  document.body.dataset.photographyLang = storedLanguage;
+                }
+              } catch {
+                // Preference storage is optional.
+              }
+            })();
+          `}
+        </script>
+      ) : null
+    }
     <div class="site-shell">
       <SiteHeader currentPath={Astro.url.pathname} />
+      {isPhotography ? <PhotographyPreferences /> : null}
       <main>
         <slot />
       </main>

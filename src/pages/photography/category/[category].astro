@@ -3,7 +3,7 @@ import { getCollection } from 'astro:content';
 import SiteLayout from '../../../layouts/SiteLayout.astro';
 import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
 import { photographyCategories } from '../../../data/photographyVocab';
-import { getPhotosByCategory, type PhotoEntry } from '../../../lib/photography';
+import { getCategoryPhotoHref, getPhotoSlug, getPhotosByCategory, type PhotoEntry } from '../../../lib/photography';
 
 interface Props {
   category: (typeof photographyCategories)[number];
@@ -23,6 +23,9 @@ export async function getStaticPaths() {
 }
 
 const { category, photos } = Astro.props;
+const photoHrefs = Object.fromEntries(
+  photos.map((photo) => [getPhotoSlug(photo), getCategoryPhotoHref(category.slug, photo)])
+);
 ---
 
 <SiteLayout title={`${category.label} Photography`} description={`Selected ${category.label.toLowerCase()} photographs.`}>
@@ -33,6 +36,6 @@ const { category, photos } = Astro.props;
   </section>
 
   <section class="photography-section" aria-label={`${category.label} photographs`}>
-    <PhotoGrid photos={photos} emptyMessage="No photographs in this category yet." />
+    <PhotoGrid photos={photos} photoHrefs={photoHrefs} emptyMessage="No photographs in this category yet." />
   </section>
 </SiteLayout>

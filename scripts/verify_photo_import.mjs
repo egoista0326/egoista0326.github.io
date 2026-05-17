@@ -7,6 +7,7 @@ const repoRoot = new URL('..', import.meta.url).pathname;
 const worksDir = join(repoRoot, 'public/assets/photography/works');
 const photosDir = join(repoRoot, 'src/content/photos');
 const reportPath = join(repoRoot, 'docs/photo-import-report.json');
+const manifestPath = join(repoRoot, 'scripts/photo-import-drafts.json');
 const photographyDataPath = join(repoRoot, 'src/data/photography.ts');
 const excludedMarkers = ['contact_sheet', 'bw_conversion_review', 'forphotographeronly', 'docs/'];
 const requiredFields = [
@@ -49,9 +50,11 @@ function parseFrontmatter(source) {
 const workFiles = listFiles(worksDir);
 const photoFiles = listFiles(photosDir).filter((name) => name.endsWith('.md'));
 const knownSlugs = new Set(photoFiles.map((name) => name.replace(/\.md$/, '')));
+const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : [];
+const expectedPhotoCount = Array.isArray(manifest) && manifest.length > 0 ? manifest.length : 37;
 
-if (workFiles.length < 37) fail(`Expected at least 37 work assets, found ${workFiles.length}`);
-if (photoFiles.length < 37) fail(`Expected at least 37 photo metadata files, found ${photoFiles.length}`);
+if (workFiles.length !== expectedPhotoCount) fail(`Expected ${expectedPhotoCount} work assets, found ${workFiles.length}`);
+if (photoFiles.length !== expectedPhotoCount) fail(`Expected ${expectedPhotoCount} photo metadata files, found ${photoFiles.length}`);
 
 for (const fileName of workFiles) {
   if (!fileName.endsWith('.webp')) fail(`Non-WebP file in works directory: ${fileName}`);
@@ -85,7 +88,9 @@ for (const fileName of photoFiles) {
 
 if (existsSync(reportPath)) {
   const report = JSON.parse(readFileSync(reportPath, 'utf8'));
-  if (report.included_count !== 37) fail(`Report included_count is ${report.included_count}, expected 37`);
+  if (report.included_count !== expectedPhotoCount) {
+    fail(`Report included_count is ${report.included_count}, expected ${expectedPhotoCount}`);
+  }
   const reportText = JSON.stringify(report);
   for (const marker of excludedMarkers) {
     const importedMarker = report.included?.some((entry) =>

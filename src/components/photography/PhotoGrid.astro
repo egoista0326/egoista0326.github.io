@@ -5,16 +5,19 @@ import type { PhotoEntry } from '../../lib/photography';
 interface Props {
   photos: PhotoEntry[];
   emptyMessage?: string;
+  photoHrefs?: Record<string, string>;
+  photoTags?: Record<string, Record<string, readonly string[]>>;
+  masonry?: boolean;
 }
 
-const { photos, emptyMessage } = Astro.props;
+const { photos, emptyMessage, photoHrefs = {}, photoTags = {}, masonry = true } = Astro.props;
 ---
 
 {
   photos.length > 0 ? (
-    <ul class="photo-grid" data-photo-grid>
+    <ul class="photo-grid" data-photo-grid={masonry ? '' : undefined}>
       {photos.map((photo) => (
-        <PhotoGridItem photo={photo} />
+        <PhotoGridItem photo={photo} href={photoHrefs[photo.data.slug]} tagData={photoTags[photo.data.slug]} />
       ))}
     </ul>
   ) : emptyMessage ? (
@@ -35,14 +38,14 @@ const { photos, emptyMessage } = Astro.props;
     grid.classList.add('is-masonry-ready');
 
     const masonry = new Masonry(grid, {
-      itemSelector: '.photo-grid-item',
+      itemSelector: '.photo-grid-item:not([hidden])',
       gutter: getGridGutter(grid),
-      horizontalOrder: true,
       percentPosition: true,
       transitionDuration: 0
     });
 
     const relayout = () => {
+      masonry.reloadItems();
       masonry.layout();
     };
 
@@ -53,6 +56,7 @@ const { photos, emptyMessage } = Astro.props;
     });
 
     window.addEventListener('load', relayout, { once: true });
+    grid.addEventListener('photo-grid:relayout', relayout);
 
     if ('ResizeObserver' in window) {
       const resizeObserver = new ResizeObserver(relayout);

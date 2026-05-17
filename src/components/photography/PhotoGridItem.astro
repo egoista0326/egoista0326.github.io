@@ -9,15 +9,22 @@ import {
 
 interface Props {
   photo: PhotoEntry;
+  href?: string;
+  tagData?: Record<string, readonly string[]>;
 }
 
-const { photo } = Astro.props;
+const { photo, href = getPhotoHref(photo), tagData } = Astro.props;
 const meta = getPhotoDisplayMeta(photo);
 const showTitle = isVisibleTitle(photo.data.title);
+const dataAttributes = tagData
+  ? Object.fromEntries(
+      Object.entries(tagData).map(([group, values]) => [`data-${group}`, values.join(' ')])
+    )
+  : {};
 ---
 
-<li class="photo-grid-item">
-  <a class="photo-grid-link" href={getPhotoHref(photo)}>
+<li class="photo-grid-item" {...dataAttributes}>
+  <a class="photo-grid-link" href={href}>
     <img
       class="photo-grid-image"
       src={photo.data.image}

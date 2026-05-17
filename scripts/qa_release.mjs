@@ -17,9 +17,16 @@ const routes = [
   '/photography/category/still-life/',
   '/photography/category/landscape/',
   '/photography/category/street/',
+  '/photography/category/abstract/',
+  '/photography/category/black-and-white/',
+  '/photography/category/architecture/',
+  '/photography/category/landscape/dsc-8404/',
+  '/photography/category/street/dsc-2862/',
   '/photography/projects/urban-isolation/',
+  '/photography/selected/dsc-0046/',
   '/photography/tags/',
   '/photography/tags/location/zurich/',
+  '/photography/tags/condition/rain/',
   '/photography/dsc-0046/',
   '/photography/dsc-9266/'
 ];
@@ -28,7 +35,14 @@ const imageRoutes = new Set([
   '/photography/category/still-life/',
   '/photography/category/landscape/',
   '/photography/category/street/',
+  '/photography/category/abstract/',
+  '/photography/category/black-and-white/',
+  '/photography/category/architecture/',
+  '/photography/category/landscape/dsc-8404/',
+  '/photography/category/street/dsc-2862/',
   '/photography/projects/urban-isolation/',
+  '/photography/selected/dsc-0046/',
+  '/photography/tags/condition/rain/',
   '/photography/dsc-0046/',
   '/photography/dsc-9266/'
 ]);
@@ -38,6 +52,29 @@ const staleSlugs = [
   'paris-newsstand',
   'rainy-night-storefront'
 ];
+const importManifestPath = join(root, 'scripts', 'photo-import-drafts.json');
+
+const importManifest = () => JSON.parse(readFileSync(importManifestPath, 'utf8'));
+
+const expectedPhotoCount = () => importManifest().length;
+
+const expectedFilterCount = (filters) =>
+  importManifest().filter((photo) =>
+    Object.entries(filters).every(([group, value]) => {
+      if (group === 'condition') {
+        return [photo.condition, ...(photo.conditions ?? [])].includes(value);
+      }
+
+      return photo[group] === value;
+    })
+  ).length;
+
+const expectedSelectedCount = () => {
+  const source = readFileSync(join(root, 'src', 'data', 'photography.ts'), 'utf8');
+  const match = source.match(/photographySelectedWorkSlugs\s*=\s*\[([\s\S]*?)\]\s*as const/);
+
+  return match ? [...match[1].matchAll(/'([^']+)'/g)].length : 0;
+};
 
 const checks = [];
 
@@ -131,17 +168,23 @@ const assertStaticAssets = () => {
   const photosDir = join(root, 'src', 'content', 'photos');
   const workAssets = readdirSync(worksDir).filter((name) => name.endsWith('.webp'));
   const photoRecords = readdirSync(photosDir).filter((name) => name.endsWith('.md'));
+  const expectedCount = expectedPhotoCount();
 
-  if (workAssets.length !== 37) fail('37 WebP photography assets', `${workAssets.length} found`);
-  record('37 WebP photography assets');
+  if (workAssets.length !== expectedCount) fail(`${expectedCount} WebP photography assets`, `${workAssets.length} found`);
+  record(`${expectedCount} WebP photography assets`);
 
-  if (photoRecords.length !== 37) fail('37 photo metadata records', `${photoRecords.length} found`);
-  record('37 photo metadata records');
+  if (photoRecords.length !== expectedCount) fail(`${expectedCount} photo metadata records`, `${photoRecords.length} found`);
+  record(`${expectedCount} photo metadata records`);
 
   if (!existsSync(join(root, 'public', 'assets', 'photography', 'rednote-card.jpg'))) {
     fail('Rednote card asset exists', 'public/assets/photography/rednote-card.jpg missing');
   }
   record('Rednote card asset exists');
+
+  if (!existsSync(join(root, 'public', 'assets', 'photography', 'profile-shadow-2649.webp'))) {
+    fail('Photography intro asset exists', 'public/assets/photography/profile-shadow-2649.webp missing');
+  }
+  record('Photography intro asset exists');
 
   if (!existsSync(join(root, 'public', 'assets', 'cv', 'jiaxin-li-cv.pdf'))) {
     fail('CV PDF asset exists', 'public/assets/cv/jiaxin-li-cv.pdf missing');
@@ -242,6 +285,51 @@ const checkCvPage = async (page) => {
 const checkPhotographyInteractions = async (page) => {
   await page.goto(`${baseUrl}/photography/`, { waitUntil: 'networkidle' });
 
+  const selectedCount = await page.locator('section', { has: page.locator('#selected-works-title') }).locator('.photo-grid-item').count();
+  const selectedExpected = expectedSelectedCount();
+  if (selectedCount !== selectedExpected) fail(`Selected Works contains ${selectedExpected} photographs`, `${selectedCount} found`);
+
+  await page.locator('[data-photography-theme-option="dark"]').click();
+  const darkTheme = await page.locator('body').getAttribute('data-photography-theme');
+  const bodyTheme = await page.locator('body').getAttribute('data-photography-theme');
+  if (darkTheme !== 'dark' || bodyTheme !== 'dark') {
+    fail('Photography dark theme toggle', `page=${darkTheme}, body=${bodyTheme}`);
+  }
+  const darkPressed = await page.locator('[data-photography-theme-option="dark"]').getAttribute('aria-pressed');
+  if (darkPressed !== 'true') fail('Photography dark theme active state', String(darkPressed));
+
+  await page.locator('[data-photography-lang-option="zh"]').click();
+  const pageLanguage = await page.locator('body').getAttribute('data-photography-lang');
+  const htmlLanguage = await page.locator('html').getAttribute('lang');
+  const visibleTitle = await page.locator('#page-title').innerText();
+  const visibleChinesePanelLanguage = await page.locator('[data-lang-panel="zh"]').getAttribute('lang');
+  if (pageLanguage !== 'zh' || htmlLanguage !== 'en' || visibleChinesePanelLanguage !== 'zh-CN' || !visibleTitle.includes('摄影')) {
+    fail('Photography Chinese language toggle', `page=${pageLanguage}, html=${htmlLanguage}, title=${visibleTitle}`);
+  }
+  const zhPressed = await page.locator('[data-photography-lang-option="zh"]').getAttribute('aria-pressed');
+  if (zhPressed !== 'true') fail('Photography Chinese language active state', String(zhPressed));
+
+  await page.goto(`${baseUrl}/photography/tags/`, { waitUntil: 'networkidle' });
+  const tagsTheme = await page.locator('body').getAttribute('data-photography-theme');
+  const tagsLanguage = await page.locator('body').getAttribute('data-photography-lang');
+  const tagsTitle = await page.locator('#tags-title').innerText();
+  const tagsResultCount = await page.locator('[data-tag-result-count]').innerText();
+  if (tagsTheme !== 'dark' || tagsLanguage !== 'zh' || !tagsTitle.includes('摄影标签') || !tagsResultCount.includes('张照片')) {
+    fail('Photography preferences persist to tag browser', `theme=${tagsTheme}, lang=${tagsLanguage}, title=${tagsTitle}, count=${tagsResultCount}`);
+  }
+
+  await page.goto(`${baseUrl}/photography/tags/location/zurich/`, { waitUntil: 'networkidle' });
+  const tagDetailLanguage = await page.locator('body').getAttribute('data-photography-lang');
+  const tagDetailCopy = await page.locator('.gallery-heading .section-copy').innerText();
+  if (tagDetailLanguage !== 'zh' || !tagDetailCopy.includes('张照片')) {
+    fail('Photography preferences persist to tag detail pages', `lang=${tagDetailLanguage}, copy=${tagDetailCopy}`);
+  }
+
+  await page.goto(`${baseUrl}/photography/`, { waitUntil: 'networkidle' });
+
+  await page.locator('[data-photography-theme-option="light"]').click();
+  await page.locator('[data-photography-lang-option="en"]').click();
+
   const instagramHref = await page.locator('a[href*="instagram.com"]').getAttribute('href');
   if (!instagramHref || !instagramHref.includes('egoista_li2003')) {
     fail('Instagram link', String(instagramHref));
@@ -253,8 +341,11 @@ const checkPhotographyInteractions = async (page) => {
   const dialogOpen = await page.locator('[data-rednote-dialog]').evaluate((dialog) => dialog.hasAttribute('open'));
   if (!dialogOpen) fail('Rednote modal opens from keyboard', 'dialog is not open');
 
-  const rednoteImageLoaded = await page.locator('.rednote-card').evaluate((image) => image.naturalWidth > 0);
-  if (!rednoteImageLoaded) fail('Rednote card image loads', 'naturalWidth is 0');
+  await page.waitForFunction(() => {
+    const image = document.querySelector('.rednote-card');
+
+    return image instanceof HTMLImageElement && image.naturalWidth > 0;
+  });
 
   await page.locator('[data-rednote-close]').focus();
   await page.keyboard.press('Enter');
@@ -268,7 +359,55 @@ const checkPhotographyInteractions = async (page) => {
   const focusTag = await page.evaluate(() => document.activeElement?.tagName);
   if (!['A', 'BUTTON'].includes(focusTag || '')) fail('Keyboard focus reaches controls', String(focusTag));
 
-  record('Photography social links and Rednote modal');
+  record('Photography controls, social links, and Rednote modal');
+};
+
+const checkTagFilterSearch = async (page) => {
+  await page.goto(`${baseUrl}/photography/tags/`, { waitUntil: 'networkidle' });
+  const expectedCount = expectedPhotoCount();
+
+  const visibleResults = page.locator('[data-tag-search-results] .photo-grid-item:not([hidden])');
+  const visibleColumnCount = () =>
+    visibleResults.evaluateAll(
+      (items) => new Set(items.map((item) => Math.round(item.getBoundingClientRect().left))).size
+    );
+  if ((await visibleResults.count()) !== expectedCount) {
+    fail('Tag search initially shows all photographs', `${await visibleResults.count()} found`);
+  }
+
+  await page.locator('input[name="location"][value="zurich"]').check();
+  const zurichCount = await visibleResults.count();
+  if (zurichCount <= 0 || zurichCount >= expectedCount) {
+    fail('Tag search filters by Zurich', `${zurichCount} visible results`);
+  }
+  if ((await visibleColumnCount()) < 2) {
+    fail('Tag search keeps masonry columns for Zurich', 'visible results collapsed to one column');
+  }
+
+  await page.locator('input[name="condition"][value="rain"]').check();
+  const zurichRainCount = await visibleResults.count();
+  const expectedZurichRainCount = expectedFilterCount({ location: 'zurich', condition: 'rain' });
+  if (zurichRainCount !== expectedZurichRainCount) {
+    fail('Tag search combines Zurich and Rain filters', `${zurichRainCount} visible results`);
+  }
+
+  await page.locator('[data-tag-filter-clear]').click();
+  if ((await visibleResults.count()) !== expectedCount) {
+    fail('Tag search clear resets results', `${await visibleResults.count()} visible results`);
+  }
+
+  await page.locator('input[name="condition"][value="night"]').check();
+  if ((await visibleColumnCount()) < 2) {
+    fail('Tag search keeps masonry columns for Night', 'visible results collapsed to one column');
+  }
+
+  await page.locator('[data-tag-filter-clear]').click();
+  await page.locator('input[name="lens"][value="40mm-prime"]').check();
+  if ((await visibleColumnCount()) < 2) {
+    fail('Tag search keeps masonry columns for 40mm Prime', 'visible results collapsed to one column');
+  }
+
+  record('Photography tag filter search');
 };
 
 const writeReport = () => {
@@ -307,6 +446,7 @@ try {
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   await checkCvPage(desktop);
   await checkPhotographyInteractions(desktop);
+  await checkTagFilterSearch(desktop);
   await desktop.close();
 
   writeReport();

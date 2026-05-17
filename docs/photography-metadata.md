@@ -14,6 +14,7 @@ The photography section stores photo records as one Markdown file per image. Kee
 title: Untitled
 slug: dsc-0046
 category: street
+categories: []
 image: /assets/photography/works/dsc-0046.webp
 alt: Rain-specked window glass with warm lights beyond it.
 width: 1800
@@ -23,8 +24,9 @@ date: "2026-05-17"
 year: "2026"
 location: zurich
 camera: nikon-zf
-lens: 40mm-prime
-weather: rainy-night
+lens: 24-120mm-zoom
+condition: rain
+conditions: ["night"]
 featured: true
 order: 10
 note: A short personal sentence about the photograph.
@@ -47,9 +49,11 @@ Update `width`, `height`, and `orientation` whenever the image file changes. The
 
 - `/photography/` is the standalone photography landing page with category entries, selected works, and a tag entry.
 - `/photography/projects/[project]/` shows one photography project with its description, start date, and selected project photographs.
-- `/photography/category/[category]/` shows a gallery for one work type such as `still-life`, `landscape`, or `street`.
-- `/photography/tags/` lists the controlled browsing tags, with locations first.
-- `/photography/tags/[group]/[slug]/` shows a gallery for one controlled tag value.
+- `/photography/category/[category]/` shows a gallery for one work type such as `still-life`, `landscape`, `street`, `abstract`, `black-and-white`, or `architecture`.
+- `/photography/category/[category]/[slug]/` shows a photograph with Previous/Next scoped to that category.
+- `/photography/selected/[slug]/` shows a selected work with Previous/Next scoped to the selected works list.
+- `/photography/tags/` shows a combined metadata search for location, camera, lens, and shooting conditions.
+- `/photography/tags/[group]/[slug]/` is retained as a direct single-tag gallery route.
 - `/photography/[slug]/` is the independent URL for a single photograph.
 
 ## Photography Intro, News, and Projects
@@ -82,27 +86,27 @@ To update a category cover:
 
 ## Title Display Rule
 
-`title: Untitled` is allowed in metadata so unfinished records remain explicit, but the public photography pages must not render the literal title. If a photo has no real title, the title line is omitted and the page continues with category, location, camera, lens, weather, and optional note.
+`title: Untitled` is allowed in metadata so unfinished records remain explicit, but the public photography pages must not render the literal title. If a photo has no real title, the title line is omitted and the page continues with category, location, camera, lens, conditions, and optional note.
 
 ## Batch Import
 
-Use the Phase 5 importer when adding or replacing a batch of selected photographs from the local export folder.
+Use the importer when adding or replacing a batch of photographs from the local source folder.
 
 ```bash
-/Users/lijiaxin/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/import_photos.py --replace --manifest scripts/photo-import-drafts.json --report docs/photo-import-report.json
+python3 scripts/import_photos.py --source source_photos/average --replace --manifest scripts/photo-import-drafts.json --report docs/photo-import-report.json
 ```
 
-The manifest lives at `scripts/photo-import-drafts.json`. It contains one entry per top-level source image with draft title, category, location, camera, lens, weather, featured state, order, note, and alt text.
+The manifest lives at `scripts/photo-import-drafts.json`. It contains one entry per top-level source image with draft title, category, additional categories, location, camera, lens, conditions, featured state, order, note, and alt text. `featured` mirrors whether the source image is part of the selected-work set, but the public Selected Works order is controlled by `photographySelectedWorkSlugs` in `src/data/photography.ts`.
 
 The import report lives at `docs/photo-import-report.json`. It records included and excluded files, derivative settings, output asset paths, and generated metadata paths.
 
-The importer defaults to `/Users/lijiaxin/Desktop/Untitled Export`, imports only top-level image files, and excludes `contact_sheet_all_photos.jpg`, dotfiles, nested working folders, `forphotographeronly`, `bw_conversion_review`, and non-image cache files. It writes optimized WebP derivatives under `public/assets/photography/works/` and Markdown records under `src/content/photos/`.
+The importer defaults to `/Users/lijiaxin/Desktop/Untitled Export`, but the current expanded photography library is sourced from `source_photos/average`. That local source folder is ignored by git so the public repository stays limited to web-optimized assets and site code. It imports only top-level image files, and excludes `contact_sheet_all_photos.jpg`, dotfiles, nested working folders, `forphotographeronly`, `bw_conversion_review`, and non-image cache files. It writes optimized WebP derivatives under `public/assets/photography/works/` and Markdown records under `src/content/photos/`.
 
-Generated records use `draftMetadata: true`. Keep that flag until the title, category, location, lens, weather, and note fields have been reviewed.
+Generated records use `draftMetadata: true`. Keep that flag until the title, category, location, lens, conditions, and note fields have been reviewed.
 
 ## Add a New Controlled Value
 
-Tag values are intentionally centralized. To add a new location, camera, lens, weather, or work type:
+Tag values are intentionally centralized. To add a new location, camera, lens, shooting condition, or work type:
 
 1. Open `src/data/photographyVocab.ts`.
 2. Add the new slug to the relevant slug list.
@@ -113,8 +117,10 @@ Do not invent new values inside individual Markdown files without first updating
 
 ## Field Notes
 
-`category` is required and should be one of the controlled work types. The other controlled fields may be left blank with `""` when unknown or not ready.
+`category` is required and should be the primary controlled work type. Use `categories` for additional controlled work types when one photograph belongs in multiple browsing categories.
+
+`condition` is the primary shooting condition. Use `conditions` for additional controlled condition tags such as `night` or `blue-hour`. Leave other controlled fields blank with `""` when unknown or not ready.
 
 `note is optional and is not a tag`. Use it for one short caption-like sentence, not for filtering.
 
-Route behavior is generated from metadata. Changing `slug`, `category`, or a controlled tag changes the generated browsing paths after the next build.
+Route behavior is generated from metadata. Changing `slug`, `category`, `categories`, or a controlled tag changes the generated browsing paths after the next build.
