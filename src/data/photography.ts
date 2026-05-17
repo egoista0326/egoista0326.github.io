@@ -36,7 +36,7 @@ export const photographyProjects = [
     summary: 'A developing street series about solitude, distance, and small pauses inside dense city spaces.',
     description:
       '城市孤岛 is an ongoing street photography project looking at quiet separation in public life: people resting, waiting, passing, or looking through rainy windows while the city continues around them.',
-    photoSlugs: ['zurich-rain-window', 'paris-street-rest', 'paris-newsstand', 'rainy-night-storefront']
+    photoSlugs: ['dsc-0046', 'dsc-0086', 'dsc-0152', 'dsc-0163', 'dsc-2799', 'dsc-2862', 'dsc-9266', 'dsc-9871', 'dsc-9971']
   }
 ] as const;
 

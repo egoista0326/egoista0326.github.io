@@ -7,6 +7,7 @@ const repoRoot = new URL('..', import.meta.url).pathname;
 const worksDir = join(repoRoot, 'public/assets/photography/works');
 const photosDir = join(repoRoot, 'src/content/photos');
 const reportPath = join(repoRoot, 'docs/photo-import-report.json');
+const photographyDataPath = join(repoRoot, 'src/data/photography.ts');
 const excludedMarkers = ['contact_sheet', 'bw_conversion_review', 'forphotographeronly', 'docs/'];
 const requiredFields = [
   'draftMetadata',
@@ -47,6 +48,7 @@ function parseFrontmatter(source) {
 
 const workFiles = listFiles(worksDir);
 const photoFiles = listFiles(photosDir).filter((name) => name.endsWith('.md'));
+const knownSlugs = new Set(photoFiles.map((name) => name.replace(/\.md$/, '')));
 
 if (workFiles.length < 37) fail(`Expected at least 37 work assets, found ${workFiles.length}`);
 if (photoFiles.length < 37) fail(`Expected at least 37 photo metadata files, found ${photoFiles.length}`);
@@ -92,6 +94,19 @@ if (existsSync(reportPath)) {
     if (importedMarker) fail(`Report imported excluded marker ${marker}`);
     if (marker !== 'docs/' && reportText.includes(`works/${marker}`)) {
       fail(`Report asset path contains excluded marker ${marker}`);
+    }
+  }
+}
+
+if (existsSync(photographyDataPath)) {
+  const source = readFileSync(photographyDataPath, 'utf8');
+  const projectMatches = [...source.matchAll(/photoSlugs:\s*\[([\s\S]*?)\]/g)];
+  if (projectMatches.length === 0) fail('No project photoSlugs found in photography.ts');
+  for (const match of projectMatches) {
+    const projectSlugs = [...match[1].matchAll(/'([^']+)'/g)].map((slugMatch) => slugMatch[1]);
+    if (projectSlugs.length === 0) fail('A photography project has an empty photoSlugs list');
+    for (const slug of projectSlugs) {
+      if (!knownSlugs.has(slug)) fail(`Project references missing photo slug: ${slug}`);
     }
   }
 }
