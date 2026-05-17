@@ -34,6 +34,7 @@ const photos = defineCollection({
     featured: z.boolean().default(false),
     order: z.number().int().default(0),
     note: z.string().optional().default(''),
+    draftMetadata: z.boolean().default(false),
     language: z.enum(['en', 'zh']).default('en')
   })
 });
