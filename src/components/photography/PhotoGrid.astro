@@ -12,7 +12,7 @@ const { photos, emptyMessage } = Astro.props;
 
 {
   photos.length > 0 ? (
-    <ul class="photo-grid">
+    <ul class="photo-grid" data-photo-grid>
       {photos.map((photo) => (
         <PhotoGridItem photo={photo} />
       ))}
@@ -21,3 +21,44 @@ const { photos, emptyMessage } = Astro.props;
     <p class="photo-grid-empty">{emptyMessage}</p>
   ) : null
 }
+
+<script>
+  import Masonry from 'masonry-layout';
+
+  const getGridGutter = (grid: Element) => {
+    const value = Number.parseFloat(getComputedStyle(grid).getPropertyValue('--photo-grid-gutter'));
+
+    return Number.isFinite(value) ? value : 24;
+  };
+
+  const initPhotoGrid = (grid: Element) => {
+    grid.classList.add('is-masonry-ready');
+
+    const masonry = new Masonry(grid, {
+      itemSelector: '.photo-grid-item',
+      gutter: getGridGutter(grid),
+      horizontalOrder: true,
+      percentPosition: true,
+      transitionDuration: 0
+    });
+
+    const relayout = () => {
+      masonry.layout();
+    };
+
+    grid.querySelectorAll('img').forEach((image) => {
+      if (!image.complete) {
+        image.addEventListener('load', relayout, { once: true });
+      }
+    });
+
+    window.addEventListener('load', relayout, { once: true });
+
+    if ('ResizeObserver' in window) {
+      const resizeObserver = new ResizeObserver(relayout);
+      resizeObserver.observe(grid);
+    }
+  };
+
+  document.querySelectorAll('[data-photo-grid]').forEach(initPhotoGrid);
+</script>

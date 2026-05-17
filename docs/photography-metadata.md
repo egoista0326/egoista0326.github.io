@@ -64,7 +64,7 @@ The project URL is generated from `slug`, for example `slug: urban-isolation` be
 
 ## Gallery Layout
 
-Photo grids use a CSS multi-column masonry pattern. This keeps mixed portrait and landscape photographs flowing naturally without forcing every row to share the same top edge. The item wrapper uses `break-inside: avoid` so the image and caption stay together.
+Photo grids use Masonry.js with a CSS grid fallback. This keeps mixed portrait and landscape photographs flowing naturally while still enforcing the intended 1/2/3-column breakpoints, including small galleries with only four photographs.
 
 ## Category Covers
 

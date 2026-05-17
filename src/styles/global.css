@@ -427,21 +427,28 @@ main {
 }
 
 .photo-grid {
-  display: block;
-  column-count: 1;
-  column-gap: var(--space-lg);
+  --photo-grid-gutter: var(--space-lg);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl) var(--photo-grid-gutter);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.photo-grid.is-masonry-ready {
+  display: block;
+  position: relative;
+}
+
 .photo-grid-item {
-  display: inline-block;
   width: 100%;
   min-width: 0;
-  margin: 0 0 var(--space-xl);
-  break-inside: avoid;
-  page-break-inside: avoid;
+  margin: 0;
+}
+
+.photo-grid.is-masonry-ready .photo-grid-item {
+  margin-bottom: var(--space-xl);
 }
 
 .photo-grid-link {
@@ -795,7 +802,11 @@ p {
   }
 
   .photo-grid {
-    column-count: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .photo-grid.is-masonry-ready .photo-grid-item {
+    width: calc((100% - var(--photo-grid-gutter)) / 2);
   }
 }
 
@@ -841,6 +852,10 @@ p {
   }
 
   .photo-grid {
-    column-count: 3;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .photo-grid.is-masonry-ready .photo-grid-item {
+    width: calc((100% - (var(--photo-grid-gutter) * 2)) / 3);
   }
 }

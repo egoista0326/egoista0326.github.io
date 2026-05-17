@@ -9,6 +9,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "6.3.3"
+    "astro": "6.3.3",
+    "masonry-layout": "^4.2.2"
   }
 }
