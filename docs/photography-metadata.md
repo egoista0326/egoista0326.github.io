@@ -48,7 +48,8 @@ Update `width`, `height`, and `orientation` whenever the image file changes. The
 ## Browsing Routes
 
 - `/photography/` is the standalone photography landing page with category entries, selected works, and a tag entry.
-- `/photography/projects/[project]/` shows one photography project with its description, start date, and selected project photographs.
+- `/photography/projects/[project]/` shows a photography project with its description, start date, and selected project photographs.
+- `/photography/projects/[project]/[slug]/` shows a photograph with Previous/Next scoped to that project and a return link back to the project.
 - `/photography/category/[category]/` shows a gallery for one work type such as `still-life`, `landscape`, `street`, `abstract`, `black-and-white`, or `architecture`.
 - `/photography/category/[category]/[slug]/` shows a photograph with Previous/Next scoped to that category.
 - `/photography/selected/[slug]/` shows a selected work with Previous/Next scoped to the selected works list.

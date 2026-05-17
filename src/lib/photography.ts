@@ -46,6 +46,11 @@ export const getCategoryHref = (category: CategorySlug) => `/photography/categor
 export const getCategoryPhotoHref = (category: CategorySlug, photo: PhotoEntry) =>
   `${getCategoryHref(category)}${getPhotoSlug(photo)}/`;
 
+export const getProjectHref = (projectSlug: string) => `/photography/projects/${projectSlug}/`;
+
+export const getProjectPhotoHref = (projectSlug: string, photo: PhotoEntry) =>
+  `${getProjectHref(projectSlug)}${getPhotoSlug(photo)}/`;
+
 export const getTagHref = (group: TagGroupSlug, slug: string) => `/photography/tags/${group}/${slug}/`;
 
 const uniqueValues = <T extends string>(values: readonly (T | '')[]) =>
@@ -197,6 +202,19 @@ export const getAdjacentPhotosInOrder = (orderedPhotos: PhotoEntry[], currentSlu
       currentIndex >= 0 && currentIndex < orderedPhotos.length - 1
         ? orderedPhotos[currentIndex + 1]
         : undefined
+  };
+};
+
+export const getLoopingAdjacentPhotosInOrder = (orderedPhotos: PhotoEntry[], currentSlug: string) => {
+  const currentIndex = orderedPhotos.findIndex((photo) => getPhotoSlug(photo) === currentSlug);
+
+  if (currentIndex < 0 || orderedPhotos.length < 2) {
+    return { previous: undefined, next: undefined };
+  }
+
+  return {
+    previous: orderedPhotos[(currentIndex - 1 + orderedPhotos.length) % orderedPhotos.length],
+    next: orderedPhotos[(currentIndex + 1) % orderedPhotos.length]
   };
 };
 

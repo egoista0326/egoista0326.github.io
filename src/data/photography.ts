@@ -153,6 +153,19 @@ export const photographySelectedWorkSlugs = [
 
 export const photographyProjects = [
   {
+    slug: 'moments-in-the-room',
+    title: 'Moments in the Room',
+    titleZh: '房间里的片刻',
+    startDate: '2026.1',
+    summary: 'A quiet still-life project about brief moments of light and beauty found at home.',
+    summaryZh: '一个记录家中偶然光影和美好片刻的静物项目。',
+    description:
+      'One day I noticed a glass beside my desk catching the sunlight, and the room suddenly felt worth photographing. This project is a way of paying attention to those small domestic moments: snow beyond a window, a fading flower, a spiderweb in the light, or a cup casting shadows. They are not arranged to feel important. They are quiet things I might otherwise miss, kept because they made an ordinary room feel briefly beautiful.',
+    descriptionZh:
+      '有一天我突然注意到桌边的玻璃杯被阳光照得很好看，才发现家里其实也有很多值得停下来的瞬间。这个项目记录这些偶然出现的小片刻：窗外的雪、渐渐枯萎的花、光里的蛛网，或者杯子投下的影子。它们不是被刻意安排成很重要的画面，只是一些在日常里容易错过、但让我觉得房间在某个瞬间变得很好看的安静事物。',
+    photoSlugs: ['dsc-2224', 'dsc-2440', 'dsc-2583', 'dsc-2488', 'dsc-0430', 'dsc-0294', 'dsc-2759']
+  },
+  {
     slug: 'urban-isolation',
     title: 'Through Glass, From a Distance',
     titleZh: '城市孤岛',

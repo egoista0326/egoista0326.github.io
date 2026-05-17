@@ -6,7 +6,12 @@ import {
   photographyProjects,
   type PhotographyProject
 } from '../../../data/photography';
-import { getPhotosBySlugs, type PhotoEntry } from '../../../lib/photography';
+import {
+  getPhotoSlug,
+  getPhotosBySlugs,
+  getProjectPhotoHref,
+  type PhotoEntry
+} from '../../../lib/photography';
 
 interface Props {
   project: PhotographyProject;
@@ -26,6 +31,9 @@ export async function getStaticPaths() {
 }
 
 const { project, photos } = Astro.props;
+const projectPhotoHrefs = Object.fromEntries(
+  photos.map((photo) => [getPhotoSlug(photo), getProjectPhotoHref(project.slug, photo)])
+);
 ---
 
 <SiteLayout title={`${project.title} | Photography`} description={project.summary}>
@@ -60,6 +68,10 @@ const { project, photos } = Astro.props;
   </section>
 
   <section class="photography-section" aria-label={`${project.title} photographs`}>
-    <PhotoGrid photos={photos} emptyMessage="No photographs have been added to this project yet." />
+    <PhotoGrid
+      photos={photos}
+      photoHrefs={projectPhotoHrefs}
+      emptyMessage="No photographs have been added to this project yet."
+    />
   </section>
 </SiteLayout>

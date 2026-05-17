@@ -612,7 +612,7 @@
   {
     "source": "_DSC2488.jpg",
     "slug": "dsc-2488",
-    "title": "Untitled",
+    "title": "Fading Tulips",
     "category": "still-life",
     "categories": [],
     "location": "zurich",
@@ -628,7 +628,7 @@
   {
     "source": "_DSC2583.jpg",
     "slug": "dsc-2583",
-    "title": "Untitled",
+    "title": "Spiderweb on the Windowsill",
     "category": "still-life",
     "categories": [],
     "location": "zurich",
@@ -801,7 +801,7 @@
   {
     "source": "_DSC2759.jpg",
     "slug": "dsc-2759",
-    "title": "Untitled",
+    "title": "Bathroom Window",
     "category": "abstract",
     "categories": [
       "architecture"
@@ -809,7 +809,7 @@
     "location": "zurich",
     "camera": "nikon-zf",
     "lens": "40mm-prime",
-    "condition": "night",
+    "condition": "blue-hour",
     "conditions": [],
     "featured": false,
     "order": 470,

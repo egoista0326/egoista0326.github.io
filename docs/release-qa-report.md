@@ -23,7 +23,10 @@ Generated: 2026-05-17
 | PASS | desktop /photography/category/architecture/ route check |  |
 | PASS | desktop /photography/category/landscape/dsc-8404/ route check |  |
 | PASS | desktop /photography/category/street/dsc-2862/ route check |  |
+| PASS | desktop /photography/projects/moments-in-the-room/ route check |  |
+| PASS | desktop /photography/projects/moments-in-the-room/dsc-2583/ route check |  |
 | PASS | desktop /photography/projects/urban-isolation/ route check |  |
+| PASS | desktop /photography/projects/urban-isolation/dsc-0046/ route check |  |
 | PASS | desktop /photography/selected/dsc-0046/ route check |  |
 | PASS | desktop /photography/tags/ route check |  |
 | PASS | desktop /photography/tags/location/zurich/ route check |  |
@@ -41,7 +44,10 @@ Generated: 2026-05-17
 | PASS | mobile /photography/category/architecture/ route check |  |
 | PASS | mobile /photography/category/landscape/dsc-8404/ route check |  |
 | PASS | mobile /photography/category/street/dsc-2862/ route check |  |
+| PASS | mobile /photography/projects/moments-in-the-room/ route check |  |
+| PASS | mobile /photography/projects/moments-in-the-room/dsc-2583/ route check |  |
 | PASS | mobile /photography/projects/urban-isolation/ route check |  |
+| PASS | mobile /photography/projects/urban-isolation/dsc-0046/ route check |  |
 | PASS | mobile /photography/selected/dsc-0046/ route check |  |
 | PASS | mobile /photography/tags/ route check |  |
 | PASS | mobile /photography/tags/location/zurich/ route check |  |
