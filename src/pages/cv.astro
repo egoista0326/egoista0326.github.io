@@ -1,12 +1,23 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
 
-const placeholder = 'CV content is not available yet.';
+const cvPath = '/assets/cv/jiaxin-li-cv.pdf';
+const description = 'A current PDF version of Jiaxin Li CV is available below.';
 ---
 
-<SiteLayout title="CV" description={placeholder}>
-  <section class="placeholder-page" aria-labelledby="page-title">
+<SiteLayout title="CV" description={description}>
+  <section class="cv-page" aria-labelledby="page-title">
     <h1 id="page-title">CV</h1>
-    <p>{placeholder}</p>
+    <p>A current PDF version of my CV is available below.</p>
+    <div class="cv-actions" aria-label="CV actions">
+      <a class="cv-action" href={cvPath} target="_blank" rel="noreferrer">Open PDF</a>
+      <a class="cv-action" href={cvPath} download>Download PDF</a>
+    </div>
+    <object class="cv-frame" data={cvPath} type="application/pdf" aria-label="Jiaxin Li CV PDF preview">
+      <p>
+        If the PDF preview does not load, <a href={cvPath} target="_blank" rel="noreferrer">open</a>
+        or <a href={cvPath} download>download</a> the file directly.
+      </p>
+    </object>
   </section>
 </SiteLayout>
