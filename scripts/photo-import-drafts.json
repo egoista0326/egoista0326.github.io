@@ -52,22 +52,6 @@
     "alt": "A jagged piece of clear ice rising from a dark shoreline."
   },
   {
-    "source": "_DSC0035.jpg",
-    "slug": "dsc-0035",
-    "title": "Untitled",
-    "category": "abstract",
-    "categories": [],
-    "location": "iceland",
-    "camera": "nikon-zf",
-    "lens": "24-120mm-zoom",
-    "condition": "",
-    "conditions": [],
-    "featured": false,
-    "order": 40,
-    "note": "",
-    "alt": "Blue abstract surface fading into darkness."
-  },
-  {
     "source": "_DSC0047.jpg",
     "slug": "dsc-0047",
     "title": "Untitled",
@@ -1812,5 +1796,21 @@
     "order": 1050,
     "note": "",
     "alt": "People with umbrellas walking along a rainy street."
+  },
+  {
+    "source": "IMG_4034.jpg",
+    "slug": "nursing-home-chair",
+    "title": "Nursing Home Chair",
+    "category": "still-life",
+    "categories": [],
+    "location": "",
+    "camera": "iphone",
+    "lens": "",
+    "condition": "clear",
+    "conditions": [],
+    "featured": false,
+    "order": 1060,
+    "note": "A chair stands by the window. What might the older person who sat there have been thinking about?",
+    "alt": "A chair stands beside a nursing home window in clear daylight."
   }
 ]

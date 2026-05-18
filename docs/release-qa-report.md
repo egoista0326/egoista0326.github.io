@@ -28,10 +28,13 @@ Generated: 2026-05-17
 | PASS | desktop /photography/projects/urban-isolation/ route check |  |
 | PASS | desktop /photography/projects/urban-isolation/dsc-0046/ route check |  |
 | PASS | desktop /photography/selected/dsc-0046/ route check |  |
+| PASS | desktop /photography/selected/dsc-9283/ route check |  |
 | PASS | desktop /photography/tags/ route check |  |
 | PASS | desktop /photography/tags/location/zurich/ route check |  |
+| PASS | desktop /photography/tags/camera/iphone/ route check |  |
 | PASS | desktop /photography/tags/condition/rain/ route check |  |
 | PASS | desktop /photography/dsc-0046/ route check |  |
+| PASS | desktop /photography/nursing-home-chair/ route check |  |
 | PASS | desktop /photography/dsc-9266/ route check |  |
 | PASS | mobile / route check |  |
 | PASS | mobile /cv/ route check |  |
@@ -49,10 +52,13 @@ Generated: 2026-05-17
 | PASS | mobile /photography/projects/urban-isolation/ route check |  |
 | PASS | mobile /photography/projects/urban-isolation/dsc-0046/ route check |  |
 | PASS | mobile /photography/selected/dsc-0046/ route check |  |
+| PASS | mobile /photography/selected/dsc-9283/ route check |  |
 | PASS | mobile /photography/tags/ route check |  |
 | PASS | mobile /photography/tags/location/zurich/ route check |  |
+| PASS | mobile /photography/tags/camera/iphone/ route check |  |
 | PASS | mobile /photography/tags/condition/rain/ route check |  |
 | PASS | mobile /photography/dsc-0046/ route check |  |
+| PASS | mobile /photography/nursing-home-chair/ route check |  |
 | PASS | mobile /photography/dsc-9266/ route check |  |
 | PASS | CV PDF links and preview |  |
 | PASS | Photography controls, social links, and Rednote modal |  |

@@ -7,7 +7,7 @@ export const categorySlugs = [
   'architecture'
 ] as const;
 export const locationSlugs = ['zurich', 'paris', 'iceland', 'st-moritz', 'shanxi'] as const;
-export const cameraSlugs = ['nikon-zf'] as const;
+export const cameraSlugs = ['nikon-zf', 'iphone'] as const;
 export const lensSlugs = ['nikkor-z-24mm', 'nikkor-z-24-200mm', '24-120mm-zoom', '40mm-prime'] as const;
 export const conditionSlugs = ['clear', 'rain', 'night', 'blue-hour', 'overcast', 'snow', 'fog'] as const;
 
@@ -40,7 +40,8 @@ export const photographyLocations = [
 ] as const satisfies readonly VocabularyEntry<LocationSlug>[];
 
 export const photographyCameras = [
-  { slug: 'nikon-zf', label: 'Nikon Zf' }
+  { slug: 'nikon-zf', label: 'Nikon Zf' },
+  { slug: 'iphone', label: 'iPhone' }
 ] as const satisfies readonly VocabularyEntry<CameraSlug>[];
 
 export const photographyLenses = [

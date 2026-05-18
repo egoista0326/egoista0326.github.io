@@ -133,6 +133,7 @@ export const photographySelectedWorkSlugs = [
   'dsc-2723',
   'dsc-0213',
   'dsc-9185',
+  'dsc-9283',
   'dsc-2583',
   'dsc-0855',
   'dsc-2862',

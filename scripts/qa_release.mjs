@@ -27,10 +27,13 @@ const routes = [
   '/photography/projects/urban-isolation/',
   '/photography/projects/urban-isolation/dsc-0046/',
   '/photography/selected/dsc-0046/',
+  '/photography/selected/dsc-9283/',
   '/photography/tags/',
   '/photography/tags/location/zurich/',
+  '/photography/tags/camera/iphone/',
   '/photography/tags/condition/rain/',
   '/photography/dsc-0046/',
+  '/photography/nursing-home-chair/',
   '/photography/dsc-9266/'
 ];
 const imageRoutes = new Set([
@@ -48,8 +51,11 @@ const imageRoutes = new Set([
   '/photography/projects/urban-isolation/',
   '/photography/projects/urban-isolation/dsc-0046/',
   '/photography/selected/dsc-0046/',
+  '/photography/selected/dsc-9283/',
+  '/photography/tags/camera/iphone/',
   '/photography/tags/condition/rain/',
   '/photography/dsc-0046/',
+  '/photography/nursing-home-chair/',
   '/photography/dsc-9266/'
 ]);
 const staleSlugs = [

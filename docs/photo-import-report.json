@@ -35,16 +35,6 @@
       "orientation": "square"
     },
     {
-      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0035.jpg",
-      "slug": "dsc-0035",
-      "category": "abstract",
-      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-0035.webp",
-      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-0035.md",
-      "width": 2400,
-      "height": 1600,
-      "orientation": "landscape"
-    },
-    {
       "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC0047.jpg",
       "slug": "dsc-0047",
       "category": "abstract",
@@ -801,7 +791,7 @@
       "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-8997.webp",
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-8997.md",
       "width": 2400,
-      "height": 1349,
+      "height": 1800,
       "orientation": "landscape"
     },
     {
@@ -1053,6 +1043,16 @@
       "width": 2400,
       "height": 1349,
       "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/IMG_4034.jpg",
+      "slug": "nursing-home-chair",
+      "category": "still-life",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/nursing-home-chair.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/nursing-home-chair.md",
+      "width": 1156,
+      "height": 1541,
+      "orientation": "portrait"
     }
   ],
   "excluded": [
