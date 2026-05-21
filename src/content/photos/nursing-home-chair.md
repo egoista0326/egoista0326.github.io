@@ -1,23 +1,34 @@
 ---
-title: "Nursing Home Chair"
+title: "Sunlit Chairs"
 slug: "nursing-home-chair"
 category: "still-life"
 categories: []
 image: "/assets/photography/works/nursing-home-chair.webp"
-alt: "A chair stands beside a nursing home window in clear daylight."
+alt: "A yellow chair and a green chair sit by a sunlit window in a Shanxi nursing home."
 width: 1156
 height: 1541
 orientation: "portrait"
 date: ""
 year: ""
-location: ""
+location: "shanxi"
 camera: "iphone"
 lens: ""
 condition: "clear"
 conditions: []
 featured: false
 order: 1060
-note: "A chair stands by the window. What might the older person who sat there have been thinking about?"
+note: |-
+  椅子被摆在了窗边，迎着阳光。
+
+  好像老人们都挺喜欢晒太阳的。
+
+  我就在想，
+  他二十岁的时候，
+  会不会也没想过，
+  很多年以后，
+  自己会坐在窗边，
+  一边晒太阳，
+  一边想起二十岁。
 draftMetadata: true
 language: "en"
 ---
