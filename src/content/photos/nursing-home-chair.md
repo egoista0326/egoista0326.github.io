@@ -29,6 +29,20 @@ note: |-
   he would sit by a window,
   warming himself in the light,
   and think back to being twenty?
+
+  --------------------------
+
+  椅子被摆在了窗边，迎着阳光。
+
+  好像老人们都挺喜欢晒太阳的。
+
+  我就在想，
+  他二十岁的时候，
+  会不会也没想过，
+  很多年以后，
+  自己会坐在窗边，
+  一边晒太阳，
+  一边想起二十岁。
 draftMetadata: true
 language: "en"
 ---
