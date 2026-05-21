@@ -18,17 +18,17 @@ conditions: []
 featured: false
 order: 1060
 note: |-
-  椅子被摆在了窗边，迎着阳光。
+  The chairs were placed by the window, facing the sunlight.
 
-  好像老人们都挺喜欢晒太阳的。
+  It seems that older people often like to sit in the sun.
 
-  我就在想，
-  他二十岁的时候，
-  会不会也没想过，
-  很多年以后，
-  自己会坐在窗边，
-  一边晒太阳，
-  一边想起二十岁。
+  I found myself wondering:
+  when he was twenty,
+  could he ever have imagined
+  that many years later
+  he would sit by a window,
+  warming himself in the light,
+  and think back to being twenty?
 draftMetadata: true
 language: "en"
 ---

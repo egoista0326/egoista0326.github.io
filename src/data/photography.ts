@@ -149,7 +149,7 @@ export const photographySelectedWorkSlugs = [
   'dsc-2233',
   'dsc-2725',
   'dsc-0244',
-  'dsc-9149'
+  'nursing-home-chair'
 ] as const;
 
 export const photographyProjects = [

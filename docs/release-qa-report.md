@@ -29,6 +29,7 @@ Generated: 2026-05-17
 | PASS | desktop /photography/projects/urban-isolation/dsc-0046/ route check |  |
 | PASS | desktop /photography/selected/dsc-0046/ route check |  |
 | PASS | desktop /photography/selected/dsc-9283/ route check |  |
+| PASS | desktop /photography/selected/nursing-home-chair/ route check |  |
 | PASS | desktop /photography/tags/ route check |  |
 | PASS | desktop /photography/tags/location/zurich/ route check |  |
 | PASS | desktop /photography/tags/camera/iphone/ route check |  |
@@ -53,6 +54,7 @@ Generated: 2026-05-17
 | PASS | mobile /photography/projects/urban-isolation/dsc-0046/ route check |  |
 | PASS | mobile /photography/selected/dsc-0046/ route check |  |
 | PASS | mobile /photography/selected/dsc-9283/ route check |  |
+| PASS | mobile /photography/selected/nursing-home-chair/ route check |  |
 | PASS | mobile /photography/tags/ route check |  |
 | PASS | mobile /photography/tags/location/zurich/ route check |  |
 | PASS | mobile /photography/tags/camera/iphone/ route check |  |
