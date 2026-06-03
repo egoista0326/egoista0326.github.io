@@ -4,8 +4,8 @@ Generated: 2026-05-17
 
 | Status | Check | Detail |
 | --- | --- | --- |
-| PASS | 105 WebP photography assets |  |
-| PASS | 105 photo metadata records |  |
+| PASS | 112 WebP photography assets |  |
+| PASS | 112 photo metadata records |  |
 | PASS | Rednote card asset exists |  |
 | PASS | Photography intro asset exists |  |
 | PASS | CV PDF asset exists |  |
@@ -30,11 +30,14 @@ Generated: 2026-05-17
 | PASS | desktop /photography/selected/dsc-0046/ route check |  |
 | PASS | desktop /photography/selected/dsc-9283/ route check |  |
 | PASS | desktop /photography/selected/nursing-home-chair/ route check |  |
+| PASS | desktop /photography/selected/dsc-3406/ route check |  |
 | PASS | desktop /photography/tags/ route check |  |
 | PASS | desktop /photography/tags/location/zurich/ route check |  |
+| PASS | desktop /photography/tags/location/bern/ route check |  |
 | PASS | desktop /photography/tags/camera/iphone/ route check |  |
 | PASS | desktop /photography/tags/condition/rain/ route check |  |
 | PASS | desktop /photography/dsc-0046/ route check |  |
+| PASS | desktop /photography/dsc-3406/ route check |  |
 | PASS | desktop /photography/nursing-home-chair/ route check |  |
 | PASS | desktop /photography/dsc-9266/ route check |  |
 | PASS | mobile / route check |  |
@@ -55,11 +58,14 @@ Generated: 2026-05-17
 | PASS | mobile /photography/selected/dsc-0046/ route check |  |
 | PASS | mobile /photography/selected/dsc-9283/ route check |  |
 | PASS | mobile /photography/selected/nursing-home-chair/ route check |  |
+| PASS | mobile /photography/selected/dsc-3406/ route check |  |
 | PASS | mobile /photography/tags/ route check |  |
 | PASS | mobile /photography/tags/location/zurich/ route check |  |
+| PASS | mobile /photography/tags/location/bern/ route check |  |
 | PASS | mobile /photography/tags/camera/iphone/ route check |  |
 | PASS | mobile /photography/tags/condition/rain/ route check |  |
 | PASS | mobile /photography/dsc-0046/ route check |  |
+| PASS | mobile /photography/dsc-3406/ route check |  |
 | PASS | mobile /photography/nursing-home-chair/ route check |  |
 | PASS | mobile /photography/dsc-9266/ route check |  |
 | PASS | CV PDF links and preview |  |

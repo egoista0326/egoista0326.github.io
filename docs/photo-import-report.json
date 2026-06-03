@@ -1,7 +1,7 @@
 {
   "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average",
   "dry_run": false,
-  "included_count": 105,
+  "included_count": 112,
   "excluded_count": 1,
   "included": [
     {
@@ -1052,6 +1052,76 @@
       "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/nursing-home-chair.md",
       "width": 1156,
       "height": 1541,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC3406.jpg",
+      "slug": "dsc-3406",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-3406.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-3406.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC3179.jpg",
+      "slug": "dsc-3179",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-3179.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-3179.md",
+      "width": 2400,
+      "height": 2400,
+      "orientation": "square"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC3207.jpg",
+      "slug": "dsc-3207",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-3207.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-3207.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC3316.jpg",
+      "slug": "dsc-3316",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-3316.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-3316.md",
+      "width": 1800,
+      "height": 2400,
+      "orientation": "portrait"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC3334.jpg",
+      "slug": "dsc-3334",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-3334.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-3334.md",
+      "width": 2400,
+      "height": 1800,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC3076.jpg",
+      "slug": "dsc-3076",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-3076.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-3076.md",
+      "width": 2400,
+      "height": 1800,
+      "orientation": "landscape"
+    },
+    {
+      "source": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/source_photos/average/_DSC3122.jpg",
+      "slug": "dsc-3122",
+      "category": "street",
+      "asset": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/public/assets/photography/works/dsc-3122.webp",
+      "metadata": "/Users/lijiaxin/Documents/PersonalWeb/egoista0326.github.io/src/content/photos/dsc-3122.md",
+      "width": 1800,
+      "height": 2400,
       "orientation": "portrait"
     }
   ],

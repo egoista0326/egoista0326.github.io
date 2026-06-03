@@ -29,11 +29,14 @@ const routes = [
   '/photography/selected/dsc-0046/',
   '/photography/selected/dsc-9283/',
   '/photography/selected/nursing-home-chair/',
+  '/photography/selected/dsc-3406/',
   '/photography/tags/',
   '/photography/tags/location/zurich/',
+  '/photography/tags/location/bern/',
   '/photography/tags/camera/iphone/',
   '/photography/tags/condition/rain/',
   '/photography/dsc-0046/',
+  '/photography/dsc-3406/',
   '/photography/nursing-home-chair/',
   '/photography/dsc-9266/'
 ];
@@ -54,9 +57,12 @@ const imageRoutes = new Set([
   '/photography/selected/dsc-0046/',
   '/photography/selected/dsc-9283/',
   '/photography/selected/nursing-home-chair/',
+  '/photography/selected/dsc-3406/',
+  '/photography/tags/location/bern/',
   '/photography/tags/camera/iphone/',
   '/photography/tags/condition/rain/',
   '/photography/dsc-0046/',
+  '/photography/dsc-3406/',
   '/photography/nursing-home-chair/',
   '/photography/dsc-9266/'
 ]);

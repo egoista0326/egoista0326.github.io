@@ -5,3 +5,4 @@ dist/
 .env
 .env.*
 source_photos/
+source_photos alias

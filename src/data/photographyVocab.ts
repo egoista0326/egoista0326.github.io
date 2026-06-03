@@ -6,7 +6,7 @@ export const categorySlugs = [
   'black-and-white',
   'architecture'
 ] as const;
-export const locationSlugs = ['zurich', 'paris', 'iceland', 'st-moritz', 'shanxi'] as const;
+export const locationSlugs = ['zurich', 'paris', 'iceland', 'st-moritz', 'shanxi', 'bern'] as const;
 export const cameraSlugs = ['nikon-zf', 'iphone'] as const;
 export const lensSlugs = ['nikkor-z-24mm', 'nikkor-z-24-200mm', '24-120mm-zoom', '40mm-prime'] as const;
 export const conditionSlugs = ['clear', 'rain', 'night', 'blue-hour', 'overcast', 'snow', 'fog'] as const;
@@ -36,7 +36,8 @@ export const photographyLocations = [
   { slug: 'paris', label: 'Paris' },
   { slug: 'iceland', label: 'Iceland' },
   { slug: 'st-moritz', label: 'St. Moritz' },
-  { slug: 'shanxi', label: 'Shanxi' }
+  { slug: 'shanxi', label: 'Shanxi' },
+  { slug: 'bern', label: 'Bern' }
 ] as const satisfies readonly VocabularyEntry<LocationSlug>[];
 
 export const photographyCameras = [
