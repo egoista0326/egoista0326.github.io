@@ -1,0 +1,11 @@
+---
+import { isPlaceholder } from '../lib/placeholders';
+
+interface Props {
+  text: string;
+}
+
+const { text } = Astro.props;
+---
+
+{isPlaceholder(text) ? <span class="todo-text">{text}</span> : text}

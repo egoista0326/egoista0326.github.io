@@ -1,0 +1,57 @@
+---
+import TodoText from '../TodoText.astro';
+import type { ProjectEntry } from '../../data/academic';
+
+interface Props {
+  project: ProjectEntry;
+}
+
+const { project } = Astro.props;
+---
+
+<article class="project-card">
+  <a
+    class="project-card-media"
+    href={project.href}
+    tabindex="-1"
+    aria-hidden="true"
+    data-play-unit={project.thumbnailVideo ? '' : undefined}
+  >
+    {
+      project.thumbnailVideo ? (
+        <video
+          src={project.thumbnailVideo}
+          poster={project.thumbnail || undefined}
+          muted
+          loop
+          playsinline
+          preload="none"
+          data-reduced-motion="poster"
+        />
+      ) : project.thumbnail ? (
+        <img src={project.thumbnail} alt="" loading="lazy" decoding="async" />
+      ) : (
+        <span class="media-placeholder">Thumbnail placeholder</span>
+      )
+    }
+  </a>
+  <div class="project-card-body">
+    <h3 class="project-card-title">
+      <a href={project.href}>{project.title}</a>
+    </h3>
+    <p class="project-card-description"><TodoText text={project.description} /></p>
+    <ul class="project-card-links" aria-label={`${project.title} links`}>
+      {
+        project.links.map((link) => (
+          <li>
+            <a href={link.href}>{link.label}</a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</article>
+
+<script>
+  import '../../scripts/clipPlayback';
+</script>

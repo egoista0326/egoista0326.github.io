@@ -12,7 +12,7 @@ const viewports = [
 ];
 const routes = [
   '/',
-  '/cv/',
+  '/dexgo/',
   '/photography/',
   '/photography/category/still-life/',
   '/photography/category/landscape/',
@@ -21,24 +21,26 @@ const routes = [
   '/photography/category/black-and-white/',
   '/photography/category/architecture/',
   '/photography/category/landscape/dsc-8404/',
-  '/photography/category/street/dsc-2862/',
+  '/photography/category/street/riga-seagulls/',
   '/photography/projects/moments-in-the-room/',
   '/photography/projects/moments-in-the-room/dsc-2583/',
-  '/photography/projects/urban-isolation/',
-  '/photography/projects/urban-isolation/dsc-0046/',
+  '/photography/category/black-and-white/tallinn-wires/',
+  '/photography/category/landscape/zurich-car-roof/',
   '/photography/selected/dsc-0046/',
-  '/photography/selected/dsc-9283/',
+  '/photography/selected/tallinn-wires/',
   '/photography/selected/nursing-home-chair/',
-  '/photography/selected/dsc-3406/',
+  '/photography/selected/riga-seagulls/',
   '/photography/tags/',
   '/photography/tags/location/zurich/',
   '/photography/tags/location/bern/',
+  '/photography/tags/location/tallinn/',
+  '/photography/tags/camera/ricoh-gr-iv-hdf/',
   '/photography/tags/camera/iphone/',
   '/photography/tags/condition/rain/',
   '/photography/dsc-0046/',
-  '/photography/dsc-3406/',
+  '/photography/dsc-3179/',
   '/photography/nursing-home-chair/',
-  '/photography/dsc-9266/'
+  '/photography/zurich-car-roof/'
 ];
 const imageRoutes = new Set([
   '/photography/',
@@ -49,22 +51,22 @@ const imageRoutes = new Set([
   '/photography/category/black-and-white/',
   '/photography/category/architecture/',
   '/photography/category/landscape/dsc-8404/',
-  '/photography/category/street/dsc-2862/',
+  '/photography/category/street/riga-seagulls/',
   '/photography/projects/moments-in-the-room/',
   '/photography/projects/moments-in-the-room/dsc-2583/',
-  '/photography/projects/urban-isolation/',
-  '/photography/projects/urban-isolation/dsc-0046/',
+  '/photography/category/black-and-white/tallinn-wires/',
+  '/photography/category/landscape/zurich-car-roof/',
   '/photography/selected/dsc-0046/',
-  '/photography/selected/dsc-9283/',
+  '/photography/selected/tallinn-wires/',
   '/photography/selected/nursing-home-chair/',
-  '/photography/selected/dsc-3406/',
+  '/photography/selected/riga-seagulls/',
   '/photography/tags/location/bern/',
   '/photography/tags/camera/iphone/',
   '/photography/tags/condition/rain/',
   '/photography/dsc-0046/',
-  '/photography/dsc-3406/',
+  '/photography/dsc-3179/',
   '/photography/nursing-home-chair/',
-  '/photography/dsc-9266/'
+  '/photography/zurich-car-roof/'
 ]);
 const staleSlugs = [
   'zurich-rain-window',
@@ -205,11 +207,6 @@ const assertStaticAssets = () => {
     fail('Photography intro asset exists', 'public/assets/photography/profile-shadow-2649.webp missing');
   }
   record('Photography intro asset exists');
-
-  if (!existsSync(join(root, 'public', 'assets', 'cv', 'jiaxin-li-cv.pdf'))) {
-    fail('CV PDF asset exists', 'public/assets/cv/jiaxin-li-cv.pdf missing');
-  }
-  record('CV PDF asset exists');
 };
 
 const assertGeneratedOutput = () => {
@@ -288,20 +285,6 @@ const checkRoute = async (page, route, viewportName) => {
   record(`${viewportName} ${route} route check`);
 };
 
-const checkCvPage = async (page) => {
-  await page.goto(`${baseUrl}/cv/`, { waitUntil: 'networkidle' });
-
-  const openHref = await page.locator('a', { hasText: 'Open PDF' }).getAttribute('href');
-  const downloadHref = await page.locator('a', { hasText: 'Download PDF' }).getAttribute('href');
-  if (openHref !== '/assets/cv/jiaxin-li-cv.pdf') fail('CV open link', String(openHref));
-  if (downloadHref !== '/assets/cv/jiaxin-li-cv.pdf') fail('CV download link', String(downloadHref));
-  if ((await page.locator('object[type="application/pdf"]').count()) !== 1) {
-    fail('CV PDF preview object', 'missing PDF object');
-  }
-
-  record('CV PDF links and preview');
-};
-
 const checkPhotographyInteractions = async (page) => {
   await page.goto(`${baseUrl}/photography/`, { waitUntil: 'networkidle' });
 
@@ -310,8 +293,8 @@ const checkPhotographyInteractions = async (page) => {
   if (selectedCount !== selectedExpected) fail(`Selected Works contains ${selectedExpected} photographs`, `${selectedCount} found`);
 
   await page.locator('[data-photography-theme-option="dark"]').click();
-  const darkTheme = await page.locator('body').getAttribute('data-photography-theme');
-  const bodyTheme = await page.locator('body').getAttribute('data-photography-theme');
+  const darkTheme = await page.locator('html').getAttribute('data-photography-theme');
+  const bodyTheme = await page.locator('html').getAttribute('data-photography-theme');
   if (darkTheme !== 'dark' || bodyTheme !== 'dark') {
     fail('Photography dark theme toggle', `page=${darkTheme}, body=${bodyTheme}`);
   }
@@ -319,19 +302,19 @@ const checkPhotographyInteractions = async (page) => {
   if (darkPressed !== 'true') fail('Photography dark theme active state', String(darkPressed));
 
   await page.locator('[data-photography-lang-option="zh"]').click();
-  const pageLanguage = await page.locator('body').getAttribute('data-photography-lang');
+  const pageLanguage = await page.locator('html').getAttribute('data-photography-lang');
   const htmlLanguage = await page.locator('html').getAttribute('lang');
   const visibleTitle = await page.locator('#page-title').innerText();
   const visibleChinesePanelLanguage = await page.locator('[data-lang-panel="zh"]').getAttribute('lang');
-  if (pageLanguage !== 'zh' || htmlLanguage !== 'en' || visibleChinesePanelLanguage !== 'zh-CN' || !visibleTitle.includes('摄影')) {
+  if (pageLanguage !== 'zh' || htmlLanguage !== 'zh-CN' || visibleChinesePanelLanguage !== 'zh-CN' || !visibleTitle.includes('摄影')) {
     fail('Photography Chinese language toggle', `page=${pageLanguage}, html=${htmlLanguage}, title=${visibleTitle}`);
   }
   const zhPressed = await page.locator('[data-photography-lang-option="zh"]').getAttribute('aria-pressed');
   if (zhPressed !== 'true') fail('Photography Chinese language active state', String(zhPressed));
 
   await page.goto(`${baseUrl}/photography/tags/`, { waitUntil: 'networkidle' });
-  const tagsTheme = await page.locator('body').getAttribute('data-photography-theme');
-  const tagsLanguage = await page.locator('body').getAttribute('data-photography-lang');
+  const tagsTheme = await page.locator('html').getAttribute('data-photography-theme');
+  const tagsLanguage = await page.locator('html').getAttribute('data-photography-lang');
   const tagsTitle = await page.locator('#tags-title').innerText();
   const tagsResultCount = await page.locator('[data-tag-result-count]').innerText();
   if (tagsTheme !== 'dark' || tagsLanguage !== 'zh' || !tagsTitle.includes('摄影标签') || !tagsResultCount.includes('张照片')) {
@@ -339,7 +322,7 @@ const checkPhotographyInteractions = async (page) => {
   }
 
   await page.goto(`${baseUrl}/photography/tags/location/zurich/`, { waitUntil: 'networkidle' });
-  const tagDetailLanguage = await page.locator('body').getAttribute('data-photography-lang');
+  const tagDetailLanguage = await page.locator('html').getAttribute('data-photography-lang');
   const tagDetailCopy = await page.locator('.gallery-heading .section-copy').innerText();
   if (tagDetailLanguage !== 'zh' || !tagDetailCopy.includes('张照片')) {
     fail('Photography preferences persist to tag detail pages', `lang=${tagDetailLanguage}, copy=${tagDetailCopy}`);
@@ -404,11 +387,18 @@ const checkTagFilterSearch = async (page) => {
     fail('Tag search keeps masonry columns for Zurich', 'visible results collapsed to one column');
   }
 
-  await page.locator('input[name="condition"][value="rain"]').check();
-  const zurichRainCount = await visibleResults.count();
   const expectedZurichRainCount = expectedFilterCount({ location: 'zurich', condition: 'rain' });
-  if (zurichRainCount !== expectedZurichRainCount) {
-    fail('Tag search combines Zurich and Rain filters', `${zurichRainCount} visible results`);
+  // Options that would give no result are disabled, so a 0-result combination cannot be ticked.
+  if (expectedZurichRainCount === 0) {
+    if (!(await page.locator('input[name="condition"][value="rain"]').isDisabled())) {
+      fail('Tag search disables Rain when Zurich + Rain has no result', 'Rain is enabled');
+    }
+  } else {
+    await page.locator('input[name="condition"][value="rain"]').check();
+    const zurichRainCount = await visibleResults.count();
+    if (zurichRainCount !== expectedZurichRainCount) {
+      fail('Tag search combines Zurich and Rain filters', `${zurichRainCount} visible results`);
+    }
   }
 
   await page.locator('[data-tag-filter-clear]').click();
@@ -416,9 +406,9 @@ const checkTagFilterSearch = async (page) => {
     fail('Tag search clear resets results', `${await visibleResults.count()} visible results`);
   }
 
-  await page.locator('input[name="condition"][value="night"]').check();
+  await page.locator('input[name="condition"][value="blue-hour"]').check();
   if ((await visibleColumnCount()) < 2) {
-    fail('Tag search keeps masonry columns for Night', 'visible results collapsed to one column');
+    fail('Tag search keeps masonry columns for Blue Hour', 'visible results collapsed to one column');
   }
 
   await page.locator('[data-tag-filter-clear]').click();
@@ -464,7 +454,6 @@ try {
   }
 
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
-  await checkCvPage(desktop);
   await checkPhotographyInteractions(desktop);
   await checkTagFilterSearch(desktop);
   await desktop.close();

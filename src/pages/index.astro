@@ -1,22 +1,59 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
+import TodoText from '../components/TodoText.astro';
 import AcademicSection from '../components/academic/AcademicSection.astro';
+import EducationList from '../components/academic/EducationList.astro';
 import NewsTimeline from '../components/academic/NewsTimeline.astro';
+import ProjectCard from '../components/academic/ProjectCard.astro';
 import ProjectEmptyState from '../components/academic/ProjectEmptyState.astro';
-import { academicNews, academicProfile, academicProjects } from '../data/academic';
+import {
+  academicEducation,
+  academicLinks,
+  academicNews,
+  academicProfile,
+  academicProjects
+} from '../data/academic';
 import { site } from '../data/site';
 
 const role = `${academicProfile.title} at ${academicProfile.institute}`;
+const portrait = academicProfile.portrait;
+const links = academicLinks.filter((link) => link.href);
 ---
 
 <SiteLayout title={site.title} description={site.description}>
   <section class="academic-intro" aria-labelledby="page-title">
-    <h1 id="page-title">Jiaxin Li</h1>
-    <p class="role-line">{role}</p>
-    <p class="academic-bio">{academicProfile.summary}</p>
-    <div class="contact-links" aria-label="Academic links">
-      <a href="mailto:ljx2986519980@gmail.com">Email</a>
-      <a href="https://github.com/egoista0326">GitHub</a>
+    {
+      portrait.src ? (
+        <figure class="academic-portrait">
+          <img
+            src={portrait.src}
+            alt={portrait.alt}
+            width={portrait.width}
+            height={portrait.height}
+            style={`object-position: ${portrait.objectPosition}`}
+            loading="eager"
+            decoding="async"
+          />
+        </figure>
+      ) : null
+    }
+    <div class="academic-intro-copy">
+      <h1 id="page-title">{academicProfile.fullName}</h1>
+      <p class="role-line">{role}</p>
+      <p class="academic-bio">{academicProfile.summary}</p>
+      <p class="research-interests">
+        <span class="research-interests-label">Research interests:</span>
+        <TodoText text={academicProfile.researchInterests} />
+      </p>
+      <ul class="contact-links" aria-label="Academic links">
+        {
+          links.map((link) => (
+            <li>
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))
+        }
+      </ul>
     </div>
   </section>
 
@@ -24,7 +61,23 @@ const role = `${academicProfile.title} at ${academicProfile.institute}`;
     <NewsTimeline items={academicNews} />
   </AcademicSection>
 
-  <AcademicSection title="Projects">
-    <ProjectEmptyState empty={academicProjects.empty} />
+  <AcademicSection title={academicProjects.heading}>
+    {
+      academicProjects.entries.length > 0 ? (
+        <ul class="project-list">
+          {academicProjects.entries.map((project) => (
+            <li>
+              <ProjectCard project={project} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ProjectEmptyState empty={academicProjects.empty} />
+      )
+    }
+  </AcademicSection>
+
+  <AcademicSection title="Education">
+    <EducationList items={academicEducation} />
   </AcademicSection>
 </SiteLayout>

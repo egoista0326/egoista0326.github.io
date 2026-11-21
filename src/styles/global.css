@@ -5,6 +5,9 @@
   --color-muted: #68717c;
   --color-border: #d8d2c7;
   --color-surface: #ffffff;
+  --color-todo-bg: #fff4d1;
+  --color-todo-border: #c99a2e;
+  --color-todo-text: #6b4f12;
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -27,6 +30,31 @@
   white-space: nowrap;
 }
 
+/* First focusable element of every page; off-screen until it receives keyboard focus. */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  padding: 8px 12px;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 600;
+  transform: translateY(calc(-100% - 16px));
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* The skip link's target; it takes focus without drawing a frame around the whole page. */
+#main:focus {
+  outline: none;
+}
+
 html {
   background: var(--color-bg);
 }
@@ -41,50 +69,6 @@ body {
   letter-spacing: 0;
 }
 
-body[data-photography-theme="dark"] {
-  --color-bg: #11100e;
-  --color-text: #f2eee7;
-  --color-accent: #9fc7c4;
-  --color-muted: #a9a197;
-  --color-border: #38332d;
-  --color-surface: #1a1714;
-  background: var(--color-bg);
-  color: var(--color-text);
-}
-
-body[data-photography-theme="dark"] .site-header,
-body[data-photography-theme="dark"] .site-footer {
-  border-color: var(--color-border);
-}
-
-body[data-photography-theme="dark"] .site-mark,
-body[data-photography-theme="dark"] .nav-link.is-active {
-  color: var(--color-text);
-}
-
-body[data-photography-theme="dark"] .nav-link,
-body[data-photography-theme="dark"] .site-footer,
-body[data-photography-theme="dark"] .site-footer a {
-  color: var(--color-muted);
-}
-
-[data-lang-inline="zh"],
-[data-lang-panel="zh"] {
-  display: none;
-}
-
-body[data-photography-lang="zh"] [data-lang-inline="en"],
-body[data-photography-lang="zh"] [data-lang-panel="en"] {
-  display: none;
-}
-
-body[data-photography-lang="zh"] [data-lang-inline="zh"] {
-  display: inline;
-}
-
-body[data-photography-lang="zh"] [data-lang-panel="zh"] {
-  display: block;
-}
 
 a {
   color: var(--color-accent);
@@ -159,6 +143,8 @@ main {
 }
 
 .academic-intro {
+  display: grid;
+  gap: var(--space-lg);
   width: 100%;
   max-width: calc(100vw - 40px);
   padding: var(--space-sm) 0 var(--space-xl);
@@ -182,6 +168,9 @@ main {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm) var(--space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
   font-size: 14px;
   font-weight: 500;
   line-height: 1.5;
@@ -239,838 +228,6 @@ main {
 
 .empty-state p {
   max-width: 30ch;
-}
-
-.placeholder-page {
-  width: 100%;
-  max-width: 640px;
-  padding: var(--space-xl) 0 var(--space-2xl);
-}
-
-.cv-page {
-  width: min(100%, 920px);
-  padding: var(--space-sm) 0 var(--space-2xl);
-}
-
-.cv-page p {
-  color: var(--color-muted);
-}
-
-.cv-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-md);
-  margin: var(--space-lg) 0;
-}
-
-.cv-action {
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 0 var(--space-md);
-  background: var(--color-surface);
-  color: var(--color-accent);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.4;
-  text-decoration: none;
-}
-
-.cv-frame {
-  display: block;
-  width: 100%;
-  min-height: min(76vh, 920px);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-surface);
-}
-
-.photography-intro {
-  width: 100%;
-  max-width: 720px;
-  padding: var(--space-sm) 0 var(--space-xl);
-}
-
-.photography-page {
-  color: var(--color-text);
-}
-
-.photography-intro-copy {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  align-content: start;
-  gap: var(--space-lg);
-  width: min(100%, 72ch);
-  justify-self: center;
-}
-
-.photography-intro p {
-  margin-bottom: 0;
-}
-
-.photography-intro.has-intro-image {
-  position: relative;
-  display: grid;
-  min-height: clamp(360px, 48vh, 520px);
-  align-items: start;
-  overflow: hidden;
-  max-width: none;
-  border-radius: 6px;
-  padding: clamp(28px, 4vw, 48px);
-  background: #24211d;
-  color: #f5f3ed;
-}
-
-.photography-intro.has-intro-image .photography-intro-copy {
-  align-self: start;
-}
-
-.photography-intro.has-intro-image h1 {
-  margin-bottom: 0;
-  color: #f8f7f2;
-}
-
-.photography-intro-body {
-  display: grid;
-  gap: var(--space-md);
-}
-
-.photography-intro-body [data-lang-panel="en"],
-body[data-photography-lang="zh"] .photography-intro-body [data-lang-panel="zh"] {
-  display: grid;
-  gap: var(--space-md);
-}
-
-.photography-intro-body [data-lang-panel="zh"],
-body[data-photography-lang="zh"] .photography-intro-body [data-lang-panel="en"] {
-  display: none;
-}
-
-.photography-intro.has-intro-image p {
-  max-width: none;
-  color: rgb(245 243 237 / 0.84);
-  hyphens: none;
-  text-align: justify;
-  text-wrap: pretty;
-}
-
-.photography-intro.has-intro-image .photography-contact a,
-.photography-intro.has-intro-image .rednote-trigger {
-  color: #f8f7f2;
-}
-
-.photography-intro.has-intro-image .rednote-trigger {
-  border-color: rgb(248 247 242 / 0.28);
-  background: rgb(248 247 242 / 0.08);
-}
-
-.photography-intro-media {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.photography-intro-media::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  background:
-    linear-gradient(90deg, rgb(28 25 22 / 0.78) 0%, rgb(28 25 22 / 0.5) 48%, rgb(28 25 22 / 0.12) 100%),
-    linear-gradient(180deg, rgb(28 25 22 / 0.7) 0%, rgb(28 25 22 / 0.26) 50%, rgb(28 25 22 / 0.5) 100%);
-}
-
-.photography-intro-media img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center center;
-  opacity: 0.8;
-}
-
-.photography-preferences {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-xs);
-  width: 100%;
-  margin: calc(var(--space-xl) * -0.65) 0 var(--space-md);
-}
-
-.photography-preference-group {
-  display: inline-flex;
-  min-width: 0;
-}
-
-.photography-segmented {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface) 86%, transparent);
-}
-
-.photography-segmented button {
-  min-width: 42px;
-  min-height: 28px;
-  border: 0;
-  border-right: 1px solid var(--color-border);
-  padding: 0 10px;
-  background: transparent;
-  color: var(--color-muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.2;
-}
-
-.photography-segmented button:last-child {
-  border-right: 0;
-}
-
-.photography-segmented button[aria-pressed="true"] {
-  background: var(--color-text);
-  color: var(--color-bg);
-}
-
-.photography-segmented button:focus-visible {
-  position: relative;
-  outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
-}
-
-.photography-contact {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-sm);
-  align-items: center;
-  justify-self: center;
-  margin-top: 0;
-  width: min(100%, 580px);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.5;
-  text-align: center;
-}
-
-.photography-contact a,
-.photography-contact button {
-  justify-self: center;
-  white-space: nowrap;
-}
-
-.rednote-trigger,
-.dialog-close {
-  min-height: 40px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-surface);
-  color: var(--color-accent);
-  cursor: pointer;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.rednote-trigger {
-  padding: 0 var(--space-md);
-}
-
-.rednote-trigger:focus-visible,
-.dialog-close:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 4px;
-}
-
-.photography-work-types,
-.photography-empty {
-  width: 100%;
-  margin-top: var(--space-xl);
-  padding-top: var(--space-xl);
-  border-top: 1px solid var(--color-border);
-}
-
-.work-type-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.work-type-list li {
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 0 var(--space-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.photography-empty {
-  max-width: 680px;
-}
-
-.photography-empty h2 {
-  max-width: 30ch;
-  margin-bottom: var(--space-sm);
-}
-
-.photography-empty p {
-  max-width: 42ch;
-  color: var(--color-muted);
-}
-
-.photography-section {
-  width: 100%;
-  margin-top: var(--space-xl);
-  padding-top: var(--space-xl);
-  border-top: 1px solid var(--color-border);
-}
-
-.photography-section h2 {
-  margin-bottom: var(--space-sm);
-}
-
-.section-copy {
-  max-width: 54ch;
-  margin-bottom: var(--space-lg);
-  color: var(--color-muted);
-}
-
-.project-description {
-  width: 100%;
-  max-width: none;
-  hyphens: none;
-  text-align: justify;
-  text-align-last: left;
-  text-wrap: pretty;
-}
-
-.photography-news-list {
-  display: grid;
-  gap: var(--space-md);
-  max-width: 720px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.photography-news-list li {
-  display: grid;
-  grid-template-columns: minmax(64px, max-content) minmax(0, 1fr);
-  gap: var(--space-md);
-  align-items: baseline;
-}
-
-.photography-news-list li span:last-child {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.photography-project-list {
-  display: grid;
-  gap: var(--space-md);
-  width: 100%;
-  max-width: none;
-}
-
-.photography-project-entry {
-  display: grid;
-  gap: var(--space-sm);
-  border-top: 1px solid var(--color-border);
-  padding-top: var(--space-md);
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-.photography-project-entry:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.photography-project-heading {
-  display: grid;
-  gap: var(--space-xs) var(--space-lg);
-  align-items: baseline;
-}
-
-.photography-project-heading span:first-child {
-  color: var(--color-text);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.45;
-}
-
-.photography-project-heading span:last-child,
-.photography-project-summary {
-  color: var(--color-muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.photography-project-summary {
-  display: block;
-  hyphens: none;
-  text-align: justify;
-  text-align-last: left;
-  text-wrap: pretty;
-}
-
-body:not([data-photography-lang="zh"]) .project-description > [data-lang-inline="en"],
-body:not([data-photography-lang="zh"]) .photography-project-summary > [data-lang-inline="en"],
-body[data-photography-lang="zh"] .project-description > [data-lang-inline="zh"],
-body[data-photography-lang="zh"] .photography-project-summary > [data-lang-inline="zh"] {
-  display: block;
-  text-align: inherit;
-  text-align-last: inherit;
-}
-
-.gallery-heading {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-}
-
-.text-link,
-.photo-back-link {
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.category-entry-list {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: var(--space-lg);
-}
-
-.category-entry {
-  display: grid;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-.category-entry-image-frame {
-  display: block;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  background: var(--color-bg);
-}
-
-.category-entry-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.category-entry-copy,
-.photo-grid-caption {
-  display: grid;
-  gap: var(--space-xs);
-}
-
-.category-entry-label,
-.photo-grid-title {
-  color: var(--color-text);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.category-entry-copy {
-  padding: var(--space-md);
-}
-
-.category-entry-count,
-.photo-grid-caption {
-  color: var(--color-muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.photo-grid {
-  --photo-grid-gutter: var(--space-lg);
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-xl) var(--photo-grid-gutter);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.photo-grid.is-masonry-ready {
-  display: block;
-  position: relative;
-}
-
-.photo-grid-item {
-  width: 100%;
-  min-width: 0;
-  margin: 0;
-}
-
-.photo-grid.is-masonry-ready .photo-grid-item {
-  margin-bottom: var(--space-xl);
-}
-
-.photo-grid-link {
-  display: grid;
-  gap: var(--space-sm);
-  color: inherit;
-  text-decoration: none;
-}
-
-.photo-grid-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 3px;
-}
-
-.photo-grid-empty {
-  max-width: 48ch;
-  color: var(--color-muted);
-}
-
-.tag-groups {
-  display: grid;
-  gap: var(--space-xl);
-}
-
-.tag-group {
-  padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-border);
-}
-
-.tag-group:first-child {
-  padding-top: 0;
-  border-top: 0;
-}
-
-.tag-group h2 {
-  margin-bottom: var(--space-md);
-}
-
-.tag-group[data-priority="primary"] .tag-link-list {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.tag-link-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--space-sm);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tag-link {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: var(--space-sm) var(--space-md);
-  color: var(--color-text);
-  font-size: 14px;
-  line-height: 1.5;
-  text-decoration: none;
-}
-
-.tag-link span:last-child {
-  color: var(--color-muted);
-}
-
-.tag-filter-panel,
-.tag-search-results {
-  display: grid;
-  gap: var(--space-lg);
-  margin-top: var(--space-xl);
-  padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-border);
-}
-
-.tag-filter-heading,
-.tag-results-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-sm) var(--space-md);
-}
-
-.tag-filter-heading h2,
-.tag-results-heading h2,
-.tag-results-heading p {
-  margin-bottom: 0;
-}
-
-.tag-filter-clear {
-  min-height: 40px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 0 var(--space-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.4;
-  cursor: pointer;
-}
-
-.tag-filter-clear:disabled {
-  color: var(--color-muted);
-  cursor: default;
-  opacity: 0.64;
-}
-
-.tag-filter-form {
-  display: grid;
-  gap: var(--space-lg);
-}
-
-.tag-filter-group {
-  min-width: 0;
-  margin: 0;
-  border: 0;
-  padding: 0;
-}
-
-.tag-filter-group legend {
-  margin-bottom: var(--space-sm);
-  color: var(--color-text);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.tag-filter-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: var(--space-sm);
-}
-
-.tag-filter-option {
-  min-height: 40px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-sm);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.tag-filter-option input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--color-accent);
-}
-
-.tag-filter-option span:nth-child(2) {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.tag-filter-option span:last-child {
-  color: var(--color-muted);
-}
-
-.metadata-kicker {
-  margin-bottom: var(--space-xs);
-  color: var(--color-muted);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.photo-detail-shell {
-  width: 100%;
-}
-
-.photo-detail {
-  display: grid;
-  gap: var(--space-lg);
-}
-
-.photo-detail.is-portrait {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  align-items: start;
-}
-
-.photo-detail.is-landscape,
-.photo-detail.is-square {
-  max-width: 760px;
-}
-
-.photo-detail-image-wrap {
-  min-width: 0;
-}
-
-.photo-detail-image {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-
-.photo-detail-meta {
-  min-width: 0;
-}
-
-.photo-metadata h1 {
-  margin-bottom: var(--space-lg);
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.metadata-list {
-  display: grid;
-  margin: 0;
-}
-
-.metadata-row {
-  display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
-  gap: var(--space-md);
-  padding: var(--space-sm) 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.metadata-row dt {
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.metadata-row dd {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 14px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-.photo-note {
-  margin-top: var(--space-md);
-  padding-top: var(--space-md);
-  border-top: 1px solid var(--color-border);
-  color: var(--color-muted);
-  font-size: 14px;
-  line-height: 1.5;
-  white-space: pre-line;
-}
-
-.photo-nav {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-md);
-  margin-top: var(--space-xl);
-}
-
-.photo-nav-link {
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-accent);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.photo-nav-next {
-  grid-column: 2;
-  justify-self: end;
-  text-align: right;
-}
-
-.project-detail-meta {
-  display: grid;
-  gap: var(--space-sm);
-  margin: 0 0 var(--space-md);
-}
-
-.project-detail-meta div {
-  display: grid;
-  grid-template-columns: minmax(80px, max-content) minmax(0, 1fr);
-  gap: var(--space-md);
-}
-
-.project-detail-meta dt {
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.project-detail-meta dd {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.rednote-dialog {
-  width: min(420px, calc(100vw - 40px));
-  max-height: calc(100vh - 40px);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: var(--space-lg);
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-.rednote-dialog::backdrop {
-  background: rgb(31 41 51 / 0.36);
-}
-
-.rednote-dialog-inner {
-  display: grid;
-  gap: var(--space-md);
-}
-
-.rednote-card {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 70vh;
-  object-fit: contain;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-}
-
-.dialog-close {
-  width: 100%;
-  padding: 0 var(--space-md);
 }
 
 h1,
@@ -1142,7 +299,10 @@ p {
   }
 
   .academic-intro {
-    max-width: 760px;
+    grid-template-columns: minmax(0, 1fr) 200px;
+    align-items: start;
+    column-gap: var(--space-2xl);
+    max-width: none;
     padding-top: var(--space-md);
     padding-bottom: var(--space-2xl);
   }
@@ -1174,108 +334,6 @@ p {
     max-width: none;
   }
 
-  .photography-project-heading {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-  }
-
-  .category-entry-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .photo-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .photo-grid.is-masonry-ready .photo-grid-item {
-    width: calc((100% - var(--photo-grid-gutter)) / 2);
-  }
-}
-
-@media (max-width: 767px) {
-  .photography-intro.has-intro-image {
-    min-height: clamp(420px, 68svh, 560px);
-    padding: var(--space-lg);
-  }
-
-  .photography-intro.has-intro-image .photography-intro-copy {
-    width: 100%;
-  }
-
-  .photography-intro.has-intro-image p {
-    hyphens: none;
-    max-width: none;
-    text-align: justify;
-    text-align-last: left;
-  }
-
-  .project-description {
-    hyphens: none;
-    text-align: justify;
-    text-align-last: left;
-  }
-
-  .photography-project-summary {
-    text-align: justify;
-    text-align-last: left;
-  }
-
-  .photography-intro-media::after {
-    background:
-      linear-gradient(90deg, rgb(36 33 29 / 0.76) 0%, rgb(36 33 29 / 0.48) 64%, rgb(36 33 29 / 0.2) 100%),
-      linear-gradient(0deg, rgb(36 33 29 / 0.78) 0%, rgb(36 33 29 / 0.28) 58%, rgb(36 33 29 / 0.42) 100%);
-  }
-
-  .photography-preferences {
-    justify-content: flex-end;
-    gap: var(--space-sm);
-    margin-top: calc(var(--space-lg) * -0.5);
-  }
-
-  .photography-segmented button {
-    min-width: 40px;
-    min-height: 28px;
-    padding: 0 9px;
-    font-size: 12px;
-  }
-
-  .photography-contact {
-    grid-template-columns: 1fr;
-    gap: var(--space-sm);
-    justify-content: stretch;
-  }
-
-  .photography-contact a,
-  .photography-contact button {
-    width: fit-content;
-  }
-
-  .photo-detail,
-  .photo-detail.is-landscape,
-  .photo-detail.is-portrait,
-  .photo-detail.is-square {
-    grid-template-columns: 1fr;
-    max-width: none;
-  }
-
-  .photo-detail-meta {
-    order: 2;
-  }
-
-  .photo-detail.is-portrait .photo-detail-meta {
-    order: 2;
-  }
-
-  .photo-nav {
-    grid-template-columns: 1fr;
-  }
-
-  .photo-nav-next {
-    grid-column: 1;
-    justify-self: start;
-    text-align: left;
-  }
 }
 
 @media (min-width: 1024px) {
@@ -1287,15 +345,1208 @@ p {
     font-size: 42px;
   }
 
-  .category-entry-list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+
+/* Academic homepage: portrait, research line, project cards, education. */
+
+.todo-text {
+  border: 1px dashed var(--color-todo-border);
+  border-radius: 3px;
+  padding: 0 4px;
+  background: var(--color-todo-bg);
+  color: var(--color-todo-text);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.academic-portrait {
+  width: 144px;
+  aspect-ratio: 1;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+
+.academic-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.academic-intro-copy {
+  min-width: 0;
+}
+
+.research-interests {
+  max-width: 32ch;
+  margin-bottom: var(--space-lg);
+}
+
+.research-interests-label {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.project-list {
+  display: grid;
+  gap: var(--space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-card {
+  display: grid;
+  gap: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: var(--space-md);
+  background: var(--color-surface);
+}
+
+.project-card-media {
+  display: block;
+  aspect-ratio: 16 / 9;
+  text-decoration: none;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.project-card-media img,
+.project-card-media video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.project-card-body {
+  min-width: 0;
+}
+
+.project-card-title {
+  margin-bottom: var(--space-xs);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.project-card-title a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.project-card-title a:hover {
+  text-decoration: underline;
+}
+
+.project-card-description {
+  margin-bottom: var(--space-sm);
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.project-card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.education-list {
+  display: grid;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.education-list li {
+  display: grid;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.education-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--space-md);
+}
+
+.education-institution {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.education-period,
+.education-degree {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.education-degree {
+  overflow-wrap: anywhere;
+}
+
+/* Placeholder slot shared by project cards. */
+
+.media-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--color-todo-border);
+  border-radius: 4px;
+  padding: var(--space-md);
+  background: var(--color-todo-bg);
+  color: var(--color-todo-text);
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .academic-portrait {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
   }
 
-  .photo-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .academic-intro-copy {
+    grid-column: 1;
+    grid-row: 1;
   }
 
-  .photo-grid.is-masonry-ready .photo-grid-item {
-    width: calc((100% - (var(--photo-grid-gutter) * 2)) / 3);
+  .research-interests {
+    max-width: 68ch;
+  }
+
+  .project-card {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: var(--space-lg);
+    align-items: start;
+  }
+}
+
+/* DexGO project page (/dexgo/). White in every OS theme so the white-background clips sit on the
+   page itself. One centred axis, as on the project video's screens: sentence headings and one-line
+   captions are centred; paragraphs are justified in a centred 68ch column (--dx-measure; the abstract
+   800 px); media
+   use a centred 1080 px column. Colours follow the video: teal key phrases and graph nodes.
+   Everything here is scoped to body.page-dexgo and dx- classes. */
+
+html:has(> body.page-dexgo) {
+  background: #ffffff;
+}
+
+/* Arial (Liberation Sans on Linux) scaled to the widths and line metrics of Source Sans 3, so the text set before
+   the web font arrives takes the same space and the title block does not reflow when it swaps in. size-adjust is
+   the ratio of the two fonts' widths over sample page text, per weight (600 falls back to Arial Bold); ascent and
+   descent are Source Sans 3's (1.024 em and 0.4 em) divided by size-adjust. */
+@font-face {
+  font-family: "Source Sans 3 Fallback";
+  font-weight: 400;
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("LiberationSans-Regular");
+  size-adjust: 93%;
+  ascent-override: 110.1%;
+  descent-override: 43%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Source Sans 3 Fallback";
+  font-weight: 600;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold");
+  size-adjust: 88.9%;
+  ascent-override: 115.2%;
+  descent-override: 45%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Source Sans 3 Fallback";
+  font-weight: 700;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold");
+  size-adjust: 91.2%;
+  ascent-override: 112.3%;
+  descent-override: 43.9%;
+  line-gap-override: 0%;
+}
+
+.page-dexgo {
+  --dx-bg: #ffffff;
+  --dx-fg: #1e2528;
+  --dx-muted: #586366;
+  --dx-rule: #dde3e1;
+  --dx-accent: #438f87;
+  --dx-ink: #367a73;
+  --dx-ink-hover: #2b665f;
+  --dx-sans: "Source Sans 3", "Source Sans 3 Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --dx-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --dx-measure: 624px; /* 68ch of Source Serif 4 at 18 px */
+  --dx-media: 1080px;
+  --dx-gap: 96px; /* between sections (64 px on phones) */
+  --dx-head-gap: 32px; /* under a section heading (24 px on phones) */
+  --color-text: var(--dx-fg);
+  --color-muted: var(--dx-muted);
+  --color-border: var(--dx-rule);
+  --color-accent: var(--dx-ink);
+  color-scheme: light;
+  background: var(--dx-bg);
+  color: var(--dx-fg);
+  font-family: var(--dx-sans);
+}
+
+.page-dexgo .site-shell {
+  max-width: calc(var(--dx-media) + 80px);
+}
+
+.page-dexgo .site-footer {
+  margin-top: var(--dx-gap);
+}
+
+/* The project page's own footer (ProjectLayout.astro): one quiet centred line, no personal links. */
+.page-dexgo .dx-footer {
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  text-align: center;
+}
+
+.page-dexgo :focus-visible {
+  outline: 2px solid var(--dx-ink);
+  outline-offset: 2px;
+}
+
+.dx-page {
+  min-width: 0;
+}
+
+.dx-page p {
+  max-width: none;
+  overflow-wrap: normal;
+}
+
+.dx-text {
+  width: 100%;
+  max-width: var(--dx-measure);
+  margin-inline: auto;
+}
+
+.dx-media {
+  width: 100%;
+  max-width: var(--dx-media);
+  margin-inline: auto;
+}
+
+.dx-section,
+.dx-screen {
+  margin-top: var(--dx-gap);
+}
+
+.dx-section > .visually-hidden:first-child + .dx-screen {
+  margin-top: 0;
+}
+
+.dx-teaser {
+  margin-top: 32px;
+}
+
+.dx-abstract {
+  margin-top: 96px;
+}
+
+/* The abstract reads as one block in a wider column than the other paragraphs. */
+.dx-abstract .dx-text {
+  max-width: 800px;
+}
+
+/* Title block. */
+
+.dx-title {
+  display: grid;
+  justify-items: center;
+  padding: 16px 0 0;
+  text-align: center;
+}
+
+.dx-title h1 {
+  margin: 0;
+  color: var(--dx-fg);
+  font: 700 64px/1.05 var(--dx-sans);
+  letter-spacing: -0.01em;
+}
+
+.dx-title p {
+  margin: 0;
+}
+
+.dx-title .dx-subtitle {
+  margin-top: 12px;
+  font: 400 21px/1.3 var(--dx-sans);
+  text-wrap: balance;
+}
+
+/* Authors: one centred line of linked names in the link colour (visible as links without hover, also on touch
+   screens), the affiliation and the equal-contribution note under it, as on most project pages. The co-first
+   authors and the others form two groups that wrap as units (two lines of two on phones); a name never breaks. */
+.dx-title .dx-authors,
+.dx-author-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 24px;
+}
+
+.dx-title .dx-authors {
+  margin-top: 20px;
+  font: 400 18px/1.45 var(--dx-sans);
+}
+
+.dx-author-group {
+  flex-wrap: nowrap;
+}
+
+.dx-author {
+  white-space: nowrap;
+}
+
+.dx-authors a {
+  color: var(--dx-ink);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition:
+    color 150ms ease-out,
+    text-decoration-color 150ms ease-out;
+}
+
+.dx-authors a:hover {
+  color: var(--dx-ink-hover);
+  text-decoration-color: currentColor;
+}
+
+.dx-title sup {
+  margin-left: 1px;
+  font-size: 0.7em;
+  line-height: 0;
+}
+
+.dx-title .dx-affiliation {
+  margin-top: 4px;
+  color: var(--dx-muted);
+  font: 400 16px/1.5 var(--dx-sans);
+}
+
+.dx-title .dx-author-note {
+  margin-top: 2px;
+  color: var(--dx-muted);
+  font: 400 14px/1.45 var(--dx-sans);
+}
+
+.dx-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 32px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  font: 600 16px/1.5 var(--dx-sans);
+}
+
+.dx-links a {
+  color: var(--dx-ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.dx-links a:hover {
+  color: var(--dx-ink-hover);
+}
+
+/* Headings: one sentence per screen, centred, key phrase in teal. Utility labels stay small. */
+
+.dx-heading {
+  max-width: 880px;
+  margin: 0 auto var(--dx-head-gap);
+  color: var(--dx-fg);
+  font: 700 40px/1.15 var(--dx-sans);
+  text-align: center;
+  text-wrap: balance;
+  scroll-margin-top: 32px;
+}
+
+.dx-key {
+  color: var(--dx-accent);
+}
+
+/* A hyphenated compound (in-hand, Long-horizon) never breaks at its hyphen. */
+.dx-nobr {
+  white-space: nowrap;
+}
+
+.dx-label {
+  margin: 0 0 12px;
+  color: var(--dx-muted);
+  font: 600 16px/1.4 var(--dx-sans);
+  text-align: center;
+}
+
+.dx-prose {
+  margin: 0;
+  color: var(--dx-fg);
+  font: 400 18px/1.55 var(--dx-serif);
+  /* Justified body text; hyphenation (needs the page's lang="en") keeps the narrow phone column free of gaps. */
+  text-align: justify;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
+.dx-prose + .dx-prose {
+  margin-top: 16px;
+}
+
+.dx-text + .dx-media {
+  margin-top: 32px;
+}
+
+.dx-formula {
+  margin: 24px 0;
+  max-width: 100%;
+}
+
+.dx-formula .katex-display {
+  margin: 0;
+}
+
+.page-dexgo .katex {
+  font-size: 1.1em;
+}
+
+/* Media. Clips are borderless on the white page. */
+
+.dx-clip {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--clip-aspect);
+  background: #ffffff;
+}
+
+.dx-clip video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #ffffff;
+}
+
+.dx-note {
+  max-width: var(--dx-measure);
+  margin: 12px auto 0;
+  color: var(--dx-muted);
+  font: 400 14px/1.45 var(--dx-sans);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.dx-note-text + .dx-control {
+  margin-left: 16px;
+}
+
+.dx-hand-panel[hidden] {
+  display: none;
+}
+
+/* Hand notes share one cell; the other hand's note keeps the line's height. */
+.dx-hand-notes {
+  display: grid;
+}
+
+.dx-hand-notes > .dx-note {
+  grid-area: 1 / 1;
+}
+
+.dx-hand-notes > [aria-hidden="true"] {
+  visibility: hidden;
+}
+
+.dx-control {
+  appearance: none;
+  border: 0;
+  padding: 4px 0;
+  background: none;
+  color: var(--dx-ink);
+  cursor: pointer;
+  font: 600 14px/1.45 var(--dx-sans);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition:
+    color 150ms ease-out,
+    text-decoration-color 150ms ease-out;
+}
+
+.dx-control:hover {
+  color: var(--dx-ink-hover);
+  text-decoration-color: currentColor;
+}
+
+.dx-control[hidden] {
+  display: none;
+}
+
+/* One page-level control for every clip: a quiet text button under the title links (.dx-control look). */
+
+.dx-video-toggle {
+  margin-top: 8px;
+  padding: 6px 4px;
+}
+
+/* Target grasps: two pair composites (each file holds one pair as two rows), side by side as in the video,
+   screwdriver left and hammer right, at one common scale (columns in proportion to the frame widths,
+   --pair-columns), top-aligned; the gutter between the pairs is wide so each pair reads as one group. Stacked
+   on phones. */
+.dx-pairs {
+  display: grid;
+  gap: 48px;
+}
+
+@media (min-width: 720px) {
+  .dx-pairs {
+    grid-template-columns: var(--pair-columns);
+    align-items: start;
+    column-gap: min(160px, 15%);
+  }
+}
+
+/* The kernel animation: as wide as the text column above it, so both share their edges. */
+.dx-media.is-text-width {
+  max-width: var(--dx-measure);
+}
+
+.dx-labelled {
+  margin: 0;
+}
+
+.dx-labelled figcaption {
+  margin-top: 8px;
+  color: var(--dx-fg);
+  font: 600 16px/1.4 var(--dx-sans);
+  text-align: center;
+}
+
+/* Sizes: the three files hold the hand at one size, so each clip is shown at its frame size times one common
+   scale --k (screen px per source px): the hands render equal and the objects keep their relative sizes. One
+   row at every width, as in the video: each file is placed so its hand centre (--hand-y) sits on one line,
+   --above under the stage top, and every stage ends --below under that line, where the labels share one line.
+   --above leaves room for the highest point any file draws (--reach, the long object upright in its first
+   frames) less the heading's bottom margin: that point may rise into the margin, never to the heading's text,
+   and the heading stays in front of the frame's white top. Each figure is as wide as what its file draws
+   (--span from --left); the white rest of a frame may overlap a neighbour or the labels, which stay in front.
+   k fits the row (100cqw, the row's width, less two gaps) and is at most 520 px for the tallest file (--h-max),
+   the size of the previous layout. */
+.dx-screen-sizes .dx-heading {
+  position: relative;
+  z-index: 1;
+}
+
+.dx-sizes {
+  --gap: 96px;
+  --k: min(calc((100cqw - 2 * var(--gap) - 1px) / var(--span-sum)), calc(520px / var(--h-max)));
+  --above: max(0px, var(--reach) * var(--k) - var(--dx-head-gap));
+  container-type: inline-size;
+  isolation: isolate;
+  display: flex;
+  justify-content: center;
+  gap: var(--gap);
+}
+
+.dx-sizes .dx-labelled {
+  flex: none;
+  width: calc(var(--span) * var(--k));
+}
+
+.dx-size-stage {
+  position: relative;
+  z-index: var(--z);
+  height: calc(var(--above) + var(--below) * var(--k));
+}
+
+.dx-size-stage .dx-clip {
+  position: absolute;
+  top: calc(var(--above) - var(--hand-y) * var(--k));
+  left: calc(-1 * var(--left) * var(--k));
+  width: calc(var(--w) * var(--k));
+}
+
+/* A page-coloured halo keeps a label readable where the long object's dark end passes behind it (phones). */
+.dx-sizes figcaption {
+  position: relative;
+  z-index: 4;
+  white-space: nowrap;
+  text-shadow:
+    0 0 2px var(--dx-bg),
+    0 0 4px var(--dx-bg),
+    0 0 8px var(--dx-bg);
+}
+
+/* The note under the row stays in front of the long frame's white bottom. */
+.dx-sizes + .dx-note {
+  position: relative;
+  z-index: 1;
+}
+
+/* Unseen objects: one swipeable row per hand (ObjectCarousel.astro). About 3.25 items show on wide
+   screens and 1.2 on phones, so the cut item says the row goes on. */
+.dx-carousel {
+  --carousel-gap: 16px;
+}
+
+.dx-carousel-track {
+  display: flex;
+  gap: var(--carousel-gap);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  cursor: grab;
+}
+
+.dx-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.dx-carousel-track.is-dragging {
+  scroll-snap-type: none;
+  cursor: grabbing;
+  user-select: none;
+}
+
+.dx-carousel-track:focus-visible {
+  outline-offset: 4px;
+}
+
+.dx-carousel-item {
+  flex: 0 0 calc((100% - 3 * var(--carousel-gap)) / 3.25);
+  margin: 0;
+  scroll-snap-align: start;
+}
+
+.dx-carousel-item video {
+  pointer-events: none;
+}
+
+.dx-carousel-item figcaption {
+  margin-top: 8px;
+  color: var(--dx-fg);
+  font: 600 16px/1.4 var(--dx-sans);
+  text-align: center;
+}
+
+.dx-carousel-nav {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.dx-carousel-button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--dx-rule);
+  border-radius: 50%;
+  padding: 0;
+  background: var(--dx-bg);
+  color: var(--dx-fg);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease-out,
+    color 150ms ease-out,
+    opacity 150ms ease-out;
+}
+
+.dx-carousel-button svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dx-carousel-button:hover:not(:disabled) {
+  border-color: var(--dx-ink);
+  color: var(--dx-ink);
+}
+
+.dx-carousel-button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+@media (max-width: 639px) {
+  .dx-carousel-item {
+    flex-basis: 80%;
+  }
+}
+
+.dx-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 24px;
+  margin: -8px 0 24px;
+}
+
+.dx-toggle button {
+  appearance: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 4px 0;
+  background: none;
+  color: var(--dx-muted);
+  cursor: pointer;
+  font: 600 16px/1.45 var(--dx-sans);
+  transition:
+    color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.dx-toggle button:hover {
+  color: var(--dx-fg);
+}
+
+.dx-toggle button[aria-pressed="true"] {
+  border-bottom-color: var(--dx-accent);
+  color: var(--dx-fg);
+}
+
+/* Interactive demo: the poster of what the visitor will see, then the iframe in the same box (LazyDemo.astro). */
+
+.dx-demo-stage {
+  position: relative;
+  aspect-ratio: var(--poster-ratio);
+}
+
+.dx-demo-stage picture {
+  display: contents;
+}
+
+.dx-demo-stage img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.dx-demo-stage iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #ffffff;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.dx-demo.is-loaded .dx-demo-stage iframe {
+  opacity: 1;
+}
+
+.dx-demo-loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  padding: 8px 16px;
+  background: #ffffff;
+  color: var(--dx-fg);
+  font: 600 16px/1.4 var(--dx-sans);
+  transform: translate(-50%, -50%);
+}
+
+/* Before start: the button sits above the poster's graph (centred on it at 81.5 % of the width; the graph's
+   top is at 38.75 % of the height), where the running demo shows its status, so the scene and the goal hand stay
+   visible; the whole poster is clickable. */
+.dx-demo:not(.is-started) .dx-demo-stage img {
+  cursor: pointer;
+}
+
+.dx-demo-start {
+  position: absolute;
+  left: 81.5%;
+  bottom: calc(61.25% + clamp(8px, 4%, 24px));
+  z-index: 1;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* Between 884 and 1023 px the poster is the 864 px capture (LazyDemo.astro), whose graph is centred at 78.4 %
+   of the width with its top at 40.1 % of the height. */
+@media (min-width: 884px) and (max-width: 1023px) {
+  .dx-demo-start {
+    left: 78.4%;
+    bottom: calc(59.9% + clamp(8px, 4%, 24px));
+  }
+}
+
+/* Below 884 px the stage is narrower than the 820 px the demo needs for its side-by-side layout, so the demo
+   stacks its graph under the view (its index.html): the stage is then that layout's 9:16 frame from the start,
+   with the matching poster (LazyDemo.astro), so starting changes nothing in the page. It is at most as tall as
+   the screen less some room, but never narrower than 340 px (the demo's top row keeps its two tab groups apart
+   only from about 340 px; narrower, their labels touch or overlap), so on short screens (landscape phones, a
+   browser toolbar) it is taller than the visible area. It stays within the column, except on phones narrower
+   than 380 px, where it reaches into the side gutters up to 340 px, keeping 10 px from the screen edges (the
+   demo insets its tabs and graph by 12 px, so they still sit about at the text's edge). Always centred. The
+   button sits where the status line runs, above the graph (centred; the graph's top is at 68.1 % of the
+   height). */
+@media (max-width: 883px) {
+  .dx-demo-stage {
+    --dx-stage-w: max(min(100%, max(340px, calc((100svh - 96px) * 9 / 16))), min(340px, 100vw - 20px));
+    width: var(--dx-stage-w);
+    margin-inline: calc((100% - var(--dx-stage-w)) / 2);
+    aspect-ratio: 9 / 16;
+  }
+
+  .dx-demo-start {
+    left: 50%;
+    bottom: calc(31.9% + clamp(8px, 4%, 24px));
+  }
+}
+
+.dx-demo-loading[hidden],
+.dx-demo-start[hidden] {
+  display: none;
+}
+
+.dx-button {
+  appearance: none;
+  border: 0;
+  border-radius: 4px;
+  padding: 12px 24px;
+  background: var(--dx-ink);
+  color: #ffffff;
+  cursor: pointer;
+  font: 600 16px/1.25 var(--dx-sans);
+  transition: background-color 150ms ease-out;
+}
+
+.dx-button:hover {
+  background: var(--dx-ink-hover);
+}
+
+/* Method figure: the paper's Fig. 2 with three marked regions and a row of links. */
+
+.dx-method-figure {
+  margin: 0;
+}
+
+.dx-method-stage {
+  position: relative;
+  width: 100%;
+}
+
+.dx-method-stage img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Regions: invisible at rest (the link row is the affordance); a light teal tint on hover or focus. */
+.dx-hotspot {
+  position: absolute;
+  border-radius: 6px;
+  background: transparent;
+  transition: background-color 150ms ease-out;
+}
+
+.dx-hotspot:hover,
+.dx-hotspot.is-lit {
+  background: rgb(67 143 135 / 0.08);
+}
+
+/* Phone-only: the whole image and a text link open the full-size figure. */
+.dx-method-zoom,
+.dx-spot-links .dx-method-open {
+  display: none;
+}
+
+.dx-spot-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 32px;
+  margin-top: 16px;
+  font: 600 14px/1.45 var(--dx-sans);
+}
+
+.dx-spot-links a {
+  padding: 4px 0;
+  color: var(--dx-ink);
+  text-decoration: underline;
+  text-decoration-color: rgb(54 122 115 / 0.35);
+  text-decoration-style: dashed;
+  text-underline-offset: 4px;
+  transition: text-decoration-color 150ms ease-out;
+}
+
+.dx-spot-links a:hover,
+.dx-spot-links a.is-lit {
+  text-decoration-color: currentColor;
+  text-decoration-style: solid;
+}
+
+/* Prerequisite graph: the animation cropped to its graph, nodes as buttons, the player beside it. */
+
+.dx-unlock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+}
+
+/* The graph, with its Replay button centred under it (the frame's own white margin under the legend is the gap). */
+.dx-unlock-main {
+  display: grid;
+  min-width: 0;
+}
+
+.dx-unlock-main .dx-control {
+  justify-self: center;
+}
+
+.dx-unlock-graph {
+  position: relative;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.dx-unlock-anim video {
+  display: block;
+  width: var(--frame);
+  max-width: none;
+  height: auto;
+  background: #ffffff;
+}
+
+.dx-unlock-legend-cover {
+  position: absolute;
+  background: #ffffff;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.dx-unlock[data-state="explore"] .dx-unlock-legend-cover {
+  opacity: 1;
+}
+
+.dx-unlock-nodes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dx-node {
+  position: absolute;
+  appearance: none;
+  border: 0;
+  border-radius: 0.73cqw;
+  padding: 0;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  font: 700 3.27cqw/1 "Liberation Sans", Arial, Helvetica, sans-serif;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  pointer-events: auto;
+  transition:
+    outline-color 150ms ease-out,
+    background-color 150ms ease-out;
+}
+
+/* Invisible hit area: at least 44 px tall where the graph is small (a node is 7cqw tall), never more than
+   3.8cqw past the node, under half of the 8.1cqw gap between rows, so it cannot reach a neighbour. */
+.dx-node::before {
+  position: absolute;
+  inset: calc(-1 * clamp(0px, 22px - 3.5cqw, 3.8cqw)) 0;
+  content: "";
+}
+
+.dx-node:hover,
+.dx-node:focus-visible {
+  outline: 2px solid var(--dx-accent);
+  outline-offset: 2px;
+}
+
+.dx-unlock[data-state="explore"] .dx-node.is-prereq {
+  outline: 2px dashed var(--dx-accent);
+  outline-offset: 3px;
+}
+
+.dx-unlock[data-state="explore"] .dx-node[aria-pressed="true"] {
+  /* The darker teal: white letters keep 5:1 contrast even where the graph is small. */
+  background: var(--dx-ink);
+  color: #ffffff;
+}
+
+.dx-unlock-side {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.dx-unlock-clip {
+  max-width: 440px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.dx-unlock-clip video {
+  object-fit: cover;
+}
+
+.dx-unlock-caption {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  color: var(--dx-muted);
+  font: 400 16px/1.45 var(--dx-sans);
+  text-align: center;
+}
+
+.dx-unlock-task {
+  color: var(--dx-fg);
+  font-weight: 600;
+}
+
+.dx-unlock-hint {
+  margin: 0;
+  color: var(--dx-muted);
+  font: 400 14px/1.45 var(--dx-sans);
+  text-align: center;
+  visibility: hidden;
+}
+
+.dx-unlock[data-state="explore"] .dx-unlock-hint {
+  visibility: visible;
+}
+
+/* After the first selection the hint hides but keeps its line, so the graph does not move under the cursor. */
+.dx-unlock .dx-unlock-hint.is-done {
+  visibility: hidden;
+}
+
+@media (min-width: 1024px) {
+  .dx-unlock {
+    /* Widths chosen so the graph stays at least as tall as the player column (square clip, a caption whose
+       rule may take two lines, hint): the row's height is the graph's and never changes on a click. */
+    grid-template-columns: minmax(0, 715fr) minmax(0, 341fr);
+    gap: 24px;
+    align-items: center;
+  }
+}
+
+@media (max-width: 719px) {
+  .dx-title h1 {
+    font-size: 44px;
+  }
+
+  .dx-title .dx-subtitle {
+    font-size: 18px;
+  }
+
+  .page-dexgo {
+    --dx-gap: 64px;
+    --dx-head-gap: 24px;
+  }
+
+  .dx-abstract {
+    margin-top: 64px;
+  }
+
+  .dx-heading {
+    font-size: 28px;
+  }
+
+  /* Phones: the figure is a thumbnail that opens the full-size figure; the link row is the way in. */
+  .dx-hotspot {
+    display: none;
+  }
+
+  .dx-method-zoom {
+    display: block;
+    position: absolute;
+    inset: 0;
+  }
+
+  .dx-spot-links .dx-method-open {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 8px;
+    text-decoration-style: solid;
+  }
+
+  .dx-spot-links {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .dx-spot-links a {
+    min-height: 32px;
+  }
+}
+
+@media (max-width: 639px) {
+  .dx-sizes {
+    --gap: 12px;
+  }
+
+  .dx-sizes figcaption {
+    font-size: 14px;
+  }
+
+  .dx-demo-start {
+    padding: 8px 16px;
+    font-size: 15px;
+  }
+
+  /* A clip with a phone cut takes the cut's aspect; the (wider) poster covers the box until it plays. */
+  .dx-clip.has-phone-cut {
+    aspect-ratio: var(--clip-phone-aspect);
+  }
+
+  .dx-clip.has-phone-cut video {
+    object-fit: cover;
+  }
+}
+
+@media (max-width: 399px) {
+  .dx-formula .katex {
+    font-size: 0.92em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-dexgo *,
+  .page-dexgo *::before,
+  .page-dexgo *::after {
+    transition-duration: 0s !important;
   }
 }

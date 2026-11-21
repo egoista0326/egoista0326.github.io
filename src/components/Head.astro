@@ -1,18 +1,54 @@
 ---
 import { site } from '../data/site';
+import { earlyPreferenceScript } from '../lib/photographyPrefs';
 
 interface Props {
   title?: string;
   description?: string;
+  /**
+   * Canonical path when the page is one of several copies (photo pages: `/photography/<slug>/`);
+   * `false` for a page without a URL of its own (404), which then has no canonical or og:url.
+   */
+  canonicalPath?: string | false;
+  /** False when the page writes its own Open Graph / Twitter tags in the layout's head slot (e.g. /dexgo/). */
+  shareTags?: boolean;
+  /** Photography pages: apply the stored theme and language to <html> before the stylesheet and first paint. */
+  photographyPreferences?: boolean;
 }
 
-const { title = site.title, description = site.description } = Astro.props;
+const {
+  title = site.title,
+  description = site.description,
+  canonicalPath,
+  shareTags = true,
+  photographyPreferences = false
+} = Astro.props;
 const pageTitle = title === site.title ? site.title : `${title} | ${site.name}`;
-const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).toString() : Astro.url.toString();
+const canonicalTarget = canonicalPath ?? Astro.url.pathname;
+const canonical =
+  canonicalTarget === false
+    ? undefined
+    : new URL(canonicalTarget, Astro.site ?? Astro.url).toString();
 ---
 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+{photographyPreferences ? <script is:inline set:html={earlyPreferenceScript} /> : null}
 <title>{pageTitle}</title>
 <meta name="description" content={description} />
-<link rel="canonical" href={canonical} />
+{canonical ? <link rel="canonical" href={canonical} /> : null}
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+{
+  shareTags ? (
+    <>
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content={site.name} />
+      {canonical ? <meta property="og:url" content={canonical} /> : null}
+      <meta property="og:title" content={pageTitle} />
+      <meta property="og:description" content={description} />
+      <meta name="twitter:card" content="summary" />
+      <meta name="twitter:title" content={pageTitle} />
+      <meta name="twitter:description" content={description} />
+    </>
+  ) : null
+}

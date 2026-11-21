@@ -2,56 +2,61 @@
 import Head from '../components/Head.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import PhotographyPreferences from '../components/photography/PhotographyPreferences.astro';
+import { site } from '../data/site';
 import '../styles/global.css';
 
 interface Props {
   title?: string;
   description?: string;
+  /** Canonical URL path when it differs from this page's path (photo pages: `/photography/<slug>/`); `false` for none (404). */
+  canonicalPath?: string | false;
+  /** Class on <body> for page-scoped styles (e.g. 'page-dexgo', 'page-photo'). */
+  bodyClass?: string;
+  /** The page writes its own Open Graph / Twitter tags in the head slot; the generic ones are skipped. */
+  ownShareTags?: boolean;
 }
 
-const { title, description } = Astro.props;
-const isPhotography = Astro.url.pathname === '/photography/' || Astro.url.pathname.startsWith('/photography/');
+const { title, description, canonicalPath, bodyClass, ownShareTags = false } = Astro.props;
+// Photography pages get the theme/language switches in the header and the early preference script
+// in <head> (Head.astro); every other page stays in the default light, English presentation.
+const isPhotography = Astro.url.pathname.startsWith('/photography/');
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
-    <Head title={title} description={description} />
+    <Head
+      title={title}
+      description={description}
+      canonicalPath={canonicalPath}
+      shareTags={!ownShareTags}
+      photographyPreferences={isPhotography}
+    />
+    <slot name="head" />
   </head>
-  <body>
-    {
-      isPhotography ? (
-        <script is:inline>
-          {`
-            (() => {
-              try {
-                const storedTheme = window.localStorage.getItem('photography-theme');
-                const storedLanguage = window.localStorage.getItem('photography-language');
-
-                if (storedTheme === 'dark' || storedTheme === 'light') {
-                  document.body.dataset.photographyTheme = storedTheme;
-                }
-
-                if (storedLanguage === 'zh' || storedLanguage === 'en') {
-                  document.body.dataset.photographyLang = storedLanguage;
-                }
-              } catch {
-                // Preference storage is optional.
-              }
-            })();
-          `}
-        </script>
-      ) : null
-    }
+  <body class={bodyClass}>
+    <a class="skip-link" href="#main">
+      {
+        isPhotography ? (
+          <>
+            <span data-lang-inline="en">Skip to content</span>
+            <span data-lang-inline="zh">跳到正文</span>
+          </>
+        ) : (
+          'Skip to content'
+        )
+      }
+    </a>
     <div class="site-shell">
-      <SiteHeader currentPath={Astro.url.pathname} />
-      {isPhotography ? <PhotographyPreferences /> : null}
-      <main>
+      <SiteHeader currentPath={Astro.url.pathname}>
+        {isPhotography ? <PhotographyPreferences /> : null}
+      </SiteHeader>
+      <main id="main" tabindex="-1">
         <slot />
       </main>
       <footer class="site-footer">
-        <span>&copy; {new Date().getFullYear()} Jiaxin Li</span>
-        <a href="mailto:ljx2986519980@gmail.com">ljx2986519980@gmail.com</a>
+        <span>&copy; {new Date().getFullYear()} {site.name}</span>
+        <a href={`mailto:${site.email}`}>{site.email}</a>
       </footer>
     </div>
   </body>

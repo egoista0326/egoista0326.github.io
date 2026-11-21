@@ -1,0 +1,32 @@
+---
+import TodoText from '../TodoText.astro';
+
+interface EducationItem {
+  institution: string;
+  degree: string;
+  major: string;
+  period: string;
+}
+
+interface Props {
+  items: EducationItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<ol class="education-list">
+  {
+    items.map((item) => (
+      <li>
+        <div class="education-heading">
+          <span class="education-institution">{item.institution}</span>
+          <span class="education-period">{item.period}</span>
+        </div>
+        <span class="education-degree">
+          {item.degree}{item.major ? <>, <TodoText text={item.major} /></> : null}
+        </span>
+      </li>
+    ))
+  }
+</ol>

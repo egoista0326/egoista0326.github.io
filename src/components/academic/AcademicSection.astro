@@ -4,9 +4,10 @@ interface Props {
 }
 
 const { title } = Astro.props;
+const headingId = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-heading`;
 ---
 
-<section class="academic-section" aria-labelledby={`${title.toLowerCase()}-heading`}>
-  <h2 id={`${title.toLowerCase()}-heading`}>{title}</h2>
+<section class="academic-section" aria-labelledby={headingId}>
+  <h2 id={headingId}>{title}</h2>
   <slot />
 </section>

@@ -1,0 +1,74 @@
+---
+/**
+ * Not-found page (GitHub Pages serves dist/404.html for every unknown path; so does `astro preview`).
+ * Site header and links back to the main sections; a stale photo link usually still has its photo
+ * under /photography/<slug>/, which the script below offers when the last path segment is a photo.
+ * One file serves every path, so under /photography/ the stored theme and language of the
+ * photography pages are applied at run time, before the stylesheet and the first paint (the same
+ * early script as theirs); elsewhere the page stays light and English.
+ */
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { photographyProfile } from '../data/photography';
+import { getPhotoHref, getPhotoLibrary, getPhotoSlug, tagFilterHref } from '../lib/photography';
+import { earlyPreferenceScript } from '../lib/photographyPrefs';
+import '../components/photography/photography.css';
+
+const { photos } = await getPhotoLibrary();
+const photoHrefs = Object.fromEntries(photos.map((photo) => [getPhotoSlug(photo), getPhotoHref(photo)]));
+const photographyPreferenceScript = `if(location.pathname.indexOf('/photography/')===0){${earlyPreferenceScript}}`;
+const { en, zh } = photographyProfile.landingCopy;
+---
+
+<SiteLayout title="Page not found" description="The requested page does not exist." canonicalPath={false}>
+  <Fragment slot="head"><script is:inline set:html={photographyPreferenceScript} /></Fragment>
+  <section class="not-found" aria-labelledby="not-found-title">
+    <h1 id="not-found-title"><span data-lang-inline="en">Page not found</span><span data-lang-inline="zh">页面不存在</span></h1>
+    <p class="muted"><span data-lang-inline="en">The page you asked for does not exist, or it has moved.</span><span data-lang-inline="zh">你要找的页面不存在，或已移动。</span></p>
+    <p class="not-found-photo" data-not-found-photo hidden>
+      <span data-lang-inline="en">This photograph is still here: <a data-not-found-photo-link href="/photography/">open it</a>.</span><span data-lang-inline="zh">这张照片还在：<a data-not-found-photo-link href="/photography/">打开查看</a>。</span>
+    </p>
+    <ul class="not-found-links">
+      <li><a href="/"><span data-lang-inline="en">Academic homepage</span><span data-lang-inline="zh">学术主页</span></a></li>
+      <li><a href="/photography/"><span data-lang-inline="en">Photography</span><span data-lang-inline="zh">摄影</span></a></li>
+      <li><a href="/photography/#selected-works-title"><span data-lang-inline="en">{en.sections.selectedWorks}</span><span data-lang-inline="zh">{zh.sections.selectedWorks}</span></a></li>
+      <li><a href={tagFilterHref}><span data-lang-inline="en">All photographs by tag</span><span data-lang-inline="zh">按标签浏览全部照片</span></a></li>
+    </ul>
+  </section>
+  <script type="application/json" data-not-found-photos set:html={JSON.stringify(photoHrefs)} />
+</SiteLayout>
+
+<script>
+  // /photography/<anything>/<photo-slug>/ that no longer exists (e.g. a photo moved out of a category):
+  // offer the photo's standalone page.
+  const photos = JSON.parse(document.querySelector('[data-not-found-photos]')?.textContent ?? '{}');
+  const segments = window.location.pathname.split('/').filter(Boolean);
+  const href = segments[0] === 'photography' ? photos[segments[segments.length - 1]] : undefined;
+  const offer = document.querySelector<HTMLElement>('[data-not-found-photo]');
+  const links = document.querySelectorAll<HTMLAnchorElement>('[data-not-found-photo-link]');
+
+  if (typeof href === 'string' && href !== window.location.pathname && offer && links.length > 0) {
+    links.forEach((link) => {
+      link.href = href;
+    });
+    offer.hidden = false;
+  }
+</script>
+
+<style>
+  .not-found {
+    max-width: 640px;
+    padding: var(--space-xl) 0 var(--space-2xl);
+  }
+
+  .not-found-links {
+    display: grid;
+    gap: var(--space-sm);
+    margin: var(--space-lg) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .not-found-links a {
+    font-weight: 500;
+  }
+</style>

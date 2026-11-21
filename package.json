@@ -7,10 +7,15 @@
     "build": "astro build",
     "preview": "astro preview",
     "qa:release": "node scripts/qa_release.mjs",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "node --test tests/unit/*.test.mjs",
+    "test:dist": "node --test tests/dist/*.test.mjs",
+    "test:e2e": "node --test tests/e2e/*.test.mjs",
+    "test:py": "${PYTHON:-python3} -m unittest discover -s tests/py"
   },
   "dependencies": {
     "astro": "6.3.3",
+    "katex": "0.19.1",
     "masonry-layout": "^4.2.2"
   },
   "devDependencies": {
