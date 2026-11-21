@@ -1,5 +1,5 @@
 ---
-import type { CategoryCover } from '../../data/photographyCategoryCovers';
+import { getImageSrcset, type CategoryCover } from '../../lib/photography';
 
 interface Props {
   href: string;
@@ -10,6 +10,8 @@ interface Props {
 }
 
 const { href, label, labelZh, count, cover } = Astro.props;
+/** The card spans one column of the category list: 3 from 1024px, 2 from 768px, else 1. */
+const coverSizes = '(min-width: 1024px) 264px, (min-width: 768px) calc(50vw - 44px), calc(100vw - 40px)';
 const countLabel =
   typeof count === 'number' ? `${count} photograph${count === 1 ? '' : 's'}` : '';
 const countLabelZh = typeof count === 'number' ? `${count} 张照片` : '';
@@ -22,10 +24,13 @@ const countLabelZh = typeof count === 'number' ? `${count} 张照片` : '';
         <img
           class="category-entry-image"
           src={cover.image}
+          srcset={getImageSrcset(cover.image, cover.width)}
+          sizes={coverSizes}
           alt={cover.alt}
           width={cover.width}
           height={cover.height}
           loading="lazy"
+          decoding="async"
           style={cover.objectPosition ? `object-position: ${cover.objectPosition}` : undefined}
         />
       </span>

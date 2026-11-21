@@ -1,0 +1,10 @@
+---
+// /photography/tags/<group>/<tag>/<photo>/: Previous/Next in the single-tag gallery order.
+import PhotoPage from '../../../../../components/photography/PhotoPage.astro';
+import { photoPagePaths, type PhotoPageProps } from '../../../../../lib/photographyPages';
+
+export const getStaticPaths = () => photoPagePaths('tag');
+type Props = PhotoPageProps;
+---
+
+<PhotoPage {...Astro.props} />

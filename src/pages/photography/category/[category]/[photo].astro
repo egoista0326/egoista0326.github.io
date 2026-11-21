@@ -1,0 +1,10 @@
+---
+// /photography/category/<category>/<photo>/: Previous/Next in the category gallery order.
+import PhotoPage from '../../../../components/photography/PhotoPage.astro';
+import { photoPagePaths, type PhotoPageProps } from '../../../../lib/photographyPages';
+
+export const getStaticPaths = () => photoPagePaths('category');
+type Props = PhotoPageProps;
+---
+
+<PhotoPage {...Astro.props} />

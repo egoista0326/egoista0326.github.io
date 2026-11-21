@@ -1,0 +1,55 @@
+---
+import SiteLayout from '../../../../layouts/SiteLayout.astro';
+import PhotoGrid from '../../../../components/photography/PhotoGrid.astro';
+import { getPhotoLibrary, getTagPhotoHref, tagFilterHref, type TagGallery } from '../../../../lib/photography';
+
+type Props = TagGallery;
+
+export async function getStaticPaths() {
+  const { tagGalleries } = await getPhotoLibrary();
+
+  // One page per tag that at least one photo uses.
+  return tagGalleries.map((gallery) => ({
+    params: { group: gallery.group.slug, tag: gallery.tag.slug },
+    props: gallery
+  }));
+}
+
+const { group, tag, photos } = Astro.props;
+// Back to the filter page with this tag already ticked (the filter page reads its query).
+const filterHref = `${tagFilterHref}?${new URLSearchParams({ [group.slug]: tag.slug })}`;
+---
+
+<SiteLayout title={`${tag.label} Photography`} description={`Photographs tagged ${tag.label}.`}>
+  <section class="photography-section gallery-heading" aria-labelledby="tag-title">
+    <p>
+      <a class="photo-back-link" data-gallery-back href={filterHref}>
+        <span data-lang-inline="en">Back to Photography Tags</span>
+        <span data-lang-inline="zh">返回摄影标签</span>
+      </a>
+    </p>
+    <p class="metadata-kicker">
+      <span data-lang-inline="en">{group.label}</span>
+      <span data-lang-inline="zh">{group.labelZh}</span>
+    </p>
+    <h1 id="tag-title">{tag.label}</h1>
+    <p class="section-copy">
+      <span data-lang-inline="en">{photos.length} photograph{photos.length === 1 ? '' : 's'} with this tag.</span>
+      <span data-lang-inline="zh">此标签下共有 {photos.length} 张照片。</span>
+    </p>
+  </section>
+
+  {/* Named "<page heading> photographs" in the page language. */}
+  <section class="photography-section" aria-labelledby="tag-title gallery-photos-word">
+    <span id="gallery-photos-word" class="visually-hidden"><span data-lang-inline="en">photographs</span><span data-lang-inline="zh">照片</span></span>
+    <PhotoGrid
+      photos={photos}
+      hrefFor={(photo) => getTagPhotoHref(group.slug, tag.slug, photo)}
+      emptyMessage="No photographs with this tag yet."
+    />
+  </section>
+
+  <script>
+    import '../../../../scripts/photography/galleryBack';
+  </script>
+</SiteLayout>

@@ -1,0 +1,10 @@
+---
+// /photography/<photo>/: every photo, Previous/Next in display order; follows ?from=tags&<filters> on the client.
+import PhotoPage from '../../components/photography/PhotoPage.astro';
+import { photoPagePaths, type PhotoPageProps } from '../../lib/photographyPages';
+
+export const getStaticPaths = () => photoPagePaths('standalone');
+type Props = PhotoPageProps;
+---
+
+<PhotoPage {...Astro.props} />

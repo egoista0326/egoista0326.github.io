@@ -1,0 +1,10 @@
+---
+// /photography/projects/<project>/<photo>/: Previous/Next in the order of the project photos.
+import PhotoPage from '../../../../components/photography/PhotoPage.astro';
+import { photoPagePaths, type PhotoPageProps } from '../../../../lib/photographyPages';
+
+export const getStaticPaths = () => photoPagePaths('project');
+type Props = PhotoPageProps;
+---
+
+<PhotoPage {...Astro.props} />

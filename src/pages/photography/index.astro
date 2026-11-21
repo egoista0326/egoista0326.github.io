@@ -1,57 +1,42 @@
 ---
-import { getCollection } from 'astro:content';
 import SiteLayout from '../../layouts/SiteLayout.astro';
-import {
-  photographyNews,
-  photographyProfile,
-  photographyProjects,
-  photographySelectedWorkSlugs
-} from '../../data/photography';
-import { photographyCategoryCovers } from '../../data/photographyCategoryCovers';
-import { photographyCategories } from '../../data/photographyVocab';
+import { photographyNews, photographyProfile } from '../../data/photography';
 import CategoryEntry from '../../components/photography/CategoryEntry.astro';
 import PhotoGrid from '../../components/photography/PhotoGrid.astro';
 import {
   getCategoryHref,
-  getPhotoSlug,
-  getPhotosByCategory,
-  getPhotosBySlugs,
+  getImageSrcset,
+  getPhotoLibrary,
+  getProjectHref,
   getSelectedPhotoHref,
-  sortPhotosForDisplay
+  tagFilterHref
 } from '../../lib/photography';
 
 const profile = photographyProfile;
 const landingCopy = profile.landingCopy;
-const photos = sortPhotosForDisplay(await getCollection('photos'));
-const selectedPhotos = getPhotosBySlugs(photos, photographySelectedWorkSlugs);
-const selectedPhotoHrefs = Object.fromEntries(
-  selectedPhotos.map((photo) => [getPhotoSlug(photo), getSelectedPhotoHref(photo)])
-);
-const categoryEntries = photographyCategories.map((category) => {
-  const categoryPhotos = getPhotosByCategory(photos, category.slug);
-
-  return {
-    category,
-    photos: categoryPhotos,
-    cover: photographyCategoryCovers[category.slug]
-  };
-});
+const { selectedPhotos, categories, projects } = await getPhotoLibrary();
 const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.zh.copy.categories);
+// The hero covers the full content width (about 840px) at every size (object-fit: cover).
+const heroSize = { width: 1920, height: 1280 };
+const rednoteCardSize = { width: 879, height: 1200 };
 ---
 
-<SiteLayout title="Photography" description={profile.intro}>
-  <div class="photography-page" data-photography-page data-photography-theme="light" data-photography-lang="en">
+<SiteLayout title="Photography" description={landingCopy.en.introParagraphs[0]}>
+  <div class="photography-page">
     <section class:list={['photography-intro', profile.introImage.src ? 'has-intro-image' : '']} aria-labelledby="page-title">
       {
         profile.introImage.src ? (
           <div class="photography-intro-media" aria-hidden="true">
             <img
               src={profile.introImage.src}
+              srcset={getImageSrcset(profile.introImage.src, heroSize.width)}
+              sizes="856px"
               alt=""
-              width="1920"
-              height="1280"
+              width={heroSize.width}
+              height={heroSize.height}
               loading="eager"
               decoding="async"
+              fetchpriority="high"
             />
           </div>
         ) : null
@@ -78,7 +63,11 @@ const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.
             }
           </div>
         </div>
-        <div class="photography-contact" aria-label={landingCopy.en.contact.ariaLabel}>
+        <div class="photography-contact" role="group" aria-labelledby="photography-contact-label">
+          <span id="photography-contact-label" class="visually-hidden">
+            <span data-lang-inline="en">{landingCopy.en.contact.ariaLabel}</span>
+            <span data-lang-inline="zh">{landingCopy.zh.contact.ariaLabel}</span>
+          </span>
           <a href={`mailto:${profile.email}`}>{profile.email}</a>
           <a href={profile.instagram.url} target="_blank" rel="noopener noreferrer">
             <span data-lang-inline="en">{landingCopy.en.contact.instagram}</span>
@@ -90,6 +79,19 @@ const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.
           </button>
         </div>
       </div>
+    </section>
+
+    <section class="photography-section" aria-labelledby="selected-works-title">
+      <h2 id="selected-works-title">
+        <span data-lang-inline="en">{landingCopy.en.sections.selectedWorks}</span>
+        <span data-lang-inline="zh">{landingCopy.zh.sections.selectedWorks}</span>
+      </h2>
+      <PhotoGrid
+        photos={selectedPhotos}
+        hrefFor={getSelectedPhotoHref}
+        emptyMessage={landingCopy.en.copy.selectedEmpty}
+        priority={false}
+      />
     </section>
 
     <section class="photography-section" aria-labelledby="photography-news-title">
@@ -119,8 +121,8 @@ const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.
       </h2>
       <div class="photography-project-list">
         {
-          photographyProjects.map((project) => (
-            <a class="photography-project-entry" href={`/photography/projects/${project.slug}/`}>
+          projects.map(({ project }) => (
+            <a class="photography-project-entry" href={getProjectHref(project.slug)}>
               <span class="photography-project-heading">
                 <span>
                   <span data-lang-inline="en">{project.title}</span>
@@ -152,7 +154,7 @@ const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.
         <span data-lang-inline="en">{landingCopy.en.copy.tags}</span>
         <span data-lang-inline="zh">{landingCopy.zh.copy.tags}</span>
       </p>
-      <a class="text-link" href="/photography/tags/">
+      <a class="text-link" href={tagFilterHref}>
         <span data-lang-inline="en">{landingCopy.en.copy.tagLink}</span>
         <span data-lang-inline="zh">{landingCopy.zh.copy.tagLink}</span>
       </a>
@@ -173,12 +175,12 @@ const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.
       }
       <div class="category-entry-list">
         {
-          categoryEntries.map(({ category, photos: categoryPhotos, cover }) => (
+          categories.map(({ category, cover, photos }) => (
             <CategoryEntry
               href={getCategoryHref(category.slug)}
-              label={landingCopy.en.categoryLabels[category.slug] ?? category.label}
-              labelZh={landingCopy.zh.categoryLabels[category.slug]}
-              count={categoryPhotos.length}
+              label={category.label}
+              labelZh={category.labelZh}
+              count={photos.length}
               cover={cover}
             />
           ))
@@ -186,17 +188,6 @@ const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.
       </div>
     </section>
 
-    <section class="photography-section" aria-labelledby="selected-works-title">
-      <h2 id="selected-works-title">
-        <span data-lang-inline="en">{landingCopy.en.sections.selectedWorks}</span>
-        <span data-lang-inline="zh">{landingCopy.zh.sections.selectedWorks}</span>
-      </h2>
-      <PhotoGrid
-        photos={selectedPhotos}
-        photoHrefs={selectedPhotoHrefs}
-        emptyMessage={landingCopy.en.copy.selectedEmpty}
-      />
-    </section>
   </div>
 
   <dialog class="rednote-dialog" data-rednote-dialog aria-labelledby="rednote-title">
@@ -209,8 +200,13 @@ const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.
       <img
         class="rednote-card"
         src={profile.rednote.cardImage}
+        srcset={getImageSrcset(profile.rednote.cardImage, rednoteCardSize.width)}
+        sizes="(max-width: 459px) calc(100vw - 90px), 370px"
         alt={profile.rednote.alt}
+        width={rednoteCardSize.width}
+        height={rednoteCardSize.height}
         loading="lazy"
+        decoding="async"
       />
       <form method="dialog">
         <button class="dialog-close" type="submit" data-rednote-close>
@@ -222,23 +218,6 @@ const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.
   </dialog>
 
   <script>
-    const openButton = document.querySelector('[data-rednote-open]');
-    const dialog = document.querySelector('[data-rednote-dialog]');
-
-    if (openButton instanceof HTMLButtonElement && dialog instanceof HTMLDialogElement) {
-      openButton.addEventListener('click', () => {
-        dialog.showModal();
-      });
-
-      dialog.addEventListener('click', (event) => {
-        if (event.target === dialog) {
-          dialog.close();
-        }
-      });
-
-      dialog.addEventListener('close', () => {
-        openButton.focus();
-      });
-    }
+    import '../../scripts/photography/rednoteDialog';
   </script>
 </SiteLayout>

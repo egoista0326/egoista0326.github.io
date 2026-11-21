@@ -1,23 +1,44 @@
 ---
+/**
+ * Masonry grid of photo tiles (1 / 2 / 3 columns). Images carry a srcset of width variants with
+ * `sizes` matching the grid columns; the first row loads eagerly and, unless `priority` is false, the
+ * first tile with high fetch priority (it is usually the largest image of a gallery page).
+ * Behaviour (Masonry, marking the photo just viewed on return): src/scripts/photography/photoGrid.ts.
+ */
 import PhotoGridItem from './PhotoGridItem.astro';
-import type { PhotoEntry } from '../../lib/photography';
+import './photography.css';
+import { getPhotoHref, type PhotoEntry, type PhotoHref } from '../../lib/photography';
 
 interface Props {
   photos: PhotoEntry[];
   emptyMessage?: string;
-  photoHrefs?: Record<string, string>;
-  photoTags?: Record<string, Record<string, readonly string[]>>;
-  masonry?: boolean;
+  /** URL of each tile inside the current gallery; defaults to the standalone photo page. */
+  hrefFor?: PhotoHref;
+  /** Adds `data-<group>` tag attributes to each tile for the client-side filter on /photography/tags/. */
+  withTagData?: boolean;
+  /** False when another image is the page's main image (the landing page hero). */
+  priority?: boolean;
 }
 
-const { photos, emptyMessage, photoHrefs = {}, photoTags = {}, masonry = true } = Astro.props;
+const { photos, emptyMessage, hrefFor = getPhotoHref, withTagData = false, priority = true } = Astro.props;
+/** Rendered tile width: 3 columns of the 840px content from 1024px, 2 columns from 768px, else 1. */
+const tileSizes = '(min-width: 1024px) 264px, (min-width: 768px) calc(50vw - 44px), calc(100vw - 40px)';
+/** Tiles of the first row, loaded without waiting for layout. */
+const firstRow = 3;
 ---
 
 {
   photos.length > 0 ? (
-    <ul class="photo-grid" data-photo-grid={masonry ? '' : undefined}>
-      {photos.map((photo) => (
-        <PhotoGridItem photo={photo} href={photoHrefs[photo.data.slug]} tagData={photoTags[photo.data.slug]} />
+    <ul class="photo-grid" data-photo-grid>
+      {photos.map((photo, index) => (
+        <PhotoGridItem
+          photo={photo}
+          href={hrefFor(photo)}
+          withTagData={withTagData}
+          sizes={tileSizes}
+          loading={index < firstRow ? 'eager' : 'lazy'}
+          fetchpriority={priority && index === 0 ? 'high' : undefined}
+        />
       ))}
     </ul>
   ) : emptyMessage ? (
@@ -26,43 +47,5 @@ const { photos, emptyMessage, photoHrefs = {}, photoTags = {}, masonry = true } 
 }
 
 <script>
-  import Masonry from 'masonry-layout';
-
-  const getGridGutter = (grid: Element) => {
-    const value = Number.parseFloat(getComputedStyle(grid).getPropertyValue('--photo-grid-gutter'));
-
-    return Number.isFinite(value) ? value : 24;
-  };
-
-  const initPhotoGrid = (grid: Element) => {
-    grid.classList.add('is-masonry-ready');
-
-    const masonry = new Masonry(grid, {
-      itemSelector: '.photo-grid-item:not([hidden])',
-      gutter: getGridGutter(grid),
-      percentPosition: true,
-      transitionDuration: 0
-    });
-
-    const relayout = () => {
-      masonry.reloadItems();
-      masonry.layout();
-    };
-
-    grid.querySelectorAll('img').forEach((image) => {
-      if (!image.complete) {
-        image.addEventListener('load', relayout, { once: true });
-      }
-    });
-
-    window.addEventListener('load', relayout, { once: true });
-    grid.addEventListener('photo-grid:relayout', relayout);
-
-    if ('ResizeObserver' in window) {
-      const resizeObserver = new ResizeObserver(relayout);
-      resizeObserver.observe(grid);
-    }
-  };
-
-  document.querySelectorAll('[data-photo-grid]').forEach(initPhotoGrid);
+  import '../../scripts/photography/photoGrid';
 </script>

@@ -1,52 +1,99 @@
 ---
+/**
+ * The photo view of every photo page: the bar (back link to the gallery, pager), the photo and its
+ * metadata. Layout: photography.css ("Photo pages"); behaviour: src/scripts/photography/photoPage.ts.
+ */
 import PhotoMetadata from './PhotoMetadata.astro';
-import PhotoNavigation from './PhotoNavigation.astro';
-import { getPhotoAlt, isVisibleTitle, type PhotoEntry } from '../../lib/photography';
+import PhotoNavigation, { type PagerTarget } from './PhotoNavigation.astro';
+import './photography.css';
+import {
+  getPhotoAlt,
+  getPhotoAnchorId,
+  getPhotoNeighbors,
+  getPhotoPageImage,
+  getPhotoSlug,
+  getPhotoTitle,
+  type PhotoContext,
+  type PhotoEntry
+} from '../../lib/photography';
+import { quietViewEarlyScript } from '../../lib/photographySession';
+import type { TagContextData } from '../../lib/photographyTagFilter';
 
 interface Props {
   photo: PhotoEntry;
-  previous?: PhotoEntry;
-  previousHref?: string;
-  next?: PhotoEntry;
-  nextHref?: string;
-  backHref?: string;
-  backLabel?: string;
+  /** The gallery the page belongs to: back link, Previous/Next and position follow it. */
+  context: PhotoContext;
+  /**
+   * Standalone pages only: every photo with its tags, so the page script can follow the
+   * `?from=tags&<filters>` context of /photography/tags/. Without JS or `from` the static context applies.
+   */
+  tagContext?: TagContextData;
 }
 
-const {
-  photo,
-  previous,
-  previousHref,
-  next,
-  nextHref,
-  backHref = '/photography/',
-  backLabel = 'Back to Photography'
-} = Astro.props;
+const { photo, context, tagContext } = Astro.props;
+const slug = getPhotoSlug(photo);
+const { previous, next } = getPhotoNeighbors(context.photos, photo);
+const index = context.photos.findIndex((candidate) => getPhotoSlug(candidate) === slug);
+const position = index >= 0 ? { index: index + 1, count: context.photos.length } : undefined;
+const pagerTarget = (neighbor?: PhotoEntry): PagerTarget | undefined => {
+  if (!neighbor) return undefined;
+  const { srcset, sizes, quietSizes } = getPhotoPageImage(neighbor);
+
+  return { href: context.hrefFor(neighbor), label: context.labelOf(neighbor), image: { srcset, sizes, quietSizes } };
+};
+const backHref = `${context.galleryHref}#${getPhotoAnchorId(photo)}`;
+const image = getPhotoPageImage(photo);
+const title = getPhotoTitle(photo);
+const headingId = 'photo-heading';
+// width / height; the photo is sized so that its height fits the viewport (photography.css).
+const photoRatio = (photo.data.width / photo.data.height).toFixed(4);
+// `<` escaped so the JSON can never close its <script> element.
+const tagContextJson = tagContext ? JSON.stringify(tagContext).replace(/</g, '\\u003c') : '';
 ---
 
-<section class="photo-detail-shell" aria-label="Photograph detail">
-  {!isVisibleTitle(photo.data.title) ? <h1 class="visually-hidden">Photograph</h1> : null}
-  <p><a class="photo-back-link" href={backHref}>{backLabel}</a></p>
-  <div class:list={['photo-detail', `is-${photo.data.orientation}`]}>
-    <div class="photo-detail-image-wrap">
+<section class="photo-detail-shell" aria-labelledby={headingId} data-photo-view data-photo-slug={slug}>
+  <script is:inline set:html={quietViewEarlyScript} />
+  {title ? null : <h1 id={headingId} class="visually-hidden">{context.labelOf(photo)}</h1>}
+  <div class:list={['photo-view', `is-${photo.data.orientation}`]} style={`--photo-ratio: ${photoRatio}`}>
+    <div class="photo-view-bar">
+      <a class="photo-back-link" href={backHref} data-photo-back>
+        <span class="photo-back-arrow" aria-hidden="true">←</span>
+        <span class="photo-back-label">
+          <span data-lang-inline="en"><span class="photo-back-prefix">Back to </span><span data-photo-back-name="en">{context.name.en}</span></span>
+          <span data-lang-inline="zh"><span class="photo-back-prefix">返回</span><span data-photo-back-name="zh">{context.name.zh}</span></span>
+        </span>
+      </a>
+      <PhotoNavigation previous={pagerTarget(previous)} next={pagerTarget(next)} position={position} />
+    </div>
+    <figure class="photo-view-media" data-photo-swipe data-photo-quiet-toggle>
       <img
         class="photo-detail-image"
-        src={photo.data.image}
+        src={image.src}
+        srcset={image.srcset}
+        sizes={image.sizes}
+        data-quiet-sizes={image.quietSizes}
         alt={getPhotoAlt(photo)}
-        width={photo.data.width}
-        height={photo.data.height}
+        width={image.width}
+        height={image.height}
         loading="eager"
         decoding="async"
+        fetchpriority="high"
       />
+      <button class="photo-quiet-close" type="button" data-photo-quiet-close>
+        <span aria-hidden="true">×</span>
+        <span class="visually-hidden">
+          <span data-lang-inline="en">Close full view</span>
+          <span data-lang-inline="zh">关闭全屏查看</span>
+        </span>
+      </button>
+    </figure>
+    <div class="photo-view-meta">
+      <PhotoMetadata photo={photo} headingId={headingId} />
     </div>
-    <aside class="photo-detail-meta" aria-label="Photograph metadata">
-      <PhotoMetadata photo={photo} />
-      <PhotoNavigation
-        previous={previous}
-        previousHref={previousHref}
-        next={next}
-        nextHref={nextHref}
-      />
-    </aside>
   </div>
+  {tagContext ? <script type="application/json" data-photo-tag-context set:html={tagContextJson} /> : null}
 </section>
+
+<script>
+  import '../../scripts/photography/photoPage';
+</script>

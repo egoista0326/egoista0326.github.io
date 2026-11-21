@@ -1,0 +1,1088 @@
+/*
+ * Photography styles: every rule that only the /photography/ pages use (the landing page, galleries,
+ * photo pages, preferences, dialogs). Imported by the photography components, so it loads on every
+ * photography page and nowhere else; src/styles/global.css keeps tokens, the site shell, header,
+ * footer and shared primitives. The tag filter page has its own tag-filter.css.
+ */
+
+/* Theme and language: set on <html> before the first paint by the inline script of SiteLayout
+   (earlyPreferenceScript in src/lib/photographyPrefs.ts). Pages outside /photography/ never get
+   these attributes. */
+html[data-photography-theme="dark"] {
+  --color-bg: #11100e;
+  --color-text: #f2eee7;
+  --color-accent: #9fc7c4;
+  --color-muted: #a9a197;
+  --color-border: #38332d;
+  --color-surface: #1a1714;
+  color-scheme: dark;
+}
+
+html[data-photography-theme="dark"] body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+html[data-photography-theme="dark"] .site-header,
+html[data-photography-theme="dark"] .site-footer {
+  border-color: var(--color-border);
+}
+
+html[data-photography-theme="dark"] .site-mark,
+html[data-photography-theme="dark"] .nav-link.is-active {
+  color: var(--color-text);
+}
+
+html[data-photography-theme="dark"] .nav-link,
+html[data-photography-theme="dark"] .site-footer,
+html[data-photography-theme="dark"] .site-footer a {
+  color: var(--color-muted);
+}
+
+[data-lang-inline="zh"],
+[data-lang-panel="zh"] {
+  display: none;
+}
+
+html[data-photography-lang="zh"] [data-lang-inline="en"],
+html[data-photography-lang="zh"] [data-lang-panel="en"] {
+  display: none;
+}
+
+html[data-photography-lang="zh"] [data-lang-inline="zh"] {
+  display: inline;
+}
+
+html[data-photography-lang="zh"] [data-lang-panel="zh"] {
+  display: block;
+}
+
+.photography-intro {
+  width: 100%;
+  max-width: 720px;
+  padding: var(--space-sm) 0 var(--space-xl);
+}
+
+.photography-page {
+  color: var(--color-text);
+}
+
+.photography-intro-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: start;
+  gap: var(--space-lg);
+  width: min(100%, 72ch);
+  justify-self: center;
+}
+
+.photography-intro p {
+  margin-bottom: 0;
+}
+
+.photography-intro.has-intro-image {
+  position: relative;
+  display: grid;
+  min-height: clamp(360px, 48vh, 520px);
+  align-items: start;
+  overflow: hidden;
+  max-width: none;
+  border-radius: 6px;
+  padding: clamp(28px, 4vw, 48px);
+  background: #24211d;
+  color: #f5f3ed;
+}
+
+.photography-intro.has-intro-image .photography-intro-copy {
+  align-self: start;
+}
+
+.photography-intro.has-intro-image h1 {
+  margin-bottom: 0;
+  color: #f8f7f2;
+}
+
+.photography-intro-body {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.photography-intro-body [data-lang-panel="en"],
+html[data-photography-lang="zh"] .photography-intro-body [data-lang-panel="zh"] {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.photography-intro-body [data-lang-panel="zh"],
+html[data-photography-lang="zh"] .photography-intro-body [data-lang-panel="en"] {
+  display: none;
+}
+
+.photography-intro.has-intro-image p {
+  max-width: none;
+  color: rgb(245 243 237 / 0.84);
+  hyphens: none;
+  text-align: justify;
+  text-wrap: pretty;
+}
+
+.photography-intro.has-intro-image .photography-contact a,
+.photography-intro.has-intro-image .rednote-trigger {
+  color: #f8f7f2;
+}
+
+.photography-intro.has-intro-image .rednote-trigger {
+  border-color: rgb(248 247 242 / 0.28);
+  background: rgb(248 247 242 / 0.08);
+}
+
+.photography-intro-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.photography-intro-media::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    linear-gradient(90deg, rgb(28 25 22 / 0.78) 0%, rgb(28 25 22 / 0.5) 48%, rgb(28 25 22 / 0.12) 100%),
+    linear-gradient(180deg, rgb(28 25 22 / 0.7) 0%, rgb(28 25 22 / 0.26) 50%, rgb(28 25 22 / 0.5) 100%);
+}
+
+.photography-intro-media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  opacity: 0.8;
+}
+
+/* Theme and language switches, in the site header of every photography page (SiteLayout passes
+   PhotographyPreferences into SiteHeader). Phones: right of the site name, the nav below; wider:
+   after the nav. The pressed state follows the <html> attributes, so it is right before any script. */
+.site-header .photography-preferences {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: auto;
+}
+
+.site-header:has(.photography-preferences) {
+  align-items: center;
+}
+
+.photography-preference-group {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.photography-segmented {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 86%, transparent);
+}
+
+.photography-segmented button {
+  min-width: 40px;
+  min-height: 30px;
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  padding: 0 9px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.photography-segmented button:first-child {
+  border-radius: 999px 0 0 999px;
+}
+
+.photography-segmented button:last-child {
+  border-right: 0;
+  border-radius: 0 999px 999px 0;
+}
+
+.photography-segmented button:hover {
+  color: var(--color-text);
+}
+
+html:not([data-photography-theme="dark"]) [data-photography-theme-option="light"],
+html[data-photography-theme="dark"] [data-photography-theme-option="dark"],
+html:not([data-photography-lang="zh"]) [data-photography-lang-option="en"],
+html[data-photography-lang="zh"] [data-photography-lang-option="zh"] {
+  background: var(--color-text);
+  color: var(--color-bg);
+  cursor: default;
+}
+
+/* Drawn outside the button with a gap in the page colour, so it reads on the pressed fill too. */
+.photography-segmented button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--color-bg);
+}
+
+@media (pointer: coarse) {
+  .photography-segmented button {
+    min-height: 36px;
+  }
+}
+
+/* Without JavaScript the switches cannot work, so they are not shown. */
+@media (scripting: none) {
+  .site-header .photography-preferences {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .site-header:has(.photography-preferences) .site-mark {
+    order: 0;
+  }
+
+  .site-header .photography-preferences {
+    order: 1;
+  }
+
+  .site-header:has(.photography-preferences) .site-nav {
+    order: 2;
+  }
+}
+
+@media (min-width: 768px) {
+  .site-header:has(.photography-preferences) .site-nav {
+    margin-left: auto;
+  }
+
+  .site-header .photography-preferences {
+    margin-left: 0;
+  }
+}
+
+.photography-contact {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-sm);
+  align-items: center;
+  justify-self: center;
+  margin-top: 0;
+  width: min(100%, 580px);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.photography-contact a,
+.photography-contact button {
+  justify-self: center;
+  white-space: nowrap;
+}
+
+.rednote-trigger,
+.dialog-close {
+  min-height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.rednote-trigger {
+  padding: 0 var(--space-md);
+}
+
+.rednote-trigger:focus-visible,
+.dialog-close:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.photography-section {
+  width: 100%;
+  margin-top: var(--space-xl);
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--color-border);
+}
+
+.photography-section h2 {
+  margin-bottom: var(--space-sm);
+}
+
+.section-copy {
+  max-width: 54ch;
+  margin-bottom: var(--space-lg);
+  color: var(--color-muted);
+}
+
+.project-description {
+  width: 100%;
+  max-width: none;
+  hyphens: none;
+  text-align: justify;
+  text-align-last: left;
+  text-wrap: pretty;
+}
+
+.photography-news-list {
+  display: grid;
+  gap: var(--space-md);
+  max-width: 720px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photography-news-list li {
+  display: grid;
+  grid-template-columns: minmax(64px, max-content) minmax(0, 1fr);
+  gap: var(--space-md);
+  align-items: baseline;
+}
+
+.photography-news-list li span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.photography-project-list {
+  display: grid;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: none;
+}
+
+.photography-project-entry {
+  display: grid;
+  gap: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-md);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.photography-project-entry:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.photography-project-heading {
+  display: grid;
+  gap: var(--space-xs) var(--space-lg);
+  align-items: baseline;
+}
+
+.photography-project-heading span:first-child {
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.photography-project-heading span:last-child,
+.photography-project-summary {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.photography-project-summary {
+  display: block;
+  hyphens: none;
+  text-align: justify;
+  text-align-last: left;
+  text-wrap: pretty;
+}
+
+html:not([data-photography-lang="zh"]) .project-description > [data-lang-inline="en"],
+html:not([data-photography-lang="zh"]) .photography-project-summary > [data-lang-inline="en"],
+html[data-photography-lang="zh"] .project-description > [data-lang-inline="zh"],
+html[data-photography-lang="zh"] .photography-project-summary > [data-lang-inline="zh"] {
+  display: block;
+  text-align: inherit;
+  text-align-last: inherit;
+}
+
+.gallery-heading {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.text-link,
+.photo-back-link {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.category-entry-list {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+
+.category-entry {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.category-entry-image-frame {
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.category-entry-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.category-entry-copy,
+.photo-grid-caption {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.category-entry-label,
+.photo-grid-title {
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.category-entry-copy {
+  padding: var(--space-md);
+}
+
+.category-entry-count,
+.photo-grid-caption {
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.photo-grid {
+  --photo-grid-gutter: var(--space-lg);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl) var(--photo-grid-gutter);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photo-grid.is-masonry-ready {
+  display: block;
+  position: relative;
+}
+
+.photo-grid-item {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.photo-grid.is-masonry-ready .photo-grid-item {
+  margin-bottom: var(--space-xl);
+}
+
+.photo-grid-link {
+  display: grid;
+  gap: var(--space-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.photo-grid-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+}
+
+.photo-grid-empty {
+  max-width: 48ch;
+  color: var(--color-muted);
+}
+
+.metadata-kicker {
+  margin-bottom: var(--space-xs);
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.metadata-list {
+  display: grid;
+  margin: 0;
+}
+
+.metadata-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.metadata-row dt {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.metadata-row dd {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.photo-note {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.project-detail-meta {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-md);
+}
+
+.project-detail-meta div {
+  display: grid;
+  grid-template-columns: minmax(80px, max-content) minmax(0, 1fr);
+  gap: var(--space-md);
+}
+
+.project-detail-meta dt {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.project-detail-meta dd {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rednote-dialog {
+  width: min(420px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.rednote-dialog::backdrop {
+  background: rgb(31 41 51 / 0.36);
+}
+
+.rednote-dialog-inner {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.rednote-card {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.dialog-close {
+  width: 100%;
+  padding: 0 var(--space-md);
+}
+
+@media (min-width: 768px) {
+  .photography-project-heading {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .category-entry-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .photo-grid.is-masonry-ready .photo-grid-item {
+    width: calc((100% - var(--photo-grid-gutter)) / 2);
+  }
+}
+
+@media (max-width: 767px) {
+  .photography-intro.has-intro-image {
+    min-height: clamp(420px, 68svh, 560px);
+    padding: var(--space-lg);
+  }
+
+  .photography-intro.has-intro-image .photography-intro-copy {
+    width: 100%;
+  }
+
+  .photography-intro.has-intro-image p {
+    hyphens: none;
+    max-width: none;
+    text-align: justify;
+    text-align-last: left;
+  }
+
+  .project-description {
+    hyphens: none;
+    text-align: justify;
+    text-align-last: left;
+  }
+
+  .photography-project-summary {
+    text-align: justify;
+    text-align-last: left;
+  }
+
+  .photography-intro-media::after {
+    background:
+      linear-gradient(90deg, rgb(36 33 29 / 0.76) 0%, rgb(36 33 29 / 0.48) 64%, rgb(36 33 29 / 0.2) 100%),
+      linear-gradient(0deg, rgb(36 33 29 / 0.78) 0%, rgb(36 33 29 / 0.28) 58%, rgb(36 33 29 / 0.42) 100%);
+  }
+
+  .photography-contact {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+    justify-content: stretch;
+  }
+
+  .photography-contact a,
+  .photography-contact button {
+    width: fit-content;
+  }
+}
+
+@media (min-width: 1024px) {
+  .category-entry-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .photo-grid.is-masonry-ready .photo-grid-item {
+    width: calc((100% - (var(--photo-grid-gutter) * 2)) / 3);
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Photo pages (body.page-photo, PhotoPage): a wider frame and little chrome above the photo.
+   The photo is sized by the viewport: at most --photo-max-height tall (about 80-85% of the viewport
+   height) and as wide as its ratio allows within the frame. Square and portrait photos keep the
+   metadata on the right from a 640px wide frame on. A landscape photo keeps it on the right only
+   while the photo there is at least 90% as wide as with the metadata below (frame >= 292px + 0.9 *
+   ratio * --photo-max-height); PhotoPage writes that container query for the photo's ratio
+   (getPhotoPageLayoutCss in src/lib/photography.ts, which repeats the 292px column + gap and the height
+   cap). Otherwise the metadata sits below the photo as a compact block. `--photo-ratio`
+   (width / height) is set inline per photo.
+   --------------------------------------------------------------------------------------------- */
+.page-photo .site-shell {
+  max-width: 1680px;
+  padding-top: 12px;
+}
+
+.page-photo .site-header {
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-sm);
+  row-gap: var(--space-xs);
+}
+
+@media (min-width: 768px) {
+  .page-photo .site-shell {
+    padding-top: 16px;
+  }
+
+  .page-photo .site-header {
+    margin-bottom: var(--space-md);
+  }
+}
+
+.photo-detail-shell {
+  width: 100%;
+  container: photo-view / inline-size;
+}
+
+.photo-view {
+  --photo-max-height: max(320px, min(85vh, calc(100vh - 176px)));
+  --photo-max-height: max(320px, min(85svh, calc(100svh - 176px)));
+  --photo-fit-width: calc(var(--photo-max-height) * var(--photo-ratio, 1));
+  --photo-meta-width: 260px;
+  display: grid;
+  grid-template-columns: minmax(0, var(--photo-fit-width));
+  justify-content: center;
+  align-items: start;
+  gap: var(--space-md) var(--space-xl);
+}
+
+.photo-view-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.photo-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 40px;
+  text-decoration: none;
+}
+
+.photo-back-link > [data-lang-inline] {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* Photo page back link: one line, shortened with an ellipsis rather than wrapping the bar. */
+.photo-back-label {
+  min-width: 0;
+  overflow: hidden;
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  text-underline-offset: 4px;
+  white-space: nowrap;
+}
+
+.photo-back-arrow,
+.photo-pager-arrow {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.photo-pager {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: auto;
+}
+
+.photo-pager-link {
+  min-width: 40px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 0 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.photo-pager-link[href]:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.photo-pager-link[href]:active {
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+}
+
+/* No neighbour: kept in place, shown disabled. */
+.photo-pager-link:not([href]) {
+  color: var(--color-muted);
+  cursor: default;
+  opacity: 0.45;
+}
+
+.photo-pager-position {
+  min-width: 5.5ch;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.photo-pager-position:empty {
+  display: none;
+}
+
+.photo-view-media {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border-radius: 3px;
+  /* Placeholder while the photo loads; the width/height attributes reserve its box. */
+  background: color-mix(in srgb, var(--color-border) 45%, transparent);
+  cursor: zoom-in;
+  touch-action: pan-y pinch-zoom;
+}
+
+.photo-detail-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+}
+
+.photo-view-meta {
+  min-width: 0;
+  container: photo-meta / inline-size;
+}
+
+.photo-metadata h1 {
+  margin-bottom: var(--space-md);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.photo-view-meta .photo-note {
+  margin-bottom: 0;
+}
+
+/* Metadata beside the photo: square and portrait from a 640px frame; landscape from the frame width
+   of the photo's ratio (per-page rule, see above). */
+@container photo-view (min-width: 640px) {
+  .photo-view.is-portrait,
+  .photo-view.is-square {
+    grid-template-columns: minmax(0, var(--photo-fit-width)) var(--photo-meta-width);
+  }
+}
+
+/* Metadata below the photo: the block is as wide as the photo, so wider than the 260px side column
+   (--photo-meta-width); its rows flow side by side as one compact block. */
+@container photo-meta (min-width: 261px) {
+  .photo-view .metadata-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs) var(--space-lg);
+  }
+
+  .photo-view .metadata-row {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: baseline;
+    padding: 0;
+    border-top: 0;
+  }
+}
+
+@container photo-view (max-width: 639px) {
+  .photo-metadata h1 {
+    margin-bottom: var(--space-sm);
+    font-size: 22px;
+  }
+}
+
+/* Phones: one row of bar: "← <gallery>" and an icon pager ("‹ 5 / 13 ›"); the words stay for
+   screen readers (and every pager link has an aria-label naming its photo). */
+@media (max-width: 767px) {
+  .photo-view {
+    gap: var(--space-sm) var(--space-xl);
+  }
+
+  .photo-back-prefix,
+  .photo-pager-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .photo-back-link,
+  .photo-pager-link {
+    min-height: 44px;
+  }
+
+  .photo-pager {
+    gap: var(--space-xs);
+  }
+
+  .photo-pager-link {
+    min-width: 44px;
+    padding: 0 10px;
+  }
+
+  .photo-pager-position {
+    min-width: 0;
+  }
+
+  .photo-view-meta {
+    margin-top: var(--space-xs);
+  }
+}
+
+/* Quiet view: F or a tap on the photo shows only the photo, fitted to the screen, on the page
+   background; Escape, F, another tap or the close button closes it. Previous/Next keep working (the
+   view stays on across photos); the rest of the page is inert meanwhile (photoPage.ts), so Tab reaches
+   only the close button. */
+.photo-quiet-close {
+  display: none;
+}
+
+html.is-photo-quiet,
+html.is-photo-quiet body {
+  overflow: hidden;
+}
+
+html.is-photo-quiet .photo-view-media {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  border-radius: 0;
+  padding: 12px;
+  background: var(--color-bg);
+  cursor: zoom-out;
+}
+
+/* Fitted to the screen less the padding: full width, or full height for its ratio (--photo-ratio);
+   the page script swaps in `sizes` for this size (quietSizes in src/lib/photography.ts). */
+html.is-photo-quiet .photo-detail-image {
+  width: min(100%, calc((100svh - 24px) * var(--photo-ratio, 1)));
+  height: auto;
+}
+
+html.is-photo-quiet .photo-quiet-close {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 51;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+}
+
+html.is-photo-quiet .photo-quiet-close:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Metadata values link to their category or tag gallery. */
+.metadata-row .metadata-link {
+  color: inherit;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+}
+
+.metadata-row .metadata-link:hover {
+  color: var(--color-accent);
+  text-decoration-color: currentColor;
+}
+
+/* Gallery return: the tile of the photo just viewed is marked briefly (PhotoGrid). */
+.photo-grid-item.is-returned .photo-grid-image {
+  animation: photo-returned 1.8s ease-out;
+}
+
+@keyframes photo-returned {
+  0%,
+  35% {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 4px;
+  }
+
+  100% {
+    outline: 3px solid transparent;
+    outline-offset: 4px;
+  }
+}
+
+/* A `#photo-<slug>` jump (back link without history) lands the tile about a third down the screen. */
+.photo-grid-item {
+  scroll-margin-top: 30vh;
+}
+
+/* Phones: tap targets of at least 44px. */
+@media (max-width: 767px) {
+  .gallery-heading .photo-back-link,
+  .tag-entry .text-link {
+    min-height: 44px;
+  }
+}

@@ -1,42 +1,73 @@
 ---
-import { getPhotoDisplayMeta, getPhotoHref, type PhotoEntry } from '../../lib/photography';
+/**
+ * Previous / position / Next above the photo. A side without a neighbour stays in place as a
+ * disabled link (no href), so the controls never jump. The photo page script
+ * (src/scripts/photography/photoPage.ts) follows the links with location.replace, reads the hrefs at
+ * event time (keys, swipe), keeps the aria-labels in the page language, preloads the neighbours and
+ * may retarget the links for the `?from=tags` context. On phones only the arrows are shown.
+ */
+export type PagerTarget = {
+  href: string;
+  /** Names the target photo in the aria-label, e.g. "Previous: Sunlit Chairs". */
+  label: string;
+  /** The target's main image, preloaded once this page has loaded (`quietSizes`: in the quiet view). */
+  image?: { srcset: string; sizes: string; quietSizes: string };
+};
 
 interface Props {
-  previous?: PhotoEntry;
-  previousHref?: string;
-  next?: PhotoEntry;
-  nextHref?: string;
+  previous?: PagerTarget;
+  next?: PagerTarget;
+  /** 1-based position and gallery size, or undefined when the photo is not part of the gallery. */
+  position?: { index: number; count: number };
 }
 
-const { previous, previousHref, next, nextHref } = Astro.props;
-const getNavLabel = (photo: PhotoEntry) => {
-  const meta = getPhotoDisplayMeta(photo);
+const { previous, next, position } = Astro.props;
 
-  return meta.title || [meta.category, meta.location].filter(Boolean).join(', ');
-};
+const linkAttributes = (side: 'previous' | 'next', target: PagerTarget | undefined) => ({
+  class: `photo-pager-link is-${side}`,
+  'data-photo-pager': side,
+  'data-photo-label': target?.label,
+  'data-photo-image-srcset': target?.image?.srcset,
+  'data-photo-image-sizes': target?.image?.sizes,
+  'data-photo-image-quiet-sizes': target?.image?.quietSizes,
+  href: target?.href,
+  rel: target ? (side === 'previous' ? 'prev' : 'next') : undefined,
+  'aria-label': target ? `${side === 'previous' ? 'Previous' : 'Next'}: ${target.label}` : undefined,
+  role: target ? undefined : 'link',
+  'aria-disabled': target ? undefined : 'true'
+});
 ---
 
-{
-  previous || next ? (
-    <nav class="photo-nav" aria-label="Photo navigation">
-      {previous ? (
-        <a
-          class="photo-nav-link"
-          href={previousHref ?? getPhotoHref(previous)}
-          aria-label={`Previous: ${getNavLabel(previous)}`}
-        >
-          <span>Previous</span>
-        </a>
-      ) : null}
-      {next ? (
-        <a
-          class="photo-nav-link photo-nav-next"
-          href={nextHref ?? getPhotoHref(next)}
-          aria-label={`Next: ${getNavLabel(next)}`}
-        >
-          <span>Next</span>
-        </a>
-      ) : null}
-    </nav>
-  ) : null
-}
+<nav class="photo-pager" aria-labelledby="photo-pager-label">
+  <span id="photo-pager-label" class="visually-hidden">
+    <span data-lang-inline="en">Photo navigation</span>
+    <span data-lang-inline="zh">照片导航</span>
+  </span>
+  <a {...linkAttributes('previous', previous)}>
+    <span class="photo-pager-arrow" aria-hidden="true">←</span>
+    <span class="photo-pager-word">
+      <span data-lang-inline="en">Previous</span>
+      <span data-lang-inline="zh">上一张</span>
+    </span>
+  </a>
+  <span class="photo-pager-position" data-photo-position>
+    {
+      position ? (
+        <>
+          <span aria-hidden="true" data-photo-position-short>{`${position.index} / ${position.count}`}</span>
+          <span class="visually-hidden">
+            <span data-lang-inline="en" data-photo-position-long="en">{`Photo ${position.index} of ${position.count}`}</span>
+            <span data-lang-inline="zh" data-photo-position-long="zh">{`第 ${position.index} 张，共 ${position.count} 张`}</span>
+          </span>
+        </>
+      ) : null
+    }
+  </span>
+  <a {...linkAttributes('next', next)}>
+    <span class="photo-pager-word">
+      <span data-lang-inline="en">Next</span>
+      <span data-lang-inline="zh">下一张</span>
+    </span>
+    <span class="photo-pager-arrow" aria-hidden="true">→</span>
+  </a>
+</nav>

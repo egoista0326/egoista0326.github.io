@@ -1,0 +1,10 @@
+---
+// /photography/selected/<photo>/: a Selected Work, Previous/Next in Selected Works order.
+import PhotoPage from '../../../components/photography/PhotoPage.astro';
+import { photoPagePaths, type PhotoPageProps } from '../../../lib/photographyPages';
+
+export const getStaticPaths = () => photoPagePaths('selected');
+type Props = PhotoPageProps;
+---
+
+<PhotoPage {...Astro.props} />

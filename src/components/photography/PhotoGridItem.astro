@@ -1,41 +1,54 @@
 ---
 import {
+  getImageSrcset,
   getPhotoAlt,
+  getPhotoAnchorId,
   getPhotoDisplayMeta,
-  getPhotoHref,
-  isVisibleTitle,
+  getPhotoSearchTags,
   type PhotoEntry
 } from '../../lib/photography';
 
 interface Props {
   photo: PhotoEntry;
-  href?: string;
-  tagData?: Record<string, readonly string[]>;
+  href: string;
+  withTagData?: boolean;
+  /** `sizes` of the tile image (PhotoGrid owns the column layout). */
+  sizes: string;
+  loading?: 'eager' | 'lazy';
+  fetchpriority?: 'high';
 }
 
-const { photo, href = getPhotoHref(photo), tagData } = Astro.props;
+const { photo, href, withTagData = false, sizes, loading = 'lazy', fetchpriority } = Astro.props;
 const meta = getPhotoDisplayMeta(photo);
-const showTitle = isVisibleTitle(photo.data.title);
-const dataAttributes = tagData
+// e.g. data-location="zurich" data-condition="rain blue-hour"; read by the filter on /photography/tags/.
+const dataAttributes = withTagData
   ? Object.fromEntries(
-      Object.entries(tagData).map(([group, values]) => [`data-${group}`, values.join(' ')])
+      Object.entries(getPhotoSearchTags(photo)).map(([group, values]) => [`data-${group}`, values.join(' ')])
     )
   : {};
 ---
 
-<li class="photo-grid-item" {...dataAttributes}>
+{/* id="photo-<slug>": the back link of a photo page returns here (photoGrid.ts marks the tile). */}
+<li class="photo-grid-item" id={getPhotoAnchorId(photo)} {...dataAttributes}>
   <a class="photo-grid-link" href={href}>
     <img
       class="photo-grid-image"
       src={photo.data.image}
+      srcset={getImageSrcset(photo.data.image, photo.data.width)}
+      sizes={sizes}
       alt={getPhotoAlt(photo)}
       width={photo.data.width}
       height={photo.data.height}
-      loading="lazy"
+      loading={loading}
+      decoding="async"
+      fetchpriority={fetchpriority}
     />
     <span class="photo-grid-caption">
-      {showTitle ? <span class="photo-grid-title">{meta.title}</span> : null}
-      <span>{meta.category}</span>
+      {meta.title ? <span class="photo-grid-title">{meta.title}</span> : null}
+      <span>
+        <span data-lang-inline="en">{meta.category}</span>
+        <span data-lang-inline="zh">{meta.categoryZh}</span>
+      </span>
       {meta.location ? <span>{meta.location}</span> : null}
     </span>
   </a>

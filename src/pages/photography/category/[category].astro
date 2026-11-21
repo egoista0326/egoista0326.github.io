@@ -1,41 +1,54 @@
 ---
-import { getCollection } from 'astro:content';
 import SiteLayout from '../../../layouts/SiteLayout.astro';
 import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
-import { photographyCategories } from '../../../data/photographyVocab';
-import { getCategoryPhotoHref, getPhotoSlug, getPhotosByCategory, type PhotoEntry } from '../../../lib/photography';
+import { getCategoryPhotoHref, getPhotoLibrary, type CategoryGallery } from '../../../lib/photography';
 
 interface Props {
-  category: (typeof photographyCategories)[number];
-  photos: PhotoEntry[];
+  category: CategoryGallery['category'];
+  photos: CategoryGallery['photos'];
 }
 
 export async function getStaticPaths() {
-  const photos = await getCollection('photos');
+  const { categories } = await getPhotoLibrary();
 
-  return photographyCategories.map((category) => ({
+  return categories.map(({ category, photos }) => ({
     params: { category: category.slug },
-    props: {
-      category,
-      photos: getPhotosByCategory(photos, category.slug)
-    }
+    props: { category, photos }
   }));
 }
 
 const { category, photos } = Astro.props;
-const photoHrefs = Object.fromEntries(
-  photos.map((photo) => [getPhotoSlug(photo), getCategoryPhotoHref(category.slug, photo)])
-);
 ---
 
 <SiteLayout title={`${category.label} Photography`} description={`Selected ${category.label.toLowerCase()} photographs.`}>
   <section class="photography-section gallery-heading" aria-labelledby="category-title">
-    <p><a class="photo-back-link" href="/photography/">Back to Photography</a></p>
-    <h1 id="category-title">{category.label}</h1>
-    <p class="section-copy">{photos.length} photograph{photos.length === 1 ? '' : 's'} in this category.</p>
+    <p>
+      <a class="photo-back-link" data-gallery-back href="/photography/#categories-title">
+        <span data-lang-inline="en">Back to Photography</span>
+        <span data-lang-inline="zh">返回摄影</span>
+      </a>
+    </p>
+    <h1 id="category-title">
+      <span data-lang-inline="en">{category.label}</span>
+      <span data-lang-inline="zh">{category.labelZh}</span>
+    </h1>
+    <p class="section-copy">
+      <span data-lang-inline="en">{photos.length} photograph{photos.length === 1 ? '' : 's'} in this category.</span>
+      <span data-lang-inline="zh">此分类下共有 {photos.length} 张照片。</span>
+    </p>
   </section>
 
-  <section class="photography-section" aria-label={`${category.label} photographs`}>
-    <PhotoGrid photos={photos} photoHrefs={photoHrefs} emptyMessage="No photographs in this category yet." />
+  {/* Named "<page heading> photographs" in the page language. */}
+  <section class="photography-section" aria-labelledby="category-title gallery-photos-word">
+    <span id="gallery-photos-word" class="visually-hidden"><span data-lang-inline="en">photographs</span><span data-lang-inline="zh">照片</span></span>
+    <PhotoGrid
+      photos={photos}
+      hrefFor={(photo) => getCategoryPhotoHref(category.slug, photo)}
+      emptyMessage="No photographs in this category yet."
+    />
   </section>
+
+  <script>
+    import '../../../scripts/photography/galleryBack';
+  </script>
 </SiteLayout>

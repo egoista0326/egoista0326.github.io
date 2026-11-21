@@ -1,51 +1,21 @@
 ---
-import { getCollection } from 'astro:content';
 import SiteLayout from '../../../layouts/SiteLayout.astro';
 import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
-import {
-  getPhotoHref,
-  getPhotoSearchTags,
-  getPhotoSlug,
-  getUsedTagGroups,
-  sortPhotosForDisplay,
-  type TagGroupSlug
-} from '../../../lib/photography';
+import { getPhotoLibrary } from '../../../lib/photography';
+import '../../../components/photography/tag-filter.css';
 
-const photos = sortPhotosForDisplay(await getCollection('photos'));
-const usedGroups = getUsedTagGroups(photos);
-const groupOrder = [
-  { slug: 'location', label: 'Locations', labelZh: '地点', priority: 'primary' },
-  { slug: 'camera', label: 'Camera', labelZh: '相机', priority: 'secondary' },
-  { slug: 'lens', label: 'Lens', labelZh: '镜头', priority: 'secondary' },
-  { slug: 'condition', label: 'Conditions', labelZh: '拍摄条件', priority: 'secondary' }
-] as const satisfies readonly {
-  slug: TagGroupSlug;
-  label: string;
-  labelZh: string;
-  priority: 'primary' | 'secondary';
-}[];
-const searchGroups = groupOrder.flatMap((definition) => {
-  const group = usedGroups.find((usedGroup) => usedGroup.slug === definition.slug);
-
-  return group
-    ? [
-        {
-          ...definition,
-          tags: group.tags
-        }
-      ]
-    : [];
-});
-const photoHrefs = Object.fromEntries(photos.map((photo) => [getPhotoSlug(photo), getPhotoHref(photo)]));
-const photoTags = Object.fromEntries(photos.map((photo) => [getPhotoSlug(photo), getPhotoSearchTags(photo)]));
+// All photos are rendered once; src/scripts/photography/tagFilterPage.ts hides those that do not
+// match the checked options. Without JavaScript the form is a plain GET form and every photo shows.
+const { photos, tagGroups } = await getPhotoLibrary();
+const photographsEn = (count: number) => (count === 1 ? 'photograph' : 'photographs');
 ---
 
 <SiteLayout title="Photography Tags" description="Browse photographs by controlled metadata tags.">
   <section class="photography-section gallery-heading" aria-labelledby="tags-title">
     <p>
-      <a class="photo-back-link" href="/photography/">
+      <a class="photo-back-link" data-gallery-back href="/photography/#tag-entry-title">
         <span data-lang-inline="en">Back to Photography</span>
-        <span data-lang-inline="zh">返回摄影首页</span>
+        <span data-lang-inline="zh">返回摄影</span>
       </a>
     </p>
     <h1 id="tags-title">
@@ -58,149 +28,102 @@ const photoTags = Object.fromEntries(photos.map((photo) => [getPhotoSlug(photo),
     </p>
   </section>
 
-  <section class="tag-filter-panel" aria-labelledby="tag-filter-title">
-    <div class="tag-filter-heading">
-      <h2 id="tag-filter-title">
-        <span data-lang-inline="en">Filters</span>
-        <span data-lang-inline="zh">筛选</span>
-      </h2>
-      <button class="tag-filter-clear" type="button" data-tag-filter-clear>
+  {/* One box for controls, bar and results: the sticky bar stays inside it, at the bottom edge
+      while the results are below the screen and at the top edge while they scroll by. */}
+  <div class="tag-filter-page">
+    <section class="tag-filter-panel" aria-labelledby="tag-filter-title">
+      <div class="tag-filter-heading">
+        <h2 id="tag-filter-title">
+          <span data-lang-inline="en">Filters</span>
+          <span data-lang-inline="zh">筛选</span>
+        </h2>
+        <p class="tag-filter-rule">
+          <span data-lang-inline="en">Any ticked location, camera or lens matches; ticked conditions must all match.</span>
+          <span data-lang-inline="zh">地点、相机、镜头任一即可；拍摄条件须全部满足。</span>
+        </p>
+      </div>
+      <form
+        id="tag-filter-form"
+        class="tag-filter-form"
+        method="get"
+        action="/photography/tags/"
+        data-tag-filter-form
+      >
+        {
+          tagGroups.map((group) => (
+            <fieldset class="tag-filter-group" data-filter-group={group.slug}>
+              <legend>
+                <span data-lang-inline="en">{group.label}</span>
+                <span data-lang-inline="zh">{group.labelZh}</span>
+              </legend>
+              <div class="tag-filter-options">
+                {group.tags.map((tag) => (
+                  <label class="tag-filter-option">
+                    <input type="checkbox" name={group.slug} value={tag.slug} />
+                    <span class="tag-filter-option-label">{tag.label}</span>
+                    <span class="tag-filter-option-count">
+                      <span data-tag-option-count>{tag.count}</span>
+                      <span class="visually-hidden">
+                        <span data-lang-inline="en" data-tag-option-unit>
+                          {photographsEn(tag.count)}
+                        </span>
+                        <span data-lang-inline="zh">张照片</span>
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ))
+        }
+        <noscript>
+          <div class="tag-filter-nojs">
+            <button class="tag-filter-button" type="submit">
+              <span data-lang-inline="en">Apply filters</span>
+              <span data-lang-inline="zh">应用筛选</span>
+            </button>
+            <p>
+              <span data-lang-inline="en">Filtering needs JavaScript, so all photographs are shown below.</span>
+              <span data-lang-inline="zh">筛选需要 JavaScript，因此下方显示全部照片。</span>
+            </p>
+          </div>
+        </noscript>
+      </form>
+    </section>
+
+    <div class="tag-filter-bar" data-tag-filter-bar>
+      <p class="tag-filter-count" data-tag-result-count role="status" aria-live="polite">
+        <span data-lang-inline="en">{photos.length} {photographsEn(photos.length)}</span>
+        <span data-lang-inline="zh">{photos.length} 张照片</span>
+      </p>
+      <a class="tag-filter-show" href="#tag-results" data-tag-show-results>
+        <span data-lang-inline="en">Show<span class="visually-hidden"> results</span></span>
+        <span data-lang-inline="zh">查看<span class="visually-hidden">结果</span></span>
+        <span aria-hidden="true">↓</span>
+      </a>
+      <button class="tag-filter-button" type="reset" form="tag-filter-form" data-tag-filter-clear>
         <span data-lang-inline="en">Clear filters</span>
         <span data-lang-inline="zh">清除筛选</span>
       </button>
     </div>
-    <form class="tag-filter-form" data-tag-filter-form>
-      {
-        searchGroups.map((group) => (
-          <fieldset class="tag-filter-group" data-filter-group={group.slug}>
-            <legend>
-              <span data-lang-inline="en">{group.label}</span>
-              <span data-lang-inline="zh">{group.labelZh}</span>
-            </legend>
-            <div class="tag-filter-options">
-              {group.tags.map((tag) => (
-                <label class="tag-filter-option">
-                  <input type="checkbox" name={group.slug} value={tag.slug} />
-                  <span>{tag.label}</span>
-                  <span>{tag.count}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        ))
-      }
-    </form>
-  </section>
 
-  <section class="photography-section tag-search-results" aria-labelledby="tag-results-title">
-    <div class="tag-results-heading">
-      <h2 id="tag-results-title">
+    <section id="tag-results" class="tag-search-results" aria-labelledby="tag-results-title" data-tag-results-section>
+      <h2 id="tag-results-title" class="visually-hidden">
         <span data-lang-inline="en">Results</span>
         <span data-lang-inline="zh">结果</span>
       </h2>
-      <p class="section-copy" data-tag-result-count>{photos.length} photographs</p>
-    </div>
-    <div data-tag-search-results>
-      <PhotoGrid
-        photos={photos}
-        photoHrefs={photoHrefs}
-        photoTags={photoTags}
-        emptyMessage="No photographs are available yet."
-      />
-    </div>
-    <p class="photo-grid-empty" data-tag-empty hidden>
-      <span data-lang-inline="en">No photographs match the selected filters.</span>
-      <span data-lang-inline="zh">没有照片符合当前筛选条件。</span>
-    </p>
-  </section>
+      <div data-tag-search-results>
+        <PhotoGrid photos={photos} withTagData emptyMessage="No photographs are available yet." />
+      </div>
+      <p class="photo-grid-empty" data-tag-empty hidden>
+        <span data-lang-inline="en">No photographs match the selected filters.</span>
+        <span data-lang-inline="zh">没有照片符合当前筛选条件。</span>
+      </p>
+    </section>
+  </div>
 
   <script>
-    const form = document.querySelector('[data-tag-filter-form]');
-    const resultCount = document.querySelector('[data-tag-result-count]');
-    const emptyMessage = document.querySelector('[data-tag-empty]');
-    const clearButton = document.querySelector('[data-tag-filter-clear]');
-    const resultGrid = document.querySelector('[data-tag-search-results] .photo-grid');
-    const resultItems = Array.from(document.querySelectorAll('[data-tag-search-results] .photo-grid-item'));
-
-    const getLanguage = () => document.body.dataset.photographyLang === 'zh' ? 'zh' : 'en';
-    const pluralize = (count) => {
-      if (getLanguage() === 'zh') return `${count} 张照片`;
-      return `${count} photograph${count === 1 ? '' : 's'}`;
-    };
-
-    const getSelectedFilters = () => {
-      if (!(form instanceof HTMLFormElement)) return new Map();
-
-      const selectedFilters = new Map();
-      const checkboxes = Array.from(form.querySelectorAll('input[type="checkbox"]'));
-
-      checkboxes.forEach((checkbox) => {
-        if (!(checkbox instanceof HTMLInputElement) || !checkbox.checked) return;
-
-        const values = selectedFilters.get(checkbox.name) ?? [];
-        values.push(checkbox.value);
-        selectedFilters.set(checkbox.name, values);
-      });
-
-      return selectedFilters;
-    };
-
-    const itemMatches = (item, selectedFilters) => {
-      if (!(item instanceof HTMLElement)) return false;
-
-      for (const [group, selectedValues] of selectedFilters) {
-        const itemValues = (item.dataset[group] ?? '').split(' ').filter(Boolean);
-
-        if (group === 'condition') {
-          if (!selectedValues.every((value) => itemValues.includes(value))) return false;
-          continue;
-        }
-
-        if (!selectedValues.some((value) => itemValues.includes(value))) return false;
-      }
-
-      return true;
-    };
-
-    const updateResults = () => {
-      const selectedFilters = getSelectedFilters();
-      let visibleCount = 0;
-
-      resultItems.forEach((item) => {
-        const isMatch = itemMatches(item, selectedFilters);
-        if (item instanceof HTMLElement) {
-          item.hidden = !isMatch;
-        }
-        if (isMatch) visibleCount += 1;
-      });
-
-      if (resultCount) {
-        resultCount.textContent = pluralize(visibleCount);
-      }
-
-      if (emptyMessage instanceof HTMLElement) {
-        emptyMessage.hidden = visibleCount > 0;
-      }
-
-      if (clearButton instanceof HTMLButtonElement) {
-        clearButton.disabled = selectedFilters.size === 0;
-      }
-
-      resultGrid?.dispatchEvent(new CustomEvent('photo-grid:relayout'));
-    };
-
-    if (form instanceof HTMLFormElement) {
-      form.addEventListener('change', updateResults);
-    }
-
-    if (clearButton instanceof HTMLButtonElement && form instanceof HTMLFormElement) {
-      clearButton.addEventListener('click', () => {
-        form.reset();
-        updateResults();
-      });
-    }
-
-    document.addEventListener('photography-language-change', updateResults);
-    updateResults();
+    import '../../../scripts/photography/tagFilterPage';
+    import '../../../scripts/photography/galleryBack';
   </script>
 </SiteLayout>

@@ -1,45 +1,28 @@
 ---
-import { getCollection } from 'astro:content';
 import SiteLayout from '../../../layouts/SiteLayout.astro';
 import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
-import {
-  photographyProjects,
-  type PhotographyProject
-} from '../../../data/photography';
-import {
-  getPhotoSlug,
-  getPhotosBySlugs,
-  getProjectPhotoHref,
-  type PhotoEntry
-} from '../../../lib/photography';
+import { photographyProfile } from '../../../data/photography';
+import { getPhotoLibrary, getProjectPhotoHref, type ProjectGallery } from '../../../lib/photography';
 
-interface Props {
-  project: PhotographyProject;
-  photos: PhotoEntry[];
-}
+type Props = ProjectGallery;
 
 export async function getStaticPaths() {
-  const photos = await getCollection('photos');
+  const { projects } = await getPhotoLibrary();
 
-  return photographyProjects.map((project) => ({
+  return projects.map(({ project, photos }) => ({
     params: { project: project.slug },
-    props: {
-      project,
-      photos: getPhotosBySlugs(photos, project.photoSlugs)
-    }
+    props: { project, photos }
   }));
 }
 
 const { project, photos } = Astro.props;
-const projectPhotoHrefs = Object.fromEntries(
-  photos.map((photo) => [getPhotoSlug(photo), getProjectPhotoHref(project.slug, photo)])
-);
+const { landingCopy } = photographyProfile;
 ---
 
 <SiteLayout title={`${project.title} | Photography`} description={project.summary}>
   <section class="photography-section gallery-heading" aria-labelledby="project-title">
     <p>
-      <a class="photo-back-link" href="/photography/">
+      <a class="photo-back-link" data-gallery-back href="/photography/#photography-projects-title">
         <span data-lang-inline="en">Back to Photography</span>
         <span data-lang-inline="zh">返回摄影</span>
       </a>
@@ -55,8 +38,8 @@ const projectPhotoHrefs = Object.fromEntries(
     <dl class="project-detail-meta">
       <div>
         <dt>
-          <span data-lang-inline="en">Start date</span>
-          <span data-lang-inline="zh">开始时间</span>
+          <span data-lang-inline="en">{landingCopy.en.copy.projectStart}</span>
+          <span data-lang-inline="zh">{landingCopy.zh.copy.projectStart}</span>
         </dt>
         <dd>{project.startDate}</dd>
       </div>
@@ -67,11 +50,17 @@ const projectPhotoHrefs = Object.fromEntries(
     </p>
   </section>
 
-  <section class="photography-section" aria-label={`${project.title} photographs`}>
+  {/* Named "<page heading> photographs" in the page language. */}
+  <section class="photography-section" aria-labelledby="project-title gallery-photos-word">
+    <span id="gallery-photos-word" class="visually-hidden"><span data-lang-inline="en">photographs</span><span data-lang-inline="zh">照片</span></span>
     <PhotoGrid
       photos={photos}
-      photoHrefs={projectPhotoHrefs}
+      hrefFor={(photo) => getProjectPhotoHref(project.slug, photo)}
       emptyMessage="No photographs have been added to this project yet."
     />
   </section>
+
+  <script>
+    import '../../../scripts/photography/galleryBack';
+  </script>
 </SiteLayout>

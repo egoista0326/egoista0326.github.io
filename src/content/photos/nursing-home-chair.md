@@ -15,7 +15,6 @@ camera: "iphone"
 lens: ""
 condition: "clear"
 conditions: []
-featured: false
 order: 1060
 note: |-
   The chairs were placed by the window, facing the sunlight.
