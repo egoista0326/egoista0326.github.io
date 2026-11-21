@@ -1,0 +1,48 @@
+---
+import '../styles/global.css';
+
+// A standalone project page (/dexgo/): its own title, share tags and icon, and none of the personal site's
+// header, footer, icon or name. The page writes its Open Graph / Twitter tags and fonts in the head slot.
+interface Props {
+  /** Full document title, e.g. 'DexGO: Dexterous Grasp Transition with Object Relocation'. */
+  title: string;
+  description: string;
+  /** Canonical path of the page, e.g. '/dexgo/'. */
+  path: string;
+  /** Directory under public/ holding favicon.svg, favicon.ico and apple-touch-icon.png, e.g. '/dexgo/'. */
+  iconDir: string;
+  /** Class on <body> for page-scoped styles (e.g. 'page-dexgo'). */
+  bodyClass?: string;
+  /** The quiet line in the footer. */
+  footer: string;
+}
+
+const { title, description, path, iconDir, bodyClass, footer } = Astro.props;
+const canonical = new URL(path, Astro.site ?? Astro.url).toString();
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={`${iconDir}favicon.ico`} sizes="32x32" />
+    <link rel="icon" href={`${iconDir}favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${iconDir}apple-touch-icon.png`} />
+    <slot name="head" />
+  </head>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="site-shell">
+      <main id="main" tabindex="-1">
+        <slot />
+      </main>
+      <footer class="site-footer dx-footer">
+        <span>{footer}</span>
+      </footer>
+    </div>
+  </body>
+</html>

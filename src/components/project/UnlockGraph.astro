@@ -1,0 +1,198 @@
+---
+// The prerequisite graph: the video's unlock animation, cropped to its graph, plays once and rests on
+// its last frame, where every task is learned. The nodes of that frame are buttons; the selected
+// task's clip plays in its own column (under the graph below 1024 px) with its unlock rule, and the
+// task's prerequisites are ringed on the graph.
+import type { Clip, GraphTask } from '../../data/dexgo';
+
+interface Props {
+  animation: Clip & { endPoster: string };
+  tasks: GraphTask[];
+  defaultTask: string;
+  /** Width in frame pixels of the graph part of the animation (from x = 0). */
+  graphWidth: number;
+  /** Seconds into the animation where playback starts. */
+  startAt: number;
+  /** [x, y, w, h] of the state legend in frame pixels, covered once every task is learned. */
+  legendRect: [number, number, number, number];
+  hint: string;
+}
+
+const { animation, tasks, defaultTask, graphWidth, startAt, legendRect, hint } = Astro.props;
+const W = graphWidth;
+const H = animation.height;
+const pct = (value: number, total: number) => `${((value / total) * 100).toFixed(3)}%`;
+const selected = tasks.find((task) => task.id === defaultTask) ?? tasks[0];
+const square = selected.clip.width === selected.clip.height;
+---
+
+<div class="dx-unlock" data-unlock data-state="anim" data-end-poster={animation.endPoster} data-start={startAt}>
+  {/* The graph and, centred under it, the button that replays its unlocking. */}
+  <div class="dx-unlock-main">
+    <div class="dx-unlock-graph" style={`aspect-ratio: ${W} / ${H}; --frame: ${((animation.width / W) * 100).toFixed(3)}%`}>
+      <div class="dx-unlock-anim" data-play-unit="once">
+        <video muted playsinline preload="none" data-poster={animation.poster} width={animation.width} height={H} aria-label={animation.label}>
+          {/* The fragment starts the first load at startAt, so the uncropped opening frames never show. */}
+          <source src={`${animation.src}#t=${startAt}`} type="video/mp4" />
+        </video>
+      </div>
+      <div
+        class="dx-unlock-legend-cover"
+        style={`left: ${pct(legendRect[0], W)}; top: ${pct(legendRect[1], H)}; width: ${pct(legendRect[2], W)}; height: ${pct(legendRect[3], H)}`}
+      >
+      </div>
+      <div class="dx-unlock-nodes" role="group" aria-label="Tasks of the prerequisite graph">
+        {
+          tasks.map((task) => (
+            <button
+              type="button"
+              class="dx-node"
+              data-task={task.id}
+              data-src={task.clip.src}
+              data-poster={task.clip.poster}
+              data-words={task.spoken}
+              data-rule={task.rule}
+              data-prerequisites={task.prerequisites.join(' ')}
+              aria-pressed={task.id === selected.id ? 'true' : 'false'}
+              aria-label={`Watch task ${task.id}: ${task.spoken}`}
+              style={`left: ${pct(task.rect[0], W)}; top: ${pct(task.rect[1], H)}; width: ${pct(task.rect[2], W)}; height: ${pct(task.rect[3], H)}`}
+            >
+              {task.id}
+            </button>
+          ))
+        }
+      </div>
+    </div>
+    <button type="button" class="dx-control" data-unlock-replay aria-label="Replay the unlocking animation of the graph">Replay unlocking</button>
+  </div>
+
+  <div class="dx-unlock-side">
+    <div
+      class="dx-clip dx-unlock-clip"
+      data-play-unit=""
+      data-play-hold
+      style={`aspect-ratio: ${square ? '1 / 1' : '4 / 3'}`}
+    >
+      <video muted playsinline loop preload="none" data-poster={selected.clip.poster} width={selected.clip.width} height={selected.clip.height} aria-label={selected.clip.label}>
+        <source src={selected.clip.src} type="video/mp4" />
+      </video>
+    </div>
+    <p class="dx-unlock-caption" aria-live="polite">
+      <span class="dx-unlock-task"><span data-unlock-code>{selected.id}</span>: <span data-unlock-words>{selected.spoken}</span></span>
+      <span class="dx-unlock-rule" data-unlock-rule>{selected.rule}</span>
+    </p>
+    <p class="dx-unlock-hint" data-unlock-hint>{hint}</p>
+  </div>
+</div>
+
+<script>
+  import '../../scripts/clipPlayback';
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-unlock]')) {
+    const animUnit = root.querySelector<HTMLElement>('.dx-unlock-anim');
+    const anim = animUnit?.querySelector('video');
+    const clipUnit = root.querySelector<HTMLElement>('.dx-unlock-clip');
+    const player = clipUnit?.querySelector('video');
+    const replay = root.querySelector<HTMLButtonElement>('[data-unlock-replay]');
+    const code = root.querySelector<HTMLElement>('[data-unlock-code]');
+    const words = root.querySelector<HTMLElement>('[data-unlock-words]');
+    const rule = root.querySelector<HTMLElement>('[data-unlock-rule]');
+    const hint = root.querySelector<HTMLElement>('[data-unlock-hint]');
+    const nodes = [...root.querySelectorAll<HTMLButtonElement>('[data-task]')];
+    if (!animUnit || !anim || !clipUnit || !player || !replay) continue;
+
+    const refresh = () => document.dispatchEvent(new CustomEvent('clips:refresh'));
+    // A click is an explicit request: that unit plays even where nothing autoplays or videos are paused.
+    const force = (unit: HTMLElement) => unit.setAttribute('data-play-force', '');
+    // Posters load lazily (clipPlayback copies `data-poster` near the viewport); before that, only the
+    // pending value changes.
+    const setPoster = (video: HTMLVideoElement, url: string) => {
+      video.dataset.poster = url;
+      if (video.hasAttribute('poster')) video.poster = url;
+    };
+    const startAt = Number(root.dataset.start ?? 0);
+    // Begin where the graph has settled in its final place (the crop shows only that part of the frame);
+    // the source fragment does this on the first load, this covers browsers without media fragments.
+    anim.addEventListener('play', () => {
+      if (anim.currentTime < startAt) anim.currentTime = startAt;
+    });
+
+    // "anim": the unlocking plays, the player waits. "explore": the graph rests on its learned frame.
+    const setState = (state: 'anim' | 'explore') => {
+      root.dataset.state = state;
+      animUnit.toggleAttribute('data-play-hold', state === 'explore');
+      clipUnit.toggleAttribute('data-play-hold', state !== 'explore');
+      refresh();
+    };
+
+    const showEnd = () => {
+      anim.pause();
+      if (anim.readyState >= 1 && Number.isFinite(anim.duration)) {
+        anim.currentTime = anim.duration;
+      } else if (root.dataset.endPoster) {
+        setPoster(anim, root.dataset.endPoster);
+      }
+    };
+
+    // The initial selection is rendered on the server; only its prerequisite rings are set here.
+    const markPrerequisites = (node: HTMLButtonElement) => {
+      const prerequisites = (node.dataset.prerequisites ?? '').split(' ');
+      for (const other of nodes) {
+        other.setAttribute('aria-pressed', String(other === node));
+        other.classList.toggle('is-prereq', prerequisites.includes(other.dataset.task ?? ''));
+      }
+    };
+
+    const select = (node: HTMLButtonElement) => {
+      markPrerequisites(node);
+      if (code) code.textContent = node.dataset.task ?? '';
+      if (words) words.textContent = node.dataset.words ?? '';
+      if (rule) rule.textContent = node.dataset.rule ?? '';
+      const src = node.dataset.src ?? '';
+      const current = player.currentSrc || player.getAttribute('src') || player.querySelector('source')?.getAttribute('src') || '';
+      if (!current.endsWith(src)) {
+        setPoster(player, node.dataset.poster ?? '');
+        player.setAttribute('aria-label', `Example of task ${node.dataset.task}`);
+        player.src = src;
+      }
+    };
+
+    for (const node of nodes) {
+      node.addEventListener('click', () => {
+        if (root.dataset.state === 'anim') {
+          showEnd();
+          setState('explore');
+        }
+        select(node);
+        // The hint is needed only until the first selection; its line keeps its space so nothing moves.
+        if (hint) {
+          hint.classList.add('is-done');
+          hint.setAttribute('aria-hidden', 'true');
+        }
+        force(clipUnit);
+        refresh();
+      });
+    }
+
+    anim.addEventListener('ended', () => setState('explore'));
+
+    replay.addEventListener('click', () => {
+      anim.currentTime = startAt;
+      force(animUnit);
+      setState('anim');
+    });
+
+    const initial = nodes.find((node) => node.getAttribute('aria-pressed') === 'true');
+    if (initial) markPrerequisites(initial);
+
+    // Without autoplay, start on the learned graph so the nodes can be used right away.
+    if (reducedMotion) {
+      if (root.dataset.endPoster) setPoster(anim, root.dataset.endPoster);
+      setState('explore');
+    } else {
+      setState('anim');
+    }
+  }
+</script>

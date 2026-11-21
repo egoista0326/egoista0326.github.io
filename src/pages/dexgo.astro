@@ -1,0 +1,166 @@
+---
+import 'katex/dist/katex.min.css';
+import ProjectLayout from '../layouts/ProjectLayout.astro';
+import ClipVideo from '../components/project/ClipVideo.astro';
+import DexgoResults from '../components/project/DexgoResults.astro';
+import KeyHeading from '../components/project/KeyHeading.astro';
+import MediaNote from '../components/project/MediaNote.astro';
+import MethodFigure from '../components/project/MethodFigure.astro';
+import UnlockGraph from '../components/project/UnlockGraph.astro';
+import { dexgoPage as page } from '../data/dexgo';
+import { isPlaceholder } from '../lib/placeholders';
+import { texDisplay, texInline } from '../lib/tex';
+
+const { method } = page;
+const fonts =
+  'https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap';
+const links = page.links.filter((link) => link.href);
+const hasEqual = page.authors.some((author) => author.equal);
+// The co-first authors, then the others: each group wraps as a unit, so a narrow screen shows two lines of two.
+const authorGroups = [page.authors.filter((author) => author.equal), page.authors.filter((author) => !author.equal)].filter(
+  (group) => group.length > 0
+);
+const showBibtex = !isPlaceholder(page.bibtex) && page.bibtex.trim() !== '';
+const pageUrl = new URL('/dexgo/', Astro.site).toString();
+const shareImage = new URL(page.teaser.poster, Astro.site).toString();
+const shareTitle = `${page.title}: ${page.subtitle}`;
+---
+
+<ProjectLayout title={shareTitle} description={page.metaDescription} path="/dexgo/" iconDir="/dexgo/" bodyClass="page-dexgo" footer={`${page.title} · ${page.affiliation}`}>
+  <Fragment slot="head">
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={page.title} />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:title" content={shareTitle} />
+    <meta property="og:description" content={page.metaDescription} />
+    <meta property="og:image" content={shareImage} />
+    <meta property="og:image:width" content={String(page.teaser.width)} />
+    <meta property="og:image:height" content={String(page.teaser.height)} />
+    <meta property="og:image:alt" content={page.shareImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={shareTitle} />
+    <meta name="twitter:description" content={page.metaDescription} />
+    <meta name="twitter:image" content={shareImage} />
+    <meta name="twitter:image:alt" content={page.shareImageAlt} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href={fonts} />
+    <link rel="preload" as="image" href={page.teaser.poster} fetchpriority="high" media="(min-width: 640px)" />
+    <link rel="preload" as="image" href={page.teaser.phone.poster} fetchpriority="high" media="(max-width: 639px)" />
+  </Fragment>
+
+  <article class="dx-page">
+    <header class="dx-title">
+      <h1>{page.title}</h1>
+      <p class="dx-subtitle">{page.subtitle}</p>
+      <p class="dx-authors">
+        {authorGroups.map((group) => (
+          <span class="dx-author-group">
+            {group.map((author) => (
+              <span class="dx-author"><a href={author.href}>{author.name}</a>{author.equal ? <sup aria-hidden="true">*</sup> : null}{author.equal ? <span class="visually-hidden"> (equal contribution)</span> : null}</span>
+            ))}
+          </span>
+        ))}
+      </p>
+      <p class="dx-affiliation">{page.affiliation}</p>
+      {hasEqual ? <p class="dx-author-note" aria-hidden="true">*{page.equalNote}</p> : null}
+      {
+        links.length > 0 ? (
+          <ul class="dx-links" aria-label="Project links">
+            {links.map((link) => (
+              <li>
+                <a href={link.href}>{link.label}</a>
+              </li>
+            ))}
+          </ul>
+        ) : null
+      }
+      <button type="button" class="dx-control dx-video-toggle" data-video-toggle>Pause videos</button>
+    </header>
+
+    <div class="dx-media dx-teaser">
+      <ClipVideo clip={page.teaser} phone={page.teaser.phone} eager />
+    </div>
+
+    <section class="dx-section dx-abstract" aria-labelledby="abstract-heading">
+      <div class="dx-text">
+        <h2 id="abstract-heading" class="dx-label">Abstract</h2>
+        <p class="dx-prose" set:html={texInline(page.abstract)} />
+      </div>
+    </section>
+
+    <section class="dx-section" aria-labelledby="method-heading">
+      <h2 id="method-heading" class="visually-hidden">Method</h2>
+
+      <section class="dx-screen dx-screen-first" aria-labelledby="method-overview">
+        <KeyHeading id="method-overview" text={method.heading} />
+        <div class="dx-text">
+          <p class="dx-prose" set:html={texInline(method.intro)} />
+        </div>
+        <div class="dx-media">
+          <MethodFigure {...method.figure} />
+        </div>
+      </section>
+
+      <section class="dx-screen" aria-labelledby={method.graph.id}>
+        <KeyHeading id={method.graph.id} text={method.graph.heading} />
+        <div class="dx-text">
+          <p class="dx-prose" set:html={texInline(method.graph.text)} />
+        </div>
+        <div class="dx-media">
+          <UnlockGraph
+            animation={method.graph.animation}
+            tasks={method.graph.tasks}
+            defaultTask={method.graph.defaultTask}
+            graphWidth={method.graph.graphWidth}
+            startAt={method.graph.startAt}
+            legendRect={method.graph.legendRect}
+            hint={method.graph.hint}
+          />
+        </div>
+      </section>
+
+      <section class="dx-screen" aria-labelledby={method.kernel.id}>
+        <KeyHeading id={method.kernel.id} text={method.kernel.heading} />
+        <div class="dx-text">
+          <p class="dx-prose" set:html={texInline(method.kernel.text)} />
+        </div>
+        <div class="dx-media is-text-width" data-replay-scope>
+          <ClipVideo clip={method.kernel.animation} mode="once" />
+          <MediaNote>
+            <button type="button" class="dx-control" data-replay aria-label="Replay animation of the kernel">Replay animation</button>
+          </MediaNote>
+        </div>
+      </section>
+
+      <section class="dx-screen" aria-labelledby={method.encoding.id}>
+        <KeyHeading id={method.encoding.id} text={method.encoding.heading} />
+        <div class="dx-text">
+          <p class="dx-prose" set:html={texInline(method.encoding.lead)} />
+          <div class="dx-formula" set:html={texDisplay(method.encoding.formula)} />
+          <p class="dx-prose" set:html={texInline(method.encoding.text)} />
+        </div>
+      </section>
+    </section>
+
+    <section class="dx-section" aria-labelledby="results-heading">
+      <h2 id="results-heading" class="visually-hidden">Results</h2>
+      <DexgoResults />
+    </section>
+
+    {
+      showBibtex ? (
+        <section class="dx-section" aria-labelledby="bibtex-heading">
+          <div class="dx-text">
+            <h2 id="bibtex-heading" class="dx-label">
+              BibTeX
+            </h2>
+            <pre class="dx-bibtex"><code>{page.bibtex}</code></pre>
+          </div>
+        </section>
+      ) : null
+    }
+  </article>
+</ProjectLayout>

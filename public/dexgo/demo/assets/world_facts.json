@@ -1,0 +1,19 @@
+{
+ "box_low": [
+  -0.6,
+  -0.6,
+  0.5
+ ],
+ "box_high": [
+  0.6,
+  0.6,
+  1.5
+ ],
+ "root_position": [
+  0.0,
+  0.0,
+  1.0
+ ],
+ "max_wrist_pitch_deg": 75.0,
+ "protocol": "rod-eval-v1-bench-ffB"
+}

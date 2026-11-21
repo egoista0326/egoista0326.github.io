@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DexGO interactive demo</title>
+  <link rel="icon" href="/dexgo/favicon.svg" type="image/svg+xml">
+  <meta name="description" content="A MANO hand policy trained with DexGO reaches goal after goal in a MuJoCo simulation that runs in the browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+  <style>
+    /* Tokens of the DexGO project page (personal_web src/styles/global.css, .page-dexgo): white, Source Sans 3,
+       teal accent #438f87 (graph, underline), ink #367a73 (buttons, links). Light only, as the page.
+       Two layouts, chosen by the viewport (the iframe): side by side when wide (the graph right of the view), stacked
+       when tall or narrow (below). Both fill the viewport without scrolling. */
+    :root {
+      --bg: #ffffff; --fg: #1e2528; --muted: #586366; --rule: #dde3e1;
+      --accent: #438f87; --ink: #367a73; --ink-hover: #2b665f;
+      --sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --side: clamp(340px, 34vw, 440px);
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); }
+    body { color: var(--fg); font: 400 16px/1.45 var(--sans); }
+    [hidden] { display: none !important; }
+    :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+    .demo {
+      display: grid; gap: 8px 28px; padding: 12px 16px; height: 100vh; height: 100dvh;
+      grid-template-columns: minmax(0, 1fr) var(--side);
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas: "controls controls" "view side";
+    }
+
+    /* control row: the page's tab toggles (underline) and its text controls (Play / Pause demo, Reset) */
+    .controls { grid-area: controls; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 32px; }
+    .group { display: flex; align-items: center; gap: 4px 20px; }
+    .group-label { color: var(--muted); font-size: 14px; }
+    .toggle {
+      appearance: none; border: 0; border-bottom: 2px solid transparent; padding: 4px 0; background: none;
+      color: var(--muted); cursor: pointer; font: 600 16px/1.45 var(--sans); white-space: nowrap;
+      transition: color 150ms ease-out, border-color 150ms ease-out;
+    }
+    .toggle:hover { color: var(--fg); }
+    .toggle[aria-pressed="true"] { border-bottom-color: var(--accent); color: var(--fg); }
+    .toggle:disabled { cursor: default; }
+    .actions { display: flex; align-items: center; gap: 8px 24px; margin-left: auto; }
+    #play { min-width: 5.6em; text-align: left; } /* "Play demo" / "Pause demo" without the row moving */
+    .link {
+      appearance: none; border: 0; padding: 4px 0; background: none; color: var(--ink); cursor: pointer;
+      font: 600 16px/1.45 var(--sans); white-space: nowrap; text-decoration: underline; text-decoration-color: transparent;
+      text-underline-offset: 4px; transition: color 150ms ease-out, text-decoration-color 150ms ease-out;
+    }
+    .link:hover { color: var(--ink-hover); text-decoration-color: currentColor; }
+    .link:disabled { opacity: 0.45; cursor: default; }
+    .check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; cursor: pointer; }
+    .check input { margin: 0; accent-color: var(--accent); }
+
+    /* 3D view: white, no frame (the videos sit on white) */
+    #view { grid-area: view; position: relative; min-height: 0; min-width: 0; background: var(--bg); }
+    /* one finger scrolls the page (vertical); two fingers orbit and zoom; the wheel scrolls the page (Ctrl / Cmd + wheel
+       zooms, app/main.js) */
+    #view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+    #view canvas#axes { pointer-events: none; }
+    .hint {
+      position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); margin: 0; padding: 2px 8px;
+      background: rgb(255 255 255 / 0.85); color: var(--muted); font-size: 13px; white-space: nowrap;
+      pointer-events: none; opacity: 0; transition: opacity 200ms ease-out;
+    }
+    .hint.is-shown { opacity: 1; }
+    #loading {
+      position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 16px;
+      color: var(--muted); font-size: 16px; text-align: center; pointer-events: none;
+    }
+
+    /* side: status line over the graph */
+    .side { grid-area: side; align-self: center; display: grid; gap: 16px; min-width: 0; }
+    .status { display: grid; gap: 2px; }
+    .status p { margin: 0; }
+    .task { min-height: 1.35em; font-size: 18px; line-height: 1.35; }
+    .task b { margin-right: 8px; color: var(--ink); font-weight: 700; }
+    .goals { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+    .note { min-height: 1.45em; color: var(--muted); font-size: 14px; }
+    .note.is-flash { color: #a0523b; } /* the video's "in training" brown, for a failed goal */
+    #graph { width: 100%; }
+    .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; margin: 4px 0 0; color: #5f6368; font-size: 14px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1.3px solid; }
+    .legend .l-current { background: #438f87; border-color: #438f87; }
+    .legend .l-available { background: #e3eeea; border-color: #438f87; }
+    .legend .l-unavailable { background: #fff; border-color: #b5b9bf; }
+
+    /* marker scene (?scene=marker): one goal per start row, no graph */
+    body[data-scene="marker"] .chain-only { display: none !important; }
+    body[data-scene="chain"] .marker-only { display: none !important; }
+    .marker-status { display: flex; flex-wrap: wrap; gap: 4px 16px; font-variant-numeric: tabular-nums; font-size: 15px; }
+    .marker-status .ok { color: var(--ink); font-weight: 600; }
+    .marker-status .muted { color: var(--muted); }
+
+    /* Tall or narrow viewports (the page's phone frame, about 9:16; any frame narrower than 820 px or not wider than
+       tall): one row of tabs on top, the view below it takes the remaining height (Play / Pause demo and Reset in its
+       top-right corner), then the status and the compact graph. Everything fits the viewport (no scrolling) down to
+       about 480 px. */
+    @media (max-width: 819px), (max-aspect-ratio: 1/1) {
+      .demo {
+        height: 100vh; height: 100dvh; min-height: 480px; padding: 12px; gap: 8px 16px;
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-rows: auto minmax(160px, 1fr) auto auto;
+        grid-template-areas: "objects modes" "view view" "status status" "graph graph";
+      }
+      .controls, .side { display: contents; }
+      #view { margin-inline: -12px; } /* full width: the width sets the hand's size */
+      .objects-group { grid-area: objects; }
+      .modes-group { grid-area: modes; justify-self: end; }
+      .group { gap: 4px 16px; }
+      .group-label { display: none; }
+      .toggle { font-size: 15px; padding: 2px 0; }
+      .actions { grid-area: view; justify-self: end; align-self: start; z-index: 1; margin: 0; gap: 4px 16px; }
+      .link { font-size: 15px; }
+      .status, #marker-status { grid-area: status; }
+      .graph-box { grid-area: graph; }
+      .task { min-height: 0; font-size: 16px; line-height: 1.3; }
+      .goals { font-size: 14px; }
+      .note { min-height: 1.4em; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .legend { gap: 2px 14px; margin-top: 2px; font-size: 12.5px; }
+      .legend i { width: 12px; height: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { transition-duration: 0s !important; } }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+  </script>
+</head>
+<body data-scene="chain">
+  <div class="demo">
+    <div class="controls" role="toolbar" aria-label="Demo controls">
+      <div class="group objects-group chain-only" role="group" aria-label="Object">
+        <span class="group-label" aria-hidden="true">Object</span>
+        <span id="objects" class="group"></span>
+      </div>
+      <div class="group modes-group chain-only" role="group" aria-label="Mode">
+        <span class="group-label" aria-hidden="true">Mode</span>
+        <button type="button" class="toggle" data-mode="random" aria-pressed="true">Random chain</button>
+        <button type="button" class="toggle" data-mode="manual" aria-pressed="false">Manual</button>
+      </div>
+      <div class="actions">
+        <label id="colliders-toggle" class="check marker-only" hidden><input type="checkbox" id="colliders"> Show colliders</label>
+        <button type="button" id="play" class="link" disabled>Play demo</button>
+        <button type="button" id="reset" class="link" disabled>Reset</button>
+      </div>
+    </div>
+    <div id="view" aria-label="3D view of the hand and the object; drag to rotate, Ctrl + scroll or pinch to zoom">
+      <canvas id="axes" aria-hidden="true"></canvas>
+      <p id="zoom-hint" class="hint" aria-hidden="true">Ctrl + scroll to zoom</p>
+      <p id="loading">Loading the demo…</p>
+    </div>
+    <div class="side">
+      <div class="status chain-only" role="status" aria-live="polite">
+        <p class="task"><b id="task-code"></b><span id="task-words"></span></p>
+        <p id="goals" class="goals"></p>
+        <p id="note" class="note"></p>
+      </div>
+      <div class="graph-box chain-only">
+        <div id="graph"></div>
+        <p class="legend" aria-hidden="true"><span><i class="l-current"></i>Current</span>
+          <span><i class="l-available"></i>Available next</span><span><i class="l-unavailable"></i>Not available</span></p>
+      </div>
+      <div id="marker-status" class="marker-status marker-only" role="status"></div>
+    </div>
+  </div>
+  <script type="module" src="./app/main.js"></script>
+</body>
+</html>

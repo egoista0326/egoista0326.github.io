@@ -1,0 +1,134 @@
+---
+// A horizontally swipeable row of labelled clips (scroll snap, mouse drag, previous/next buttons, arrow
+// keys on the focusable track). Each clip is its own looping playback unit of clipPlayback.ts, so only
+// the clips actually in view play: the track clips its content, which the IntersectionObserver sees.
+import ClipVideo from './ClipVideo.astro';
+import type { ObjectItem } from '../../data/dexgo';
+
+interface Props {
+  items: ObjectItem[];
+  /** Accessible name of the row. */
+  label: string;
+}
+
+const { items, label } = Astro.props;
+---
+
+<div class="dx-carousel" data-carousel>
+  <div class="dx-carousel-track" tabindex="0" role="region" aria-label={label} data-carousel-track>
+    {
+      items.map((item) => (
+        <figure class="dx-carousel-item">
+          <ClipVideo clip={item} />
+          <figcaption>{item.name}</figcaption>
+        </figure>
+      ))
+    }
+  </div>
+  <div class="dx-carousel-nav">
+    <button type="button" class="dx-carousel-button" data-carousel-prev aria-label="Previous objects">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+    </button>
+    <button type="button" class="dx-carousel-button" data-carousel-next aria-label="Next objects">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  for (const root of document.querySelectorAll<HTMLElement>('[data-carousel]')) {
+    const track = root.querySelector<HTMLElement>('[data-carousel-track]')!;
+    const prev = root.querySelector<HTMLButtonElement>('[data-carousel-prev]')!;
+    const next = root.querySelector<HTMLButtonElement>('[data-carousel-next]')!;
+    const items = [...track.children] as HTMLElement[];
+
+    // Buttons are disabled at the ends of the row.
+    const update = () => {
+      const max = track.scrollWidth - track.clientWidth;
+      prev.disabled = track.scrollLeft <= 1;
+      next.disabled = track.scrollLeft >= max - 1;
+    };
+    // One step is the items that fit in view (at least one), so a press shows the next set.
+    const step = (direction: number) => {
+      const width = items[0]?.getBoundingClientRect().width ?? track.clientWidth;
+      const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+      const count = Math.max(1, Math.floor((track.clientWidth + gap) / (width + gap)));
+      track.scrollBy({ left: direction * count * (width + gap), behavior: 'smooth' });
+    };
+    prev.addEventListener('click', () => step(-1));
+    next.addEventListener('click', () => step(1));
+    track.addEventListener('scroll', update, { passive: true });
+    new ResizeObserver(update).observe(track);
+    track.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        step(event.key === 'ArrowLeft' ? -1 : 1);
+      } else if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault();
+        track.scrollTo({ left: event.key === 'Home' ? 0 : track.scrollWidth, behavior: 'smooth' });
+      }
+    });
+
+    // Mouse drag (touch and pens scroll natively). Snapping is off while dragging, then the row
+    // settles on the nearest item; a drag does not count as a click.
+    let startX = 0;
+    let startLeft = 0;
+    let dragging = false;
+    let moved = false;
+    track.addEventListener('pointerdown', (event) => {
+      if (event.pointerType !== 'mouse' || event.button !== 0) return;
+      dragging = true;
+      moved = false;
+      startX = event.clientX;
+      startLeft = track.scrollLeft;
+    });
+    track.addEventListener('pointermove', (event) => {
+      if (!dragging) return;
+      const dx = event.clientX - startX;
+      if (!moved && Math.abs(dx) < 4) return;
+      if (!moved) {
+        moved = true;
+        track.setPointerCapture(event.pointerId);
+        track.classList.add('is-dragging');
+      }
+      track.scrollLeft = startLeft - dx;
+    });
+    const end = (event: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      if (!moved) return;
+      const left = track.scrollLeft;
+      track.classList.remove('is-dragging');
+      // Removing the class re-enables snapping, which may jump; settle smoothly from where the drag ended.
+      track.scrollLeft = left;
+      const width = items[0]?.getBoundingClientRect().width ?? 0;
+      const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+      if (width > 0) {
+        const index = Math.round(left / (width + gap));
+        track.scrollTo({ left: index * (width + gap), behavior: 'smooth' });
+      }
+      if (track.hasPointerCapture(event.pointerId)) track.releasePointerCapture(event.pointerId);
+    };
+    track.addEventListener('pointerup', end);
+    track.addEventListener('pointercancel', end);
+    track.addEventListener('click', (event) => {
+      if (moved) event.preventDefault();
+    });
+    track.addEventListener('dragstart', (event) => event.preventDefault());
+
+    // Posters of the whole row load once the row nears the viewport (the playback script only sees
+    // items inside the track's visible part).
+    const posters = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        for (const video of track.querySelectorAll<HTMLVideoElement>('video[data-poster]')) {
+          if (!video.poster) video.poster = video.dataset.poster ?? '';
+        }
+        posters.disconnect();
+      },
+      { rootMargin: '800px 0px' }
+    );
+    posters.observe(root);
+    update();
+  }
+</script>

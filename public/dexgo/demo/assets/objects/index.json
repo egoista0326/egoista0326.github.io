@@ -1,0 +1,173 @@
+{
+ "format": "objects-v1",
+ "control": "control.json",
+ "world_facts": "../world_facts.json",
+ "settings": {
+  "nodes": [
+   "R",
+   "T",
+   "G",
+   "RT",
+   "RG",
+   "TG",
+   "RTG",
+   "RL",
+   "TL",
+   "GL",
+   "RTL",
+   "RGL",
+   "TGL",
+   "RTGL",
+   "L"
+  ],
+  "reloc_xy_m": 0.1,
+  "reloc_z_m": 0.04,
+  "step_m": [
+   0.05,
+   0.14
+  ],
+  "home_turn_deg": 35.0,
+  "turn_deg": [
+   15.0,
+   60.0
+  ],
+  "pitch_deg": 65.0,
+  "dwell_steps": 10,
+  "timeout_steps": 600,
+  "recover_mm": 20.0,
+  "recover_deg": 20.0,
+  "palm_up": [
+   [
+    1.0,
+    0.0,
+    0.0
+   ],
+   [
+    0.0,
+    0.0,
+    1.0
+   ],
+   [
+    0.0,
+    -1.0,
+    0.0
+   ]
+  ],
+  "relocation_tries": 200,
+  "max_turn_deg": 120.0,
+  "max_object_step_m": 0.6,
+  "drop_relation_m": 0.15,
+  "recoveries_in_row": 2,
+  "roll_variety": {
+   "90": [
+    45,
+    60,
+    75,
+    90,
+    120
+   ],
+   "60": [
+    45,
+    60,
+    75,
+    90
+   ]
+  },
+  "slide_variety": [
+   2,
+   3,
+   4,
+   5
+  ]
+ },
+ "objects": [
+  {
+   "id": "rod_round_d40",
+   "label": "Round",
+   "kind": "rod",
+   "object_id": "tool_ob_ffb_round_d40_l200",
+   "rod": "round",
+   "scene": "rod_round_d40/scene.xml",
+   "object": "rod_round_d40/object.json",
+   "chain": "rod_round_d40/chain.json",
+   "nodes": [
+    "R",
+    "T",
+    "G",
+    "RT",
+    "RG",
+    "TG",
+    "RTG",
+    "RL",
+    "TL",
+    "GL",
+    "RTL",
+    "RGL",
+    "TGL",
+    "RTGL",
+    "L"
+   ],
+   "records": {
+    "E_n": 2093,
+    "T_b": 491,
+    "E_r": 2022
+   },
+   "options": {
+    "er": true,
+    "er_start": true,
+    "er_inhand": true,
+    "variety": true,
+    "variety_composites": false
+   },
+   "families": {
+    "E_n": "Enclosure",
+    "E_r": "Reversed enclosure",
+    "T_b": "Pinch"
+   }
+  },
+  {
+   "id": "rod_hexagon_d40",
+   "label": "Hexagonal",
+   "kind": "rod",
+   "object_id": "tool_ob_ffb_hexagon_d40_l200",
+   "rod": "hexagon",
+   "scene": "rod_hexagon_d40/scene.xml",
+   "object": "rod_hexagon_d40/object.json",
+   "chain": "rod_hexagon_d40/chain.json",
+   "nodes": [
+    "R",
+    "T",
+    "G",
+    "RT",
+    "RG",
+    "TG",
+    "RTG",
+    "RL",
+    "TL",
+    "GL",
+    "RTL",
+    "RGL",
+    "TGL",
+    "RTGL",
+    "L"
+   ],
+   "records": {
+    "E_n": 2122,
+    "T_b": 471,
+    "E_r": 2140
+   },
+   "options": {
+    "er": true,
+    "er_start": true,
+    "er_inhand": true,
+    "variety": false,
+    "variety_composites": true
+   },
+   "families": {
+    "E_n": "Enclosure",
+    "E_r": "Reversed enclosure",
+    "T_b": "Pinch"
+   }
+  }
+ ]
+}

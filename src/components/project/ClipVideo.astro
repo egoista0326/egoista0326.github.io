@@ -1,0 +1,61 @@
+---
+import type { Clip } from '../../data/dexgo';
+
+interface Props {
+  clip: Clip;
+  /**
+   * Playback unit of clipPlayback.ts: 'loop' (own unit, loops), 'once' (own unit, plays once) or 'row'
+   * (part of an enclosing looping row unit).
+   */
+  mode?: 'loop' | 'once' | 'row';
+  /** Phone cut used below 640 px viewport width: its file, its own poster and its box aspect ratio (w / h). */
+  phone?: { src: string; poster: string; aspect: string };
+  /** Above the fold: poster and metadata load right away; otherwise the poster loads near the viewport. */
+  eager?: boolean;
+  class?: string;
+}
+
+const { clip, mode = 'loop', phone, eager = false, class: className } = Astro.props;
+const unit = mode === 'row' ? undefined : mode === 'once' ? 'once' : '';
+const phoneBox = phone ? `; --clip-phone-aspect: ${phone.aspect}` : '';
+// With a phone cut the poster is chosen per viewport: by clipPlayback.ts near the viewport, or for an eager clip
+// by the inline script right after the video (before first paint; the head preloads the matching poster).
+const eagerPoster = eager && !phone ? clip.poster : undefined;
+const lazyPoster = eager ? undefined : clip.poster;
+---
+
+<div
+  class:list={['dx-clip', { 'has-phone-cut': Boolean(phone) }, className]}
+  data-play-unit={unit}
+  style={`--clip-aspect: ${clip.width} / ${clip.height}${phoneBox}`}
+>
+  <video
+    muted
+    playsinline
+    loop={mode === 'loop' || mode === 'row'}
+    preload={eager ? 'metadata' : 'none'}
+    poster={eagerPoster}
+    data-poster={phone && eager ? clip.poster : lazyPoster}
+    data-poster-phone={phone?.poster}
+    width={clip.width}
+    height={clip.height}
+    aria-label={clip.label}
+  >
+    {phone ? <source src={phone.src} type="video/mp4" media="(max-width: 639px)" /> : null}
+    <source src={clip.src} type="video/mp4" />
+  </video>
+  {
+    eager && phone ? (
+      <script is:inline>
+        (function (v) {
+          v.poster = (matchMedia('(max-width: 639px)').matches && v.dataset.posterPhone) || v.dataset.poster;
+          v.removeAttribute('data-poster');
+        })(document.currentScript.previousElementSibling);
+      </script>
+    ) : null
+  }
+</div>
+
+<script>
+  import '../../scripts/clipPlayback';
+</script>

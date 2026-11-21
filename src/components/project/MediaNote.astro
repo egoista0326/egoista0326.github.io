@@ -1,0 +1,20 @@
+---
+// The line under a media block, centred on the page axis as on the video's screens. The caption
+// comes from `caption` or from a `slot="caption"` element (give it class "dx-note-text"); other children
+// (e.g. a replay button) follow it on the same line, spaced from it only when there is a caption.
+interface Props {
+  caption?: string;
+}
+
+const { caption } = Astro.props;
+const hasCaption = Astro.slots.has('caption') || Boolean(caption);
+---
+
+{
+  hasCaption || Astro.slots.has('default') ? (
+    <p class="dx-note">
+      {Astro.slots.has('caption') ? <slot name="caption" /> : caption ? <span class="dx-note-text">{caption}</span> : null}
+      <slot />
+    </p>
+  ) : null
+}

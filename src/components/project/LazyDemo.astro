@@ -1,0 +1,90 @@
+---
+// The interactive demo: a poster of what the visitor will see (scene, goal hand and object, graph; no controls),
+// with one button above the graph, where the running demo shows its status, so it never hides the scene or the
+// goal hand; a click anywhere on the poster also starts it. The iframe (about 20 MB with the physics engine) is
+// created only on click, in the same box, so starting never changes the layout. While it loads, the poster stays
+// with a short loading line; while the running demo is in view, the page's own clips are suspended so they do not
+// compete with it. Under the stage, one line: the caption, then "Open in a new tab".
+//
+// The demo lays itself out side by side only in a frame at least 820 px wide and wider than tall (its
+// index.html); the stage is narrower below a 884 px viewport (32 px gutters). There the stage is a 9:16 frame at
+// least 340 px wide (narrower, the demo's top row crowds; on phones under 380 px it reaches into the side
+// gutters for that; global.css, .dx-demo-stage), and the poster is the capture of the demo's stacked layout. In the side-by-side layout the demo's graph panel
+// keeps a 340 px minimum, so in frames narrower than about 1000 px it takes a larger share of the width than in
+// the 1080 px capture: between 884 and 1023 px (stage about 820 to 945 px) a capture at 864 px is used instead.
+// TALL_MEDIA and MID_MEDIA below must match the media queries of global.css that place the start button.
+interface Props {
+  /** Page embedded in the iframe, e.g. '/dexgo/demo/index.html' (served from public/). */
+  src: string;
+  /** Accessible iframe title. */
+  title: string;
+  startLabel: string;
+  loadingLabel: string;
+  newTabLabel: string;
+  caption: string;
+  /** Posters of the wide layout (at 1080 px and, with the same aspect, at 864 px) and of the stacked (9:16)
+      layout; sizes in CSS px. */
+  poster: { src: string; width: number; height: number };
+  posterMid: { src: string; width: number; height: number };
+  posterPhone: { src: string; width: number; height: number };
+  posterAlt: string;
+}
+
+const { src, title, startLabel, loadingLabel, newTabLabel, caption, poster, posterMid, posterPhone, posterAlt } =
+  Astro.props;
+const TALL_MEDIA = '(max-width: 883px)';
+const MID_MEDIA = '(min-width: 884px) and (max-width: 1023px)';
+---
+
+<div class="dx-demo" data-demo-embed data-demo-src={src} data-demo-title={title}>
+  <div class="dx-demo-stage" data-demo-frame style={`--poster-ratio: ${poster.width} / ${poster.height}`}>
+    <picture>
+      <source media={TALL_MEDIA} srcset={posterPhone.src} width={posterPhone.width} height={posterPhone.height} />
+      <source media={MID_MEDIA} srcset={posterMid.src} width={posterMid.width} height={posterMid.height} />
+      <img src={poster.src} alt={posterAlt} width={poster.width} height={poster.height} loading="lazy" decoding="async" />
+    </picture>
+    <button type="button" class="dx-button dx-demo-start" data-demo-start>{startLabel}</button>
+    <p class="dx-demo-loading" data-demo-loading role="status" hidden>{loadingLabel}</p>
+  </div>
+  <p class="dx-note">
+    <span class="dx-note-text">{caption}</span>
+    <a class="dx-control" href={src} target="_blank" rel="noopener">{newTabLabel}</a>
+  </p>
+</div>
+
+<script>
+  for (const embed of document.querySelectorAll<HTMLElement>('[data-demo-embed]')) {
+    const frame = embed.querySelector<HTMLElement>('[data-demo-frame]');
+    const start = embed.querySelector<HTMLButtonElement>('[data-demo-start]');
+    const loading = embed.querySelector<HTMLElement>('[data-demo-loading]');
+    if (!frame || !start) continue;
+
+    const begin = () => {
+      const iframe = document.createElement('iframe');
+      iframe.title = embed.dataset.demoTitle ?? 'Interactive demo';
+      iframe.allow = 'fullscreen';
+      iframe.addEventListener('load', () => {
+        embed.classList.add('is-loaded');
+        if (loading) loading.hidden = true;
+      });
+      iframe.src = embed.dataset.demoSrc ?? '';
+      if (loading) loading.hidden = false;
+      frame.append(iframe);
+      embed.classList.add('is-started');
+      start.hidden = true;
+      iframe.focus();
+
+      // Suspend the page's clips while the running demo is in view.
+      const suspend = (on: boolean) => document.dispatchEvent(new CustomEvent(on ? 'clips:suspend' : 'clips:resume'));
+      new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) suspend(entry.isIntersecting && entry.intersectionRatio >= 0.3);
+        },
+        { threshold: [0, 0.3, 0.6] }
+      ).observe(frame);
+    };
+    start.addEventListener('click', begin, { once: true });
+    // The poster is part of the target (pointer only; the button is the keyboard way in).
+    frame.querySelector('img')?.addEventListener('click', () => start.click(), { once: true });
+  }
+</script>
