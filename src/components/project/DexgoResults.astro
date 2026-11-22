@@ -31,7 +31,6 @@ const sizeRow = [
       newTabLabel={demo.newTabLabel}
       caption={demo.caption}
       poster={demo.poster}
-      posterMid={demo.posterMid}
       posterPhone={demo.posterPhone}
       posterAlt={demo.posterAlt}
     />
@@ -41,10 +40,20 @@ const sizeRow = [
 <section class="dx-screen" aria-labelledby="results-targets">
   <KeyHeading id="results-targets" text={targets.heading} />
   <div class="dx-media">
-    <!-- Two pairs side by side (screwdriver left, hammer right, as in the video; stacked on phones); each loops on
-         its own, since the two files differ in length. -->
-    <div class="dx-pairs" style={pairColumns}>
-      {targets.pair.map((clip) => <ClipVideo clip={clip} />)}
+    {/* Two pairs side by side (screwdriver left, hammer right, as in the video; stacked below 640 px), each named
+        above its clip; each loops on its own, since the two files differ in length. The wrapper is the size
+        container that the gutter width is measured against (global.css, .dx-pairs-box). */}
+    <div class="dx-pairs-box">
+      <div class="dx-pairs" style={pairColumns}>
+        {
+          targets.pair.map((clip, index) => (
+            <figure class="dx-pair">
+              <figcaption>{targets.names[index]}</figcaption>
+              <ClipVideo clip={clip} />
+            </figure>
+          ))
+        }
+      </div>
     </div>
     <MediaNote caption={targets.caption} />
   </div>
@@ -65,25 +74,16 @@ const sizeRow = [
       ) : null
     }
     <div class="dx-media">
+      {/* Each hand's note (if any) sits in its own panel, under its carousel: a hand without a note leaves no empty
+          line, and the page below moves by the note's height only when the reader switches hands. */}
       {
         objects.hands.map((hand, index) => (
           <div class="dx-hand-panel" data-hand-panel={hand.id} hidden={index !== 0}>
             <ObjectCarousel items={hand.items} label={`Unseen everyday objects, ${hand.label}`} />
+            <MediaNote caption={hand.note} />
           </div>
         ))
       }
-      {/* The notes share one cell that keeps its height, so switching hands never moves the page below. */}
-      <div class="dx-hand-notes">
-        {
-          objects.hands.map((hand, index) =>
-            hand.note ? (
-              <p class="dx-note" data-hand-note={hand.id} aria-hidden={index !== 0 ? 'true' : undefined}>
-                {hand.note}
-              </p>
-            ) : null
-          )
-        }
-      </div>
     </div>
   </div>
 </section>
@@ -91,11 +91,13 @@ const sizeRow = [
 <section class="dx-screen dx-screen-sizes" aria-labelledby="results-sizes">
   <KeyHeading id="results-sizes" text={sizes.heading} />
   <div class="dx-media">
-    <!-- The three files hold the hand at one size; each is shown at its frame size times one common scale, so
-         the hands match and the objects keep their relative sizes. As in the video, the hands sit on one line and
-         the labels on one line under the objects; the long object's frame may hang over the labels (they stay in
-         front) and its white top may lie under the heading's margin (the heading stays in front). Each figure is
-         as wide as what its file draws; a larger frame lies under a smaller neighbour. -->
+    {/* The three files hold the hand at one size; each is shown at its frame size times one common scale, so
+        the hands match and the objects keep their relative sizes. As in the video, the hands sit on one line and
+        the labels on one line under the objects; the long object's frame may hang over the labels and the caption
+        (they stay in front), and the object may cover part of the heading at the start of the loop (the row is
+        drawn over the heading and multiplies with it, global.css, .dx-sizes). Each figure is as wide as what its
+        file draws; a larger frame lies under a smaller neighbour, and the frames multiply (global.css,
+        .dx-size-stage), so a neighbour's white frame never hides an object. */}
     <div class="dx-sizes" data-play-unit="" style={sizeRow}>
       {
         sizes.clips.map((clip, index) => (
@@ -116,20 +118,15 @@ const sizeRow = [
 </section>
 
 <script>
-  // Hand switch: both panels keep the same cell positions; only one is shown.
+  // Hand switch: only the chosen hand's panel (its carousel and its note) is shown.
   for (const root of document.querySelectorAll<HTMLElement>('[data-hand-switch]')) {
     const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-hand-option]')];
     const panels = [...root.querySelectorAll<HTMLElement>('[data-hand-panel]')];
-    const notes = [...root.querySelectorAll<HTMLElement>('[data-hand-note]')];
     for (const button of buttons) {
       button.addEventListener('click', () => {
         const hand = button.dataset.handOption;
         for (const b of buttons) b.setAttribute('aria-pressed', String(b === button));
         for (const panel of panels) panel.hidden = panel.dataset.handPanel !== hand;
-        for (const note of notes) {
-          if (note.dataset.handNote === hand) note.removeAttribute('aria-hidden');
-          else note.setAttribute('aria-hidden', 'true');
-        }
       });
     }
   }

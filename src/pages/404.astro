@@ -5,7 +5,12 @@
  * under /photography/<slug>/, which the script below offers when the last path segment is a photo.
  * One file serves every path, so under /photography/ the stored theme and language of the
  * photography pages are applied at run time, before the stylesheet and the first paint (the same
- * early script as theirs); elsewhere the page stays light and English.
+ * early script as theirs); elsewhere the stored theme applies (Head.astro) and the page is English.
+ * Under /dexgo/ (any case) the page takes the standalone project page's look before the first paint,
+ * as /dexgo/ itself (ProjectLayout): white, the DexGO icon and title, no personal header, footer or
+ * links, one link to the project page, centred like the project page's column. A case variant of one
+ * of the project's pages (/DexGO/, /DEXGO/demo/, /DexGO/figure/; GitHub Pages paths are
+ * case-sensitive) is replaced by the lower-case page, so Back does not return to the 404.
  */
 import SiteLayout from '../layouts/SiteLayout.astro';
 import { photographyProfile } from '../data/photography';
@@ -16,11 +21,18 @@ import '../components/photography/photography.css';
 const { photos } = await getPhotoLibrary();
 const photoHrefs = Object.fromEntries(photos.map((photo) => [getPhotoSlug(photo), getPhotoHref(photo)]));
 const photographyPreferenceScript = `if(location.pathname.indexOf('/photography/')===0){${earlyPreferenceScript}}`;
+// Plain ES5, in the head after Head.astro's theme script and icon link: marks <html data-not-found="dexgo"> (the CSS
+// below hides the personal header, footer and links), keeps the page light, drops the site name from the title and
+// swaps the site icon for the project's (the files /dexgo/ declares). When the path is a case variant of /dexgo/,
+// /dexgo/demo/ or /dexgo/figure/ (with or without the trailing slash or index.html), it then replaces the entry with
+// that page's canonical address (query and hash kept); a path already in lower case never matches, so it cannot loop.
+const dexgoPath = '/dexgo/';
+const dexgoNotFoundScript = `(function(){var p=location.pathname.toLowerCase();if(p!=='/dexgo'&&p.indexOf('/dexgo/')!==0)return;var m=p!==location.pathname&&/^\\/dexgo(?:\\/(demo|figure))?(?:\\/(?:index\\.html)?)?$/.exec(p);var d=document.documentElement;d.setAttribute('data-not-found','dexgo');d.setAttribute('data-photography-theme','light');document.title='Page not found | DexGO';var h=document.head;var old=h.querySelectorAll('link[rel~="icon"],link[rel="apple-touch-icon"]');for(var i=0;i<old.length;i++)h.removeChild(old[i]);[['icon','favicon.ico','32x32',''],['icon','favicon.svg','','image/svg+xml'],['apple-touch-icon','apple-touch-icon.png','','']].forEach(function(x){var l=document.createElement('link');l.rel=x[0];l.href=${JSON.stringify(dexgoPath)}+x[1];if(x[2])l.setAttribute('sizes',x[2]);if(x[3])l.type=x[3];h.appendChild(l)});if(m)location.replace(${JSON.stringify(dexgoPath)}+(m[1]?m[1]+'/':'')+location.search+location.hash)})();`;
 const { en, zh } = photographyProfile.landingCopy;
 ---
 
 <SiteLayout title="Page not found" description="The requested page does not exist." canonicalPath={false}>
-  <Fragment slot="head"><script is:inline set:html={photographyPreferenceScript} /></Fragment>
+  <Fragment slot="head"><script is:inline set:html={photographyPreferenceScript} /><script is:inline set:html={dexgoNotFoundScript} /></Fragment>
   <section class="not-found" aria-labelledby="not-found-title">
     <h1 id="not-found-title"><span data-lang-inline="en">Page not found</span><span data-lang-inline="zh">页面不存在</span></h1>
     <p class="muted"><span data-lang-inline="en">The page you asked for does not exist, or it has moved.</span><span data-lang-inline="zh">你要找的页面不存在，或已移动。</span></p>
@@ -28,10 +40,11 @@ const { en, zh } = photographyProfile.landingCopy;
       <span data-lang-inline="en">This photograph is still here: <a data-not-found-photo-link href="/photography/">open it</a>.</span><span data-lang-inline="zh">这张照片还在：<a data-not-found-photo-link href="/photography/">打开查看</a>。</span>
     </p>
     <ul class="not-found-links">
-      <li><a href="/"><span data-lang-inline="en">Academic homepage</span><span data-lang-inline="zh">学术主页</span></a></li>
-      <li><a href="/photography/"><span data-lang-inline="en">Photography</span><span data-lang-inline="zh">摄影</span></a></li>
-      <li><a href="/photography/#selected-works-title"><span data-lang-inline="en">{en.sections.selectedWorks}</span><span data-lang-inline="zh">{zh.sections.selectedWorks}</span></a></li>
-      <li><a href={tagFilterHref}><span data-lang-inline="en">All photographs by tag</span><span data-lang-inline="zh">按标签浏览全部照片</span></a></li>
+      <li class="not-found-dexgo"><a href={dexgoPath}>DexGO project page</a></li>
+      <li class="not-found-site"><a href="/"><span data-lang-inline="en">Academic homepage</span><span data-lang-inline="zh">学术主页</span></a></li>
+      <li class="not-found-site"><a href="/photography/"><span data-lang-inline="en">Photography</span><span data-lang-inline="zh">摄影</span></a></li>
+      <li class="not-found-site"><a href="/photography/#selected-works-title"><span data-lang-inline="en">{en.sections.selectedWorks}</span><span data-lang-inline="zh">{zh.sections.selectedWorks}</span></a></li>
+      <li class="not-found-site"><a href={tagFilterHref}><span data-lang-inline="en">Photography Tags</span><span data-lang-inline="zh">摄影标签</span></a></li>
     </ul>
   </section>
   <script type="application/json" data-not-found-photos set:html={JSON.stringify(photoHrefs)} />
@@ -70,5 +83,40 @@ const { en, zh } = photographyProfile.landingCopy;
 
   .not-found-links a {
     font-weight: 500;
+  }
+
+  /* Under /dexgo/ (data-not-found, set in the head): the project's link only, and none of the personal site's
+     header, footer or links. */
+  .not-found-dexgo,
+  :global(html[data-not-found='dexgo']) .not-found-site,
+  :global(html[data-not-found='dexgo'] .site-header),
+  :global(html[data-not-found='dexgo'] .site-footer) {
+    display: none;
+  }
+
+  :global(html[data-not-found='dexgo']) .not-found-dexgo {
+    display: list-item;
+  }
+
+  /* Under /dexgo/: the project page's centred column and its quiet links (underlined on hover only). The sentence
+     keeps the site's paragraph measure, so it is centred in the column too, and balanced, so a phone does not leave
+     one word alone on its second line. */
+  :global(html[data-not-found='dexgo']) .not-found {
+    max-width: 800px;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  :global(html[data-not-found='dexgo']) .not-found p {
+    margin-inline: auto;
+    text-wrap: balance;
+  }
+
+  :global(html[data-not-found='dexgo']) .not-found-links a {
+    text-decoration-color: transparent;
+  }
+
+  :global(html[data-not-found='dexgo']) .not-found-links a:hover {
+    text-decoration-color: currentColor;
   }
 </style>

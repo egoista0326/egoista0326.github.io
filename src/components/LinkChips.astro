@@ -1,0 +1,62 @@
+---
+// A row of small outlined link chips with icons (homepage project card, DexGO title block): one look on both
+// pages, coloured by the page's tokens (global.css, "Link chips"). A link without a target yet is shown as muted
+// text marked "soon": a <span>, so it is neither a link nor focusable, and it reads "Paper · soon".
+export type LinkChipIcon = 'paper' | 'globe' | 'code' | 'video';
+
+export interface LinkChip {
+  label: string;
+  icon: LinkChipIcon;
+  /** Link target; without one the chip is muted and marked "soon". */
+  href?: string;
+}
+
+interface Props {
+  links: LinkChip[];
+  /** Accessible name of the list. */
+  label: string;
+  class?: string;
+}
+
+const { links, label, class: className } = Astro.props;
+
+/** Stroke icons on a 24-unit grid, drawn in currentColor. */
+const icons: Record<LinkChipIcon, string[]> = {
+  // A page with a folded corner and two lines of text.
+  paper: ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M9 13h6', 'M9 17h6'],
+  // A globe: outline, equator and one meridian.
+  globe: ['M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z', 'M3 12h18', 'M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z'],
+  // Code brackets.
+  code: ['M16 18l6-6-6-6', 'M8 6l-6 6 6 6'],
+  // A play triangle in a rounded frame.
+  video: ['M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z', 'M10 9l5 3-5 3z']
+};
+---
+
+<ul class:list={['project-card-links', className]} aria-label={label}>
+  {
+    links.map((link) => {
+      const icon = (
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+          {icons[link.icon].map((d) => <path d={d} />)}
+        </svg>
+      );
+      return (
+        <li>
+          {link.href ? (
+            <a class="project-chip" href={link.href}>
+              {icon}
+              {link.label}
+            </a>
+          ) : (
+            <span class="project-chip is-soon">
+              {icon}
+              {link.label}
+              <span class="project-chip-soon">· soon</span>
+            </span>
+          )}
+        </li>
+      );
+    })
+  }
+</ul>

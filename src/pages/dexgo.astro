@@ -4,17 +4,36 @@ import ProjectLayout from '../layouts/ProjectLayout.astro';
 import ClipVideo from '../components/project/ClipVideo.astro';
 import DexgoResults from '../components/project/DexgoResults.astro';
 import KeyHeading from '../components/project/KeyHeading.astro';
+import LinkChips from '../components/LinkChips.astro';
 import MediaNote from '../components/project/MediaNote.astro';
 import MethodFigure from '../components/project/MethodFigure.astro';
+import ProjectVideo from '../components/project/ProjectVideo.astro';
 import UnlockGraph from '../components/project/UnlockGraph.astro';
 import { dexgoPage as page } from '../data/dexgo';
 import { isPlaceholder } from '../lib/placeholders';
-import { texDisplay, texInline } from '../lib/tex';
+import { emphasisText, texDisplay, texInline } from '../lib/tex';
 
 const { method } = page;
-const fonts =
-  'https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap';
-const links = page.links.filter((link) => link.href);
+// The figure's own props; `page` describes the separate figure page (src/pages/dexgo/figure.astro).
+const { page: _figurePage, ...figure } = method.figure;
+// Self-hosted web fonts. global.css declares the regular faces; the serif's italic is used only by the abstract's
+// \emph phrase, so its file is a subset of that phrase's letters (made with the Google Fonts `text=` API for exactly
+// these characters), declared here for only them (unicode-range); the dist test checks that the file has a glyph for
+// each, so a changed phrase needs a new subset file.
+const italicSrc = '/fonts/source-serif-4/source-serif-4-italic-emph.woff2';
+const italicChars = [...new Set(emphasisText(page.abstract))].sort().join('');
+const italicFace = italicChars
+  ? `@font-face{font-family:"Source Serif 4";font-style:italic;font-weight:400;font-display:swap;src:url("${italicSrc}") format("woff2");unicode-range:${[...italicChars].map((char) => `U+${char.codePointAt(0)!.toString(16).toUpperCase()}`).join(',')}}`
+  : null;
+// All three files are preloaded: the title block and the abstract use them on the first screen, and a face that
+// arrives after the first layout would reflow the abstract (the italic alone moved it by a line at 768 px).
+const fontPreloads = [
+  '/fonts/source-sans-3/source-sans-3-latin-var.woff2',
+  '/fonts/source-serif-4/source-serif-4-latin-opsz.woff2',
+  ...(italicFace ? [italicSrc] : [])
+];
+// A link shows once it has a target, or before that as a muted "soon" chip when marked so (Paper, Code).
+const links = page.links.filter((link) => link.href || link.soon);
 const hasEqual = page.authors.some((author) => author.equal);
 // The co-first authors, then the others: each group wraps as a unit, so a narrow screen shows two lines of two.
 const authorGroups = [page.authors.filter((author) => author.equal), page.authors.filter((author) => !author.equal)].filter(
@@ -22,7 +41,7 @@ const authorGroups = [page.authors.filter((author) => author.equal), page.author
 );
 const showBibtex = !isPlaceholder(page.bibtex) && page.bibtex.trim() !== '';
 const pageUrl = new URL('/dexgo/', Astro.site).toString();
-const shareImage = new URL(page.teaser.poster, Astro.site).toString();
+const shareImage = new URL(page.share.src, Astro.site).toString();
 const shareTitle = `${page.title}: ${page.subtitle}`;
 ---
 
@@ -36,19 +55,17 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
     <meta property="og:title" content={shareTitle} />
     <meta property="og:description" content={page.metaDescription} />
     <meta property="og:image" content={shareImage} />
-    <meta property="og:image:width" content={String(page.teaser.width)} />
-    <meta property="og:image:height" content={String(page.teaser.height)} />
-    <meta property="og:image:alt" content={page.shareImageAlt} />
+    <meta property="og:image:width" content={String(page.share.width)} />
+    <meta property="og:image:height" content={String(page.share.height)} />
+    <meta property="og:image:alt" content={page.share.alt} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={shareTitle} />
     <meta name="twitter:description" content={page.metaDescription} />
     <meta name="twitter:image" content={shareImage} />
-    <meta name="twitter:image:alt" content={page.shareImageAlt} />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href={fonts} />
-    <link rel="preload" as="image" href={page.teaser.poster} fetchpriority="high" media="(min-width: 640px)" />
-    <link rel="preload" as="image" href={page.teaser.phone.poster} fetchpriority="high" media="(max-width: 639px)" />
+    <meta name="twitter:image:alt" content={page.share.alt} />
+    {fontPreloads.map((href) => <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />)}
+    {italicFace ? <style is:inline set:html={italicFace} /> : null}
+    <link rel="preload" as="image" href={page.video.poster} fetchpriority="high" />
   </Fragment>
 
   <article class="dx-page">
@@ -66,22 +83,24 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
       </p>
       <p class="dx-affiliation">{page.affiliation}</p>
       {hasEqual ? <p class="dx-author-note" aria-hidden="true">*{page.equalNote}</p> : null}
-      {
-        links.length > 0 ? (
-          <ul class="dx-links" aria-label="Project links">
-            {links.map((link) => (
-              <li>
-                <a href={link.href}>{link.label}</a>
-              </li>
-            ))}
-          </ul>
-        ) : null
-      }
-      <button type="button" class="dx-control dx-video-toggle" data-video-toggle>Pause videos</button>
+      {links.length > 0 ? <LinkChips links={links} label="Project links" class="dx-links" /> : null}
+      <div class="dx-video-controls">
+        <button type="button" class="dx-control dx-video-toggle" data-video-toggle>Pause videos</button>
+        {/* Turns on the project video's sound (ProjectVideo.astro); gone once the sound is on. */}
+        <button type="button" class="dx-control dx-sound" data-sound-on aria-controls="project-video" aria-label="Turn sound on">
+          {/* A speaker with a cross: the sound is off now. */}
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
+            <path d="M11 5 6 9H3v6h3l5 4z" />
+            <path d="m16 9 5 6" />
+            <path d="m21 9-5 6" />
+          </svg>
+          Sound on
+        </button>
+      </div>
     </header>
 
-    <div class="dx-media dx-teaser">
-      <ClipVideo clip={page.teaser} phone={page.teaser.phone} eager />
+    <div class="dx-media dx-hero">
+      <ProjectVideo id="project-video" video={page.video} />
     </div>
 
     <section class="dx-section dx-abstract" aria-labelledby="abstract-heading">
@@ -100,7 +119,7 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
           <p class="dx-prose" set:html={texInline(method.intro)} />
         </div>
         <div class="dx-media">
-          <MethodFigure {...method.figure} />
+          <MethodFigure {...figure} />
         </div>
       </section>
 
@@ -114,11 +133,11 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
             animation={method.graph.animation}
             tasks={method.graph.tasks}
             defaultTask={method.graph.defaultTask}
-            graphWidth={method.graph.graphWidth}
-            startAt={method.graph.startAt}
             legendRect={method.graph.legendRect}
+            phoneText={method.graph.phoneText}
             hint={method.graph.hint}
           />
+          <MediaNote caption={method.graph.legend} />
         </div>
       </section>
 
@@ -127,9 +146,9 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
         <div class="dx-text">
           <p class="dx-prose" set:html={texInline(method.kernel.text)} />
         </div>
-        <div class="dx-media is-text-width" data-replay-scope>
+        <div class="dx-media" data-replay-scope>
           <ClipVideo clip={method.kernel.animation} mode="once" />
-          <MediaNote>
+          <MediaNote caption={method.kernel.note}>
             <button type="button" class="dx-control" data-replay aria-label="Replay animation of the kernel">Replay animation</button>
           </MediaNote>
         </div>

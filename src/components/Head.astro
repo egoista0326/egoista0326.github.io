@@ -1,6 +1,6 @@
 ---
 import { site } from '../data/site';
-import { earlyPreferenceScript } from '../lib/photographyPrefs';
+import { earlyPreferenceScript, earlyThemeScript } from '../lib/photographyPrefs';
 
 interface Props {
   title?: string;
@@ -12,8 +12,11 @@ interface Props {
   canonicalPath?: string | false;
   /** False when the page writes its own Open Graph / Twitter tags in the layout's head slot (e.g. /dexgo/). */
   shareTags?: boolean;
-  /** Photography pages: apply the stored theme and language to <html> before the stylesheet and first paint. */
+  /** Photography pages: apply the stored theme and language to <html> before the stylesheet and first paint
+      (other pages: the stored theme only). */
   photographyPreferences?: boolean;
+  /** og:image of the page (absolute or root-relative URL) with its size in px and alt text. */
+  shareImage?: { src: string; width: number; height: number; alt: string };
 }
 
 const {
@@ -21,7 +24,8 @@ const {
   description = site.description,
   canonicalPath,
   shareTags = true,
-  photographyPreferences = false
+  photographyPreferences = false,
+  shareImage
 } = Astro.props;
 const pageTitle = title === site.title ? site.title : `${title} | ${site.name}`;
 const canonicalTarget = canonicalPath ?? Astro.url.pathname;
@@ -29,14 +33,19 @@ const canonical =
   canonicalTarget === false
     ? undefined
     : new URL(canonicalTarget, Astro.site ?? Astro.url).toString();
+const shareImageUrl = shareImage ? new URL(shareImage.src, Astro.site ?? Astro.url).toString() : undefined;
+// A wide-enough, non-square share image (a photo) gets the large card; the square portrait keeps the small one.
+const twitterCard =
+  shareImage && shareImage.width >= 600 && shareImage.width !== shareImage.height ? 'summary_large_image' : 'summary';
 ---
 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-{photographyPreferences ? <script is:inline set:html={earlyPreferenceScript} /> : null}
+<script is:inline set:html={photographyPreferences ? earlyPreferenceScript : earlyThemeScript} />
 <title>{pageTitle}</title>
 <meta name="description" content={description} />
-{canonical ? <link rel="canonical" href={canonical} /> : null}
+{canonical ? <link rel="canonical" href={canonical} /> : <meta name="robots" content="noindex" />}
+<link rel="preload" href="/fonts/inter/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 {
   shareTags ? (
@@ -46,7 +55,15 @@ const canonical =
       {canonical ? <meta property="og:url" content={canonical} /> : null}
       <meta property="og:title" content={pageTitle} />
       <meta property="og:description" content={description} />
-      <meta name="twitter:card" content="summary" />
+      {shareImage && shareImageUrl ? (
+        <>
+          <meta property="og:image" content={shareImageUrl} />
+          <meta property="og:image:width" content={String(shareImage.width)} />
+          <meta property="og:image:height" content={String(shareImage.height)} />
+          <meta property="og:image:alt" content={shareImage.alt} />
+        </>
+      ) : null}
+      <meta name="twitter:card" content={twitterCard} />
       <meta name="twitter:title" content={pageTitle} />
       <meta name="twitter:description" content={description} />
     </>

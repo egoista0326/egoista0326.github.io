@@ -1,10 +1,14 @@
 ---
-// The paper's overview figure as a vector graphic. Three regions link to the subsections that explain
-// them; the row of text links under the figure names them, in the order of those subsections, and is the
-// visible affordance (no outlines at rest). Hovering or focusing a region or its link tints the region
-// teal and underlines the link; the keyboard reaches the regions through the link row, so the regions are
-// pointer targets only. Below 720 px the figure is too small to read: the regions are hidden, the whole
-// image opens the full-size figure, and an "Open the figure" link says so.
+// The paper's overview figure as a vector graphic (its web cut, with labels set for the 800 px column). Three
+// regions link to the subsections that explain them; the row of text links under the figure names them, in the
+// order of those subsections, and is the visible affordance (no outlines at rest). Hovering a region or hovering or
+// focusing its link tints and rings the region teal and underlines the link; the keyboard reaches the regions through
+// the link row, so the regions are pointer targets only. Below 864 px (the figure under 800 px, labels under the
+// readable size) an "Open the figure" link in the row opens the figure page (/dexgo/figure/), where it is 1000 px wide
+// in a horizontally scrolling box. Below 720 px the figure is a thumbnail: the regions are hidden, the whole image
+// opens the figure page too, "Open the figure" is the one control on its own line and the three section links follow
+// as a quiet row joined by " · " (the separators show only there; where the three do not fit on one line, the last
+// one goes to its own line without a separator). The figure is named by `label`; the link row is not its caption.
 interface Hotspot {
   target: string;
   label: string;
@@ -18,18 +22,21 @@ interface Props {
   height: number;
   alt: string;
   hotspots: Hotspot[];
-  /** Text of the phone-only link to the full-size figure. */
+  /** Accessible name of the figure. */
+  label: string;
+  /** Text of the link to the full-size figure (shown below 864 px), and that page's path. */
   openLabel: string;
+  openHref: string;
 }
 
-const { src, width, height, alt, hotspots, openLabel } = Astro.props;
+const { src, width, height, alt, hotspots, label, openLabel, openHref } = Astro.props;
 const pct = (value: number, total: number) => `${((value / total) * 100).toFixed(3)}%`;
 ---
 
-<figure class="dx-method-figure" data-method-figure>
+<figure class="dx-method-figure" aria-label={label} data-method-figure>
   <div class="dx-method-stage" style={`aspect-ratio: ${width} / ${height}`}>
-    <img src={src} alt={alt} width="1080" height={Math.round((1080 * height) / width)} decoding="async" loading="lazy" />
-    <a class="dx-method-zoom" href={src} tabindex="-1" aria-hidden="true"></a>
+    <img src={src} alt={alt} width="800" height={Math.round((800 * height) / width)} decoding="async" loading="lazy" />
+    <a class="dx-method-zoom" href={openHref} tabindex="-1" aria-hidden="true"></a>
     {
       hotspots.map((spot) => (
         <a
@@ -44,16 +51,22 @@ const pct = (value: number, total: number) => `${((value / total) * 100).toFixed
       ))
     }
   </div>
-  <figcaption class="dx-spot-links">
-    <a class="dx-method-open" href={src}>{openLabel}</a>
+  <div class="dx-spot-links">
+    <a class="dx-method-open" href={openHref}>{openLabel}</a>
     {
-      hotspots.map((spot) => (
-        <a href={`#${spot.target}`} data-spot={spot.target}>
-          {spot.label}
-        </a>
-      ))
+      /* The section links' own row (a plain part of the link row from 720 px). No whitespace around the links: on
+         phones each is a flex item of that row, with the separators (no-break space, dot, space) between them;
+         where the three do not fit on one line, the last separator becomes the line break, so no line starts or
+         ends with a dot. */
     }
-  </figcaption>
+    <span class="dx-spot-row">
+      {
+        hotspots.map((spot, index) => (
+          <><a href={`#${spot.target}`} data-spot={spot.target}>{spot.label}</a>{index < hotspots.length - 1 ? <span class="dx-spot-sep" aria-hidden="true">{'\u00a0\u00b7 '}</span> : null}</>
+        ))
+      }
+    </span>
+  </div>
 </figure>
 
 <script>

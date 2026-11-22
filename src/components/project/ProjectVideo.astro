@@ -1,0 +1,214 @@
+---
+// The project video at the top of /dexgo/: a real player (native controls: scrubbing, play/pause, volume, captions,
+// full screen, picture-in-picture) that starts muted on page load. Its "Sound on" button is not drawn over the video
+// (where it would cover the video's own headings and Safari's inline full-screen / picture-in-picture buttons): it
+// sits beside "Pause videos" in the title block (dexgo.astro) and names this player's `id` in `aria-controls`. A
+// click turns the sound on, plays the video if it was paused, and the button goes for good (also when the reader
+// unmutes with the player's own control).
+//
+// Playback starts at `video.start` (a media fragment, #t=), past the video's fade from white and at the frame the
+// poster shows, so the first second of the page shows one picture, not poster, white frame, then another scene.
+//
+// Until the reader touches it, the video plays on its own: muted, while any part of it is in view and the tab is
+// visible (so it starts on load in short windows too, and never rests half on screen under the player's paused
+// controls), unless the page's videos are paused ("Pause videos", or reduced motion before any click: then only the
+// poster and the player's play button show) or the running demo suspends the clips. This script
+// starts it (no `autoplay` attribute, so a page opened further down fetches only the metadata); it resumes where it
+// stopped and rests on its last frame at the end. Once the reader has taken it over (sound on, play, pause,
+// scrubbing, full screen, picture-in-picture), the page no longer starts it: no play in view, no pause for the demo.
+// While it is still silent and on the page, the page only rests it out of sight (out of view, hidden tab) and resumes
+// what that rest paused once it is seen again, never a reader's own pause; with sound on, or in full screen or
+// picture-in-picture, it plays on wherever the reader goes. "Pause videos" still pauses it, and "Play videos"
+// resumes it only if that button paused it.
+import type { ProjectVideo } from '../../data/dexgo';
+
+interface Props {
+  /** Element id of the <video>; the "Sound on" button names it in `aria-controls`. */
+  id: string;
+  video: ProjectVideo;
+}
+
+const { id, video } = Astro.props;
+---
+
+<div class="dx-player" data-project-video style={`--clip-aspect: ${video.width} / ${video.height}`}>
+  <video
+    id={id}
+    controls
+    muted
+    playsinline
+    preload="metadata"
+    poster={video.poster}
+    width={video.width}
+    height={video.height}
+    aria-label={video.label}
+    data-player
+  >
+    <source src={`${video.src}#t=${video.start}`} type="video/mp4" />
+    <track kind="captions" srclang="en" label="English" src={video.captions} />
+  </video>
+</div>
+
+<script>
+  import { isPaused } from '../../scripts/clipPlayback';
+
+  /** Safari's presentation state of a video (inline, full screen, picture-in-picture). */
+  type PresentedVideo = HTMLVideoElement & { webkitPresentationMode?: string; webkitDisplayingFullscreen?: boolean };
+
+  for (const root of document.querySelectorAll<HTMLElement>('[data-project-video]')) {
+    const video = root.querySelector<PresentedVideo>('video');
+    if (!video) continue;
+    const sound = video.id
+      ? document.querySelector<HTMLButtonElement>(`[data-sound-on][aria-controls="${video.id}"]`)
+      : null;
+
+    /** The reader has taken the player over: from then on the page never starts it on its own. */
+    let taken = false;
+    /** In view (null until the first observation). */
+    let visible: boolean | null = null;
+    /** The running demo asks the page's clips to rest (LazyDemo.astro). */
+    let suspended = false;
+    /** Paused by "Pause videos" after the reader took it over; "Play videos" then resumes it. */
+    let heldByToggle = false;
+    /** Paused by this script while the reader's silent video was out of sight; it resumes once seen again. */
+    let rested = false;
+    /** This script's play() and pause() calls whose `play` / `pause` event has not fired yet, so its own events are
+        not taken for the reader's (counted: the page may play and pause it again before the first event fires). */
+    let ownPlays = 0;
+    let ownPauses = 0;
+
+    const takeOver = () => {
+      taken = true;
+      heldByToggle = false;
+      rested = false;
+    };
+
+    const play = () => {
+      if (!video.paused) return;
+      ownPlays += 1;
+      video.play().catch((error: unknown) => {
+        // Refused (e.g. data saver): no `play` event follows, and the poster or the current frame stays. An
+        // AbortError (a pause before playback began) comes after the `play` event, which already counted this call.
+        if ((error as { name?: string } | null)?.name !== 'AbortError') ownPlays = Math.max(0, ownPlays - 1);
+      });
+    };
+
+    const pause = () => {
+      if (video.paused) return;
+      ownPauses += 1;
+      video.pause();
+    };
+
+    /** Out of view or in a hidden tab (before the first observation it counts as in sight). */
+    const outOfSight = () => visible === false || document.visibilityState !== 'visible';
+    /** Shown apart from the page (full screen, picture-in-picture), where its place on the page says nothing. */
+    const detached = () =>
+      document.fullscreenElement === video ||
+      document.pictureInPictureElement === video ||
+      (video.webkitPresentationMode ?? 'inline') !== 'inline' ||
+      video.webkitDisplayingFullscreen === true;
+    /** Silent and on the page: nobody misses it while it rests out of sight. */
+    const restable = () => (video.muted || video.volume === 0) && !detached();
+
+    const ambientWanted = () => visible === true && !suspended && !isPaused() && !outOfSight() && !video.ended;
+
+    const reconcile = () => {
+      if (visible === null) return;
+      if (!taken) {
+        if (ambientWanted()) play();
+        else pause();
+      } else if (!rested) {
+        if (restable() && outOfSight() && !video.paused) {
+          pause();
+          rested = true;
+        }
+      } else if (!outOfSight()) {
+        rested = false;
+        play();
+      }
+    };
+
+    video.addEventListener('play', () => {
+      if (ownPlays > 0) ownPlays -= 1;
+      else takeOver();
+    });
+    video.addEventListener('pause', () => {
+      if (ownPauses > 0) {
+        ownPauses -= 1;
+      } else if (video.ended) {
+        // the end of the video: it rests on its last frame
+      } else if (restable() && outOfSight()) {
+        if (taken) rested = true; // the browser resting a silent video nobody sees: not the reader
+      } else {
+        takeOver();
+      }
+    });
+    video.addEventListener('seeking', () => {
+      // The media fragment's start (#t=) is the browser's own seek, made before anything has played.
+      if (video.played.length > 0) takeOver();
+    });
+    video.addEventListener('volumechange', () => {
+      if (video.muted || video.volume === 0) return;
+      takeOver();
+      if (sound) sound.hidden = true;
+    });
+    // Full screen and picture-in-picture are the reader's; back on the page, a silent video may rest out of sight.
+    const presentationChanged = () => (detached() ? takeOver() : reconcile());
+    document.addEventListener('fullscreenchange', presentationChanged);
+    video.addEventListener('enterpictureinpicture', takeOver);
+    video.addEventListener('leavepictureinpicture', reconcile);
+    video.addEventListener('webkitbeginfullscreen', takeOver);
+    video.addEventListener('webkitendfullscreen', reconcile);
+    video.addEventListener('webkitpresentationmodechanged', presentationChanged);
+
+    if (sound) {
+      sound.hidden = !video.muted;
+      sound.addEventListener('click', () => {
+        takeOver();
+        video.muted = false;
+        if (video.volume === 0) video.volume = 1;
+        sound.hidden = true;
+        video.focus({ preventScroll: true }); // the button is gone: keyboard focus moves on to the player, no scroll
+        if (video.paused) video.play().catch(() => undefined); // the reader's own play (from the start once ended)
+      });
+    }
+
+    document.addEventListener('clips:paused', (event) => {
+      const { paused } = (event as CustomEvent<{ paused: boolean }>).detail;
+      if (!taken) {
+        reconcile();
+      } else if (paused) {
+        if (!video.paused || rested) {
+          pause();
+          heldByToggle = true;
+          rested = false;
+        }
+      } else if (heldByToggle) {
+        heldByToggle = false;
+        if (restable() && outOfSight()) rested = true; // resumes once seen
+        else if (!video.ended) play();
+      }
+    });
+    document.addEventListener('clips:suspend', () => {
+      suspended = true;
+      reconcile();
+    });
+    document.addEventListener('clips:resume', () => {
+      suspended = false;
+      reconcile();
+    });
+    document.addEventListener('visibilitychange', reconcile);
+
+    // Any part on screen counts as in view (unlike the page's clips, which play from half in view): the hero plays on
+    // load in short windows and rests only once wholly out of view. The newest entry wins: a page opened at a section
+    // (/dexgo/#…) is laid out at the top and then scrolled, and both changes can arrive in one callback, oldest first
+    // ([in view, out of view]).
+    new IntersectionObserver(
+      (entries) => {
+        visible = entries[entries.length - 1].isIntersecting;
+        reconcile();
+      },
+      { threshold: [0] }
+    ).observe(root);
+  }
+</script>

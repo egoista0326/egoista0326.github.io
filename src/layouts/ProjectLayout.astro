@@ -13,8 +13,8 @@ interface Props {
   iconDir: string;
   /** Class on <body> for page-scoped styles (e.g. 'page-dexgo'). */
   bodyClass?: string;
-  /** The quiet line in the footer. */
-  footer: string;
+  /** The quiet line in the footer; without one the page has no footer (the DexGO figure page). */
+  footer?: string;
 }
 
 const { title, description, path, iconDir, bodyClass, footer } = Astro.props;
@@ -40,9 +40,13 @@ const canonical = new URL(path, Astro.site ?? Astro.url).toString();
       <main id="main" tabindex="-1">
         <slot />
       </main>
-      <footer class="site-footer dx-footer">
-        <span>{footer}</span>
-      </footer>
+      {
+        footer ? (
+          <footer class="site-footer dx-footer">
+            <span>{footer}</span>
+          </footer>
+        ) : null
+      }
     </div>
   </body>
 </html>

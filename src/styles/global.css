@@ -55,6 +55,42 @@
   outline: none;
 }
 
+/* The site face: Inter (variable, weights 400-700, Latin subset; SIL OFL, public/fonts/inter/OFL.txt), served
+   from this site so every visitor sees the same type. Until it arrives, Arial (Liberation Sans on Linux) scaled
+   to Inter's widths and line metrics takes the same space, so the swap does not reflow the page: size-adjust is
+   the ratio of the two fonts' advance widths over sample page text, per weight (600 and up fall back to Arial
+   Bold); ascent and descent are Inter's (0.969 em and 0.241 em) divided by size-adjust. CJK text (the Chinese
+   photography pages) falls through to the system's CJK fonts. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/inter/inter-latin-var.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter Fallback";
+  font-weight: 400 550;
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("LiberationSans-Regular");
+  size-adjust: 106%;
+  ascent-override: 91.4%;
+  descent-override: 22.8%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Inter Fallback";
+  font-weight: 551 700;
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold");
+  size-adjust: 100.4%;
+  ascent-override: 96.5%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+
 html {
   background: var(--color-bg);
 }
@@ -63,7 +99,7 @@ body {
   margin: 0;
   background: #fbfaf7;
   color: #1f2933;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Inter", "Inter Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 16px;
   line-height: 1.65;
   letter-spacing: 0;
@@ -110,6 +146,7 @@ a:focus-visible {
   font-size: 16px;
   font-weight: 650;
   text-decoration: none;
+  transition: color 150ms ease-out;
 }
 
 .site-nav {
@@ -130,6 +167,9 @@ a:focus-visible {
   font-weight: 500;
   line-height: 1.4;
   text-decoration: none;
+  transition:
+    color 150ms ease-out,
+    border-color 150ms ease-out;
 }
 
 .nav-link.is-active {
@@ -142,38 +182,57 @@ main {
   min-height: 56vh;
 }
 
+/* Academic homepage type scale (phones / 768 px / 1024 px): the name 30 / 32 / 36 px, section headings 22 px,
+   body 16 px. Every section break is the same: the section's top margin (32 px on phones, 48 px wider), its
+   rule, 32 px, its heading. The intro adds no space of its own below it. */
 .academic-intro {
   display: grid;
   gap: var(--space-lg);
   width: 100%;
   max-width: calc(100vw - 40px);
-  padding: var(--space-sm) 0 var(--space-xl);
+  padding: var(--space-sm) 0 0;
 }
 
-.role-line {
-  max-width: 32ch;
+/* No role line under the name (owner 2026-11-22): the bio, which states the programme, follows 16 px below. */
+.academic-intro h1 {
   margin-bottom: var(--space-md);
-  color: var(--color-muted);
-  font-size: 16px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.15;
 }
 
+.academic-section h2 {
+  margin-bottom: var(--space-md);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* The bio is justified to the copy column's edges (owner 2026-11-22). Its long words carry soft hyphens (academic.ts),
+   the only break points inside words (hyphens: manual, the initial value), so every browser sets the same lines and a
+   phone column has no wide word gaps; the last line never holds a lone word. */
 .academic-bio {
-  max-width: 32ch;
   margin-bottom: var(--space-lg);
+  text-align: justify;
+  text-wrap: pretty;
 }
 
+/* The 6 px block padding makes each link a taller tap target without moving it. */
 .contact-links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-lg);
+  gap: 0 var(--space-lg);
   margin: 0;
   padding: 0;
   list-style: none;
   font-size: 14px;
   font-weight: 500;
   line-height: 1.5;
+}
+
+.contact-links a {
+  display: inline-block;
+  padding-block: 6px;
 }
 
 .academic-section {
@@ -281,11 +340,39 @@ p {
   color: var(--color-muted);
 }
 
-@media (min-width: 768px) {
-  .site-shell {
-    padding: 32px;
-  }
+/* Hover feedback for the quiet links of the site shell and the homepage, in the 150 ms pattern of the card's author
+   links: the site mark turns accent; a nav link takes the text colour and a hairline under it (the current page's
+   link keeps its accent line and turns accent); text links carry a 45 % underline at rest that turns solid. `:root` lifts the colour rules above
+   the dark theme's colour rules (photography.css), so they work in both themes. */
+:root .site-mark:hover {
+  color: var(--color-accent);
+}
 
+:root .nav-link:not(.is-active):hover {
+  border-bottom-color: var(--color-border);
+  color: var(--color-text);
+}
+
+:root .nav-link.is-active:hover {
+  color: var(--color-accent);
+}
+
+.contact-links a,
+.site-footer a {
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  transition: text-decoration-color 150ms ease-out;
+}
+
+.contact-links a:hover,
+.site-footer a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* From 640 px (where /dexgo/ also leaves its phone layout; iPad mini portrait, split view, landscape phones) the
+   header is one row (the name, the switches, the nav) and the homepage is two columns: the copy beside a 180 px
+   portrait, News dates beside their text, the card's clip beside its title. From 768 px the portrait column widens
+   to 240 px and the gap to 48 px. */
+@media (min-width: 640px) {
   .site-header {
     align-items: center;
   }
@@ -294,27 +381,17 @@ p {
     width: auto;
   }
 
-  .site-header {
-    margin-bottom: var(--space-2xl);
-  }
-
   .academic-intro {
-    grid-template-columns: minmax(0, 1fr) 200px;
+    grid-template-columns: minmax(0, 1fr) 180px;
     align-items: start;
-    column-gap: var(--space-2xl);
+    column-gap: var(--space-xl);
     max-width: none;
-    padding-top: var(--space-md);
-    padding-bottom: var(--space-2xl);
   }
 
-  .role-line,
-  .academic-bio {
+  .news-list li span:last-child,
+  .empty-state h3,
+  .empty-state p {
     max-width: 68ch;
-  }
-
-  .academic-section {
-    max-width: none;
-    margin-top: var(--space-2xl);
   }
 
   .news-list li {
@@ -322,11 +399,30 @@ p {
     gap: var(--space-md);
     align-items: baseline;
   }
+}
 
-  .news-list li span:last-child,
-  .empty-state h3,
-  .empty-state p {
-    max-width: 68ch;
+@media (min-width: 768px) {
+  .site-shell {
+    padding: 32px;
+  }
+
+  .site-header {
+    margin-bottom: var(--space-2xl);
+  }
+
+  .academic-intro {
+    grid-template-columns: minmax(0, 1fr) 240px;
+    column-gap: var(--space-2xl);
+    padding-top: var(--space-md);
+  }
+
+  .academic-intro h1 {
+    font-size: 32px;
+  }
+
+  .academic-section {
+    max-width: none;
+    margin-top: var(--space-2xl);
   }
 
   .site-footer {
@@ -345,10 +441,13 @@ p {
     font-size: 42px;
   }
 
+  .academic-intro h1 {
+    font-size: 36px;
+  }
 }
 
 
-/* Academic homepage: portrait, research line, project cards, education. */
+/* Academic homepage: portrait, project cards, education. */
 
 .todo-text {
   border: 1px dashed var(--color-todo-border);
@@ -361,7 +460,7 @@ p {
 }
 
 .academic-portrait {
-  width: 144px;
+  width: 180px;
   aspect-ratio: 1;
   margin: 0;
   overflow: hidden;
@@ -381,16 +480,6 @@ p {
   min-width: 0;
 }
 
-.research-interests {
-  max-width: 32ch;
-  margin-bottom: var(--space-lg);
-}
-
-.research-interests-label {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
 .project-list {
   display: grid;
   gap: var(--space-lg);
@@ -399,29 +488,31 @@ p {
   list-style: none;
 }
 
+/* A card is a row of the list, as on publication lists: no box of its own. */
 .project-card {
   display: grid;
   gap: var(--space-md);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: var(--space-md);
-  background: var(--color-surface);
 }
 
+/* The clip on white (the renders' own background); its box keeps the file's aspect (inline style). */
 .project-card-media {
   display: block;
-  aspect-ratio: 16 / 9;
-  text-decoration: none;
   overflow: hidden;
+  border-radius: 4px;
   background: #ffffff;
+  transition: opacity 150ms ease-out;
 }
 
-.project-card-media img,
 .project-card-media video {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Dark theme: the white render is dimmed a little, so it is not the brightest block on the dark page. */
+html[data-photography-theme="dark"] .project-card-media video {
+  filter: brightness(0.88);
 }
 
 .project-card-body {
@@ -432,7 +523,8 @@ p {
   margin-bottom: var(--space-xs);
   font-size: 16px;
   font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.4;
+  text-wrap: pretty;
 }
 
 .project-card-title a {
@@ -440,27 +532,145 @@ p {
   text-decoration: none;
 }
 
-.project-card-title a:hover {
+.project-card-title a:hover,
+.project-card:has(.project-card-media:hover) .project-card-title a {
   text-decoration: underline;
 }
 
-.project-card-description {
-  margin-bottom: var(--space-sm);
-  color: var(--color-muted);
+/* Pointing at the clip (a link to the same page as the title) dims it a little and underlines the title. */
+@media (hover: hover) {
+  .project-card-media:hover {
+    opacity: 0.9;
+  }
+}
+
+.project-card-authors {
+  margin-bottom: 0;
   font-size: 14px;
   line-height: 1.5;
 }
 
+.project-card-author {
+  white-space: nowrap;
+}
+
+/* Co-author links carry a quiet underline at rest, so they read as links without relying on colour; it darkens on
+   hover. The owner's name is bold text, not a link. */
+.project-card-authors a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  transition: text-decoration-color 150ms ease-out;
+}
+
+.project-card-authors a:hover {
+  text-decoration-color: currentColor;
+}
+
+.project-card-authors strong {
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.project-card-authors sup {
+  margin-left: 1px;
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+.project-card-note {
+  margin: 2px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Link chips: small outlined boxes (28 px tall, radius 6) with a 15 px icon, one style for all. A link without a
+   target yet is plain text in the muted colour, marked "soon": not a link, not focusable. Shared by the homepage
+   card and the DexGO title block (LinkChips.astro); colours come from the page's tokens. Muted text on the chip's
+   surface keeps at least 4.5:1 (#68717c on white 4.9:1, the DexGO page's #586366 6.2:1; dark theme #a9a197 on #1a1714 7.0:1). */
 .project-card-links {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-md);
-  margin: 0;
+  gap: var(--space-sm);
+  margin: var(--space-md) 0 0;
   padding: 0;
   list-style: none;
-  font-size: 14px;
+}
+
+.project-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 2px 10px 2px 8px;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color 150ms ease-out,
+    background-color 150ms ease-out;
+}
+
+.project-chip svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+a.project-chip[href]:hover {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface));
+}
+
+.project-chip.is-soon {
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.project-chip-soon {
+  margin-left: -2px;
+  font-weight: 400;
+}
+
+/* Phones narrower than 400 px: tighter chips keep the card's three links on one row (28 px tall, 13 px text). */
+@media (max-width: 399px) {
+  .project-card .project-card-links {
+    gap: 6px;
+  }
+
+  .project-card .project-chip {
+    gap: 5px;
+    padding: 2px 7px 2px 6px;
+  }
+}
+
+/* 360-389 px phones (iPhone mini / SE, common Android): tighter still, with 12 px icons, still one row. */
+@media (max-width: 389px) {
+  .project-card .project-card-links {
+    gap: 4px;
+  }
+
+  .project-card .project-chip {
+    gap: 4px;
+    padding: 2px 5px 2px 4px;
+  }
+
+  .project-card .project-chip svg {
+    width: 12px;
+    height: 12px;
+  }
 }
 
 .education-list {
@@ -485,6 +695,16 @@ p {
   gap: 0 var(--space-md);
 }
 
+/* Below 372 px "Shanghai Jiao Tong University" and its dates no longer fit on one line: both rows then put the dates
+   on their own line under the institution, so the two rows keep one layout. */
+@media (max-width: 371px) {
+  .education-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+}
+
 .education-institution {
   color: var(--color-text);
   font-weight: 600;
@@ -501,25 +721,8 @@ p {
   overflow-wrap: anywhere;
 }
 
-/* Placeholder slot shared by project cards. */
-
-.media-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  border: 1px dashed var(--color-todo-border);
-  border-radius: 4px;
-  padding: var(--space-md);
-  background: var(--color-todo-bg);
-  color: var(--color-todo-text);
-  font-size: 14px;
-  line-height: 1.4;
-  text-align: center;
-}
-
-@media (min-width: 768px) {
+/* From 640 px: the portrait beside the copy, the card's clip beside its text (see the 640 px block above). */
+@media (min-width: 640px) {
   .academic-portrait {
     grid-column: 2;
     grid-row: 1;
@@ -531,26 +734,49 @@ p {
     grid-row: 1;
   }
 
-  .research-interests {
-    max-width: 68ch;
-  }
-
+  /* The clip takes 30 % of the row (about 245 px in the 840 px column, 173-211 px at 640-767), the text the rest. */
   .project-card {
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
     gap: var(--space-lg);
-    align-items: start;
+    align-items: center;
   }
 }
 
 /* DexGO project page (/dexgo/). White in every OS theme so the white-background clips sit on the
    page itself. One centred axis, as on the project video's screens: sentence headings and one-line
-   captions are centred; paragraphs are justified in a centred 68ch column (--dx-measure; the abstract
-   800 px); media
-   use a centred 1080 px column. Colours follow the video: teal key phrases and graph nodes.
-   Everything here is scoped to body.page-dexgo and dx- classes. */
+   captions are centred; text and media share one centred 800 px column (--dx-measure for paragraphs,
+   --dx-media for media and headings, equal by design), so paragraphs and figures have the same edges.
+   Colours follow the video: teal key phrases and graph nodes.
+   Everything here is scoped to body.page-dexgo and dx- classes. The 404 page under /dexgo/ (404.astro marks its
+   <html data-not-found="dexgo"> before the first paint) takes the same white page, colours and type. */
 
-html:has(> body.page-dexgo) {
+html:has(> body.page-dexgo),
+html[data-not-found="dexgo"] {
   background: #ffffff;
+}
+
+/* The page's web fonts, self-hosted like Inter (public/fonts/, SIL OFL 1.1, each with its OFL.txt): the Latin files
+   Google Fonts serves, so the page needs no third-party host. Source Sans 3 is variable in weight (the page sets 400,
+   600 and 700); Source Serif 4 is the 400 roman with its optical-size axis (8-60). dexgo.astro preloads both and
+   declares the serif's italic, a subset of the abstract's emphasised letters. */
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/source-sans-3/source-sans-3-latin-var.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/source-serif-4/source-serif-4-latin-opsz.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 /* Arial (Liberation Sans on Linux) scaled to the widths and line metrics of Source Sans 3, so the text set before
@@ -587,18 +813,51 @@ html:has(> body.page-dexgo) {
   line-gap-override: 0%;
 }
 
-.page-dexgo {
+/* The same for the prose serif: Times New Roman (Liberation Serif on Linux) scaled to Source Serif 4's width over the
+   abstract (113.5 %), ascent and descent Source Serif 4's (1.04 em and 0.34 em) over size-adjust, so paragraphs keep
+   their line count when the web font swaps in. The italic face uses the regular's ratio. */
+@font-face {
+  font-family: "Source Serif 4 Fallback";
+  font-style: normal;
+  src: local("Times New Roman"), local("TimesNewRomanPSMT"), local("Liberation Serif"), local("LiberationSerif-Regular");
+  size-adjust: 113.5%;
+  ascent-override: 91.6%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Source Serif 4 Fallback";
+  font-style: italic;
+  src: local("Times New Roman Italic"), local("TimesNewRomanPS-ItalicMT"), local("Liberation Serif Italic"), local("LiberationSerif-Italic");
+  size-adjust: 113.5%;
+  ascent-override: 91.6%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+
+.page-dexgo,
+html[data-not-found="dexgo"] body {
   --dx-bg: #ffffff;
   --dx-fg: #1e2528;
   --dx-muted: #586366;
   --dx-rule: #dde3e1;
   --dx-accent: #438f87;
+  /* Text links and buttons stay a darker teal for contrast (white or link text 5.0:1 on white; the accent gives
+     3.8:1, under the 4.5:1 of body text). Everything that stands for a state of the project video's graph or kernel
+     uses the video's own palette (uniassemble-talk/video/c/make_showcase.py): learned = accent on --dx-learned-bg,
+     in training = --dx-training on --dx-training-bg, locked = dashed --dx-locked, captions --dx-caption. */
   --dx-ink: #367a73;
   --dx-ink-hover: #2b665f;
+  --dx-learned-bg: #e3eeea;
+  --dx-training: #af6952;
+  --dx-training-bg: #f8ece6;
+  --dx-locked: #b5b9bf;
+  --dx-caption: #5f6368;
   --dx-sans: "Source Sans 3", "Source Sans 3 Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --dx-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
-  --dx-measure: 624px; /* 68ch of Source Serif 4 at 18 px */
-  --dx-media: 1080px;
+  --dx-serif: "Source Serif 4", "Source Serif 4 Fallback", Georgia, "Times New Roman", serif;
+  --dx-measure: 800px; /* paragraphs */
+  --dx-media: 800px; /* media and headings: the same column as the text */
   --dx-gap: 96px; /* between sections (64 px on phones) */
   --dx-head-gap: 32px; /* under a section heading (24 px on phones) */
   --color-text: var(--dx-fg);
@@ -662,17 +921,12 @@ html:has(> body.page-dexgo) {
   margin-top: 0;
 }
 
-.dx-teaser {
+.dx-hero {
   margin-top: 32px;
 }
 
 .dx-abstract {
   margin-top: 96px;
-}
-
-/* The abstract reads as one block in a wider column than the other paragraphs. */
-.dx-abstract .dx-text {
-  max-width: 800px;
 }
 
 /* Title block. */
@@ -697,7 +951,7 @@ html:has(> body.page-dexgo) {
 
 .dx-title .dx-subtitle {
   margin-top: 12px;
-  font: 400 21px/1.3 var(--dx-sans);
+  font: 400 32px/1.25 var(--dx-sans);
   text-wrap: balance;
 }
 
@@ -759,34 +1013,24 @@ html:has(> body.page-dexgo) {
   font: 400 14px/1.45 var(--dx-sans);
 }
 
-.dx-links {
-  display: flex;
-  flex-wrap: wrap;
+/* The title block's link chips (LinkChips.astro): the homepage card's chips, centred, at 14 px for Source Sans 3. */
+.dx-title .dx-links {
   justify-content: center;
-  gap: 8px 32px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-  font: 600 16px/1.5 var(--dx-sans);
+  margin-top: 20px;
 }
 
-.dx-links a {
-  color: var(--dx-ink);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
+.dx-title .project-chip {
+  font-size: 14px;
 }
 
-.dx-links a:hover {
-  color: var(--dx-ink-hover);
-}
-
-/* Headings: one sentence per screen, centred, key phrase in teal. Utility labels stay small. */
+/* Headings: one sentence per screen, centred, key phrase in teal; never larger than the paper title (the
+   subtitle, 32 px). */
 
 .dx-heading {
-  max-width: 880px;
+  max-width: var(--dx-media);
   margin: 0 auto var(--dx-head-gap);
   color: var(--dx-fg);
-  font: 700 40px/1.15 var(--dx-sans);
+  font: 700 30px/1.2 var(--dx-sans);
   text-align: center;
   text-wrap: balance;
   scroll-margin-top: 32px;
@@ -801,10 +1045,11 @@ html:has(> body.page-dexgo) {
   white-space: nowrap;
 }
 
+/* "Abstract" (and "BibTeX"): a plain section label, larger than the body text. */
 .dx-label {
-  margin: 0 0 12px;
-  color: var(--dx-muted);
-  font: 600 16px/1.4 var(--dx-sans);
+  margin: 0 0 16px;
+  color: var(--dx-fg);
+  font: 600 24px/1.3 var(--dx-sans);
   text-align: center;
 }
 
@@ -812,10 +1057,12 @@ html:has(> body.page-dexgo) {
   margin: 0;
   color: var(--dx-fg);
   font: 400 18px/1.55 var(--dx-serif);
-  /* Justified body text; hyphenation (needs the page's lang="en") keeps the narrow phone column free of gaps. */
+  /* Justified body text; hyphenation (needs the page's lang="en") keeps the narrow phone column free of gaps.
+     No lone last word on a paragraph's last line. */
   text-align: justify;
   -webkit-hyphens: auto;
   hyphens: auto;
+  text-wrap: pretty;
 }
 
 .dx-prose + .dx-prose {
@@ -856,8 +1103,38 @@ html:has(> body.page-dexgo) {
   background: #ffffff;
 }
 
-.dx-note {
-  max-width: var(--dx-measure);
+/* The project video at the top (ProjectVideo.astro): a 16:9 player with native controls in the 800 px column (450 px
+   tall; the column's full width on phones), on the white page like the clips. Its corners are rounded (8 px), which
+   shows only where the player's own control shading meets the page (paused, or controls in view). Its "Sound on"
+   button sits in the title block (.dx-sound), never over the video. */
+.dx-player {
+  width: 100%;
+  aspect-ratio: var(--clip-aspect);
+  background: #ffffff;
+}
+
+.dx-player video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #ffffff;
+}
+
+/* Landscape phones: the whole player (its top and its control bar) fits one screen with 22 px to spare, centred in
+   the column (a 667x375 phone, whose 627 px column already fits, keeps its width); the aspect-ratio keeps it 16:9. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .dx-player {
+    width: min(100%, calc((100svh - 22px) * 16 / 9));
+    margin-inline: auto;
+  }
+}
+
+/* Captions: 640 px (about 98 characters a line at 14 px), centred under the 800 px column (scoped to .dx-page so the
+   cap is not lifted by `.dx-page p`). */
+.dx-page .dx-note {
+  max-width: 640px;
   margin: 12px auto 0;
   color: var(--dx-muted);
   font: 400 14px/1.45 var(--dx-sans);
@@ -871,19 +1148,6 @@ html:has(> body.page-dexgo) {
 
 .dx-hand-panel[hidden] {
   display: none;
-}
-
-/* Hand notes share one cell; the other hand's note keeps the line's height. */
-.dx-hand-notes {
-  display: grid;
-}
-
-.dx-hand-notes > .dx-note {
-  grid-area: 1 / 1;
-}
-
-.dx-hand-notes > [aria-hidden="true"] {
-  visibility: hidden;
 }
 
 .dx-control {
@@ -911,33 +1175,93 @@ html:has(> body.page-dexgo) {
   display: none;
 }
 
-/* One page-level control for every clip: a quiet text button under the title links (.dx-control look). */
-
-.dx-video-toggle {
+/* One page-level control for every clip: a quiet text button under the title links (.dx-control look). Beside it,
+   while the project video is muted, "Sound on" (ProjectVideo.astro) in the same look with a muted-speaker icon: out
+   of the video, it covers neither the video's headings nor a browser's own controls, and it is on every first
+   screen. */
+.dx-video-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 20px;
   margin-top: 8px;
+}
+
+/* Both buttons need the page's scripts; without them the player keeps its own controls. */
+@media (scripting: none) {
+  .dx-video-controls {
+    display: none;
+  }
+}
+
+.dx-video-toggle,
+.dx-sound {
   padding: 6px 4px;
+}
+
+.dx-sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dx-sound svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Target grasps: two pair composites (each file holds one pair as two rows), side by side as in the video,
    screwdriver left and hammer right, at one common scale (columns in proportion to the frame widths,
-   --pair-columns), top-aligned; the gutter between the pairs is wide so each pair reads as one group. Stacked
-   on phones. */
+   --pair-columns), top-aligned, each named above. Inside a file start and goal lie about 0.35-0.40 of its width
+   apart (the hand's path; the files have no margin left to crop), so the gutter between the pairs is wider
+   (200 px, 1.8x that) with a hairline in its middle: the row reads as two pairs. Stacked below 640 px. */
 .dx-pairs {
   display: grid;
   gap: 48px;
 }
 
-@media (min-width: 720px) {
-  .dx-pairs {
-    grid-template-columns: var(--pair-columns);
-    align-items: start;
-    column-gap: min(160px, 15%);
-  }
+.dx-pair {
+  margin: 0;
 }
 
-/* The kernel animation: as wide as the text column above it, so both share their edges. */
-.dx-media.is-text-width {
-  max-width: var(--dx-measure);
+.dx-pair figcaption {
+  margin-bottom: 8px;
+  color: var(--dx-fg);
+  font: 600 16px/1.4 var(--dx-sans);
+  text-align: center;
+}
+
+/* The gutter is one length for both the grid gap and the hairline's offset: 25cqi of the wrapper, which is as wide
+   as the grid (a percentage would resolve against the grid in column-gap but against the figure in left). */
+.dx-pairs-box {
+  container-type: inline-size;
+}
+
+@media (min-width: 640px) {
+  .dx-pairs {
+    --pair-gap: min(200px, 25cqi);
+    grid-template-columns: var(--pair-columns);
+    align-items: start;
+    column-gap: var(--pair-gap);
+  }
+
+  .dx-pair + .dx-pair {
+    position: relative;
+  }
+
+  .dx-pair + .dx-pair::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--pair-gap) / -2 - 0.5px);
+    border-left: 1px solid var(--dx-rule);
+    content: "";
+  }
 }
 
 .dx-labelled {
@@ -955,26 +1279,43 @@ html:has(> body.page-dexgo) {
    scale --k (screen px per source px): the hands render equal and the objects keep their relative sizes. One
    row at every width, as in the video: each file is placed so its hand centre (--hand-y) sits on one line,
    --above under the stage top, and every stage ends --below under that line, where the labels share one line.
-   --above leaves room for the highest point any file draws (--reach, the long object upright in its first
-   frames) less the heading's bottom margin: that point may rise into the margin, never to the heading's text,
-   and the heading stays in front of the frame's white top. Each figure is as wide as what its file draws
-   (--span from --left); the white rest of a frame may overlap a neighbour or the labels, which stay in front.
+   The clips may overlap the heading (owner 2026-11-22): --above places the hand line so that the highest point
+   any file draws (--reach, the long rod's upper end in its first frame, the pinch) comes up to the middle of the
+   heading's (last) line, --cover above the heading's bottom margin; the hands sit that much lower and the rod
+   covers part of the heading at the start of the loop. The row is drawn over the heading and multiplies with it,
+   so a frame's white hides nothing and only the drawn rod and hand cover the heading's letters. Each figure is as
+   wide as what its file draws (--span from --left); the white rest of a frame may overlap a neighbour (the
+   frames multiply, so it hides nothing) or the labels, which stay in front.
    k fits the row (100cqw, the row's width, less two gaps) and is at most 520 px for the tallest file (--h-max),
-   the size of the previous layout. */
+   the size of the previous layout. The caption follows the label line at the page's media-to-note gap (--note-gap,
+   12 px, as under every other media block). It is at most 272 px wide, so it breaks at the clause ('Training
+   objects have a long axis of 10–32 cm / and two short axes of 3–5 cm.'), centred, and its right end stays left of
+   the long clip's lowest swing, which for part of the loop reaches below the label line on the right (in the
+   caption's band to x 895 at 1440, 547 at 768, 489 at 640; the caption ends at 851, 515, 451); it is drawn in
+   front of the row. */
+.dx-screen-sizes {
+  --note-gap: 12px;
+}
+
 .dx-screen-sizes .dx-heading {
   position: relative;
   z-index: 1;
 }
 
 .dx-sizes {
-  --gap: 96px;
+  --gap: 64px;
+  --cover: 18px; /* half the heading's 36 px line; 13 px under 720 px, where the line is 26.4 px */
   --k: min(calc((100cqw - 2 * var(--gap) - 1px) / var(--span-sum)), calc(520px / var(--h-max)));
-  --above: max(0px, var(--reach) * var(--k) - var(--dx-head-gap));
+  --above: max(0px, var(--reach) * var(--k) - var(--dx-head-gap) - var(--cover));
   container-type: inline-size;
-  isolation: isolate;
+  position: relative;
+  z-index: 2; /* over the heading (z-index 1) */
   display: flex;
   justify-content: center;
   gap: var(--gap);
+  /* One group (a blend makes the row its own isolated group, where the stages multiply with each other),
+     multiplied with what lies under it: the page's white and the heading. */
+  mix-blend-mode: multiply;
 }
 
 .dx-sizes .dx-labelled {
@@ -986,6 +1327,11 @@ html:has(> body.page-dexgo) {
   position: relative;
   z-index: var(--z);
   height: calc(var(--above) + var(--below) * var(--k));
+  /* The renders are white on white: multiplied, a neighbour's white frame (on phones the thin frame over the thick
+     object's end, 0-0.7 s and 1.2-2.0 s of its loop) shows what lies under it instead of hiding it. On the stage,
+     not the video: each stage is its own stacking context (z-index), and .dx-sizes groups the blend to the row;
+     the labels are the stages' siblings and keep normal paint. */
+  mix-blend-mode: multiply;
 }
 
 .dx-size-stage .dx-clip {
@@ -1006,19 +1352,33 @@ html:has(> body.page-dexgo) {
     0 0 8px var(--dx-bg);
 }
 
-/* The note under the row stays in front of the long frame's white bottom. */
+/* The note under the row stays in front of the row (z-index 2) and the long clip's lowest swing. At most 272 px
+   wide, two lines centred on the axis that break at the clause, after '10–32 cm' (same specificity as
+   `.dx-page .dx-note`, later, so it wins); its right end stays left of that swing; at 440 px the one line ran under
+   the object's end at 640-1440 px, and a balanced wrap at 310 px broke after 'of'. The halo matches the labels'. */
 .dx-sizes + .dx-note {
   position: relative;
-  z-index: 1;
+  z-index: 3;
+  max-width: 272px;
+  text-wrap: wrap;
+  margin-top: var(--note-gap);
+  text-shadow:
+    0 0 2px var(--dx-bg),
+    0 0 4px var(--dx-bg),
+    0 0 8px var(--dx-bg);
 }
 
-/* Unseen objects: one swipeable row per hand (ObjectCarousel.astro). About 3.25 items show on wide
-   screens and 1.2 on phones, so the cut item says the row goes on. */
+/* Unseen objects: one swipeable row per hand (ObjectCarousel.astro). About 2.5 items show on wide
+   screens (about 300 px each in the 800 px column) and 1.3 on phones, so the cut item says the row goes on. */
 .dx-carousel {
   --carousel-gap: 16px;
 }
 
+/* The edges fade out where the row goes on (ObjectCarousel.astro marks the ends), so the cut item at the edge
+   reads as "more" rather than as clipped. */
 .dx-carousel-track {
+  --fade-start: 40px;
+  --fade-end: 56px;
   display: flex;
   gap: var(--carousel-gap);
   overflow-x: auto;
@@ -1026,6 +1386,16 @@ html:has(> body.page-dexgo) {
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   cursor: grab;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+}
+
+.dx-carousel-track[data-at-start] {
+  --fade-start: 0px;
+}
+
+.dx-carousel-track[data-at-end] {
+  --fade-end: 0px;
 }
 
 .dx-carousel-track::-webkit-scrollbar {
@@ -1038,12 +1408,23 @@ html:has(> body.page-dexgo) {
   user-select: none;
 }
 
+/* The track's mask would hide its own ring (and the opaque clips cover an inset one), so the unmasked frame around
+   it draws the ring. */
 .dx-carousel-track:focus-visible {
+  outline: none;
+}
+
+.dx-carousel-frame {
+  border-radius: 6px;
+}
+
+.dx-carousel-frame:has(> .dx-carousel-track:focus-visible) {
+  outline: 2px solid var(--dx-ink);
   outline-offset: 4px;
 }
 
 .dx-carousel-item {
-  flex: 0 0 calc((100% - 3 * var(--carousel-gap)) / 3.25);
+  flex: 0 0 calc((100% - 2 * var(--carousel-gap)) / 2.5);
   margin: 0;
   scroll-snap-align: start;
 }
@@ -1091,19 +1472,44 @@ html:has(> body.page-dexgo) {
   stroke-linejoin: round;
 }
 
-.dx-carousel-button:hover:not(:disabled) {
-  border-color: var(--dx-ink);
-  color: var(--dx-ink);
+@media (hover: hover) {
+  .dx-carousel-button:hover:not([aria-disabled="true"]) {
+    border-color: var(--dx-ink);
+    color: var(--dx-ink);
+  }
 }
 
-.dx-carousel-button:disabled {
+/* At an end the button stays focusable (aria-disabled, not disabled), so keyboard focus is not lost. Its glyph and
+   border are dimmed by colour, not opacity, so its focus ring keeps full contrast. */
+.dx-carousel-button[aria-disabled="true"] {
+  border-color: color-mix(in srgb, var(--dx-rule) 50%, var(--dx-bg));
+  color: color-mix(in srgb, var(--dx-fg) 35%, var(--dx-bg));
   cursor: default;
-  opacity: 0.35;
 }
 
+@media (forced-colors: active) {
+  .dx-carousel-button[aria-disabled="true"] {
+    border-color: GrayText;
+    color: GrayText;
+  }
+}
+
+/* Phones: one item at 72 % of the row, snapped to the centre (14 % padding on each side, 49 px at 390, lets the first
+   and last centre too), so its name shares the axis of the arrows and the heading; about 33 px of each neighbour
+   peeks out at 390, which cues the next item. The edge fades end 9 px before the peek does (the peek is the 14 %
+   padding less the gap: 24 px fades at 390, 20 px at 360), so the neighbour's inner 9 px show at full strength where
+   its clip has ink; the ends still drop the fade ([data-at-start] / [data-at-end] are more specific). */
 @media (max-width: 639px) {
+  .dx-carousel-track {
+    --fade-start: calc(14% - var(--carousel-gap) - 9px);
+    --fade-end: calc(14% - var(--carousel-gap) - 9px);
+    padding-inline: 14%;
+    scroll-padding-inline: 14%;
+  }
+
   .dx-carousel-item {
-    flex-basis: 80%;
+    flex-basis: 100%;
+    scroll-snap-align: center;
   }
 }
 
@@ -1138,7 +1544,19 @@ html:has(> body.page-dexgo) {
   color: var(--dx-fg);
 }
 
-/* Interactive demo: the poster of what the visitor will see, then the iframe in the same box (LazyDemo.astro). */
+/* Forced colours turn every border into the text colour: only the pressed hand keeps its underline. */
+@media (forced-colors: active) {
+  .dx-toggle button[aria-pressed="true"] {
+    border-bottom-color: Highlight;
+  }
+
+  .dx-toggle button[aria-pressed="false"] {
+    border-bottom-color: Canvas;
+  }
+}
+
+/* Interactive demo: the poster of what the visitor will see, then the iframe in the same box (LazyDemo.astro).
+   The iframe stays invisible and lets clicks through until the demo reports its first drawn frame. */
 
 .dx-demo-stage {
   position: relative;
@@ -1163,61 +1581,111 @@ html:has(> body.page-dexgo) {
   border: 0;
   background: #ffffff;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 200ms ease-out;
 }
 
 .dx-demo.is-loaded .dx-demo-stage iframe {
   opacity: 1;
+  pointer-events: auto;
 }
 
-.dx-demo-loading {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  margin: 0;
-  padding: 8px 16px;
-  background: #ffffff;
-  color: var(--dx-fg);
-  font: 600 16px/1.4 var(--dx-sans);
-  transform: translate(-50%, -50%);
-}
-
-/* Before start: the button sits above the poster's graph (centred on it at 81.5 % of the width; the graph's
-   top is at 38.75 % of the height), where the running demo shows its status, so the scene and the goal hand stay
-   visible; the whole poster is clickable. */
+/* Before start: the button sits where the running demo shows its status (above the graph), so the scene and the
+   goal hand stay visible; the whole poster is clickable. While the demo loads, a quiet loading line with an
+   indeterminate bar takes the button's place (the poster stays); if the demo cannot start, the line says so.
+   Wide poster (the demo's 800 x 474 frame): the centre of its status block is at 79.25 % / 24.4 %. */
 .dx-demo:not(.is-started) .dx-demo-stage img {
   cursor: pointer;
 }
 
-.dx-demo-start {
+.dx-demo-start,
+.dx-demo-loading {
   position: absolute;
-  left: 81.5%;
-  bottom: calc(61.25% + clamp(8px, 4%, 24px));
+  left: 79.25%;
+  top: 24.4%;
   z-index: 1;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   white-space: nowrap;
 }
 
-/* Between 884 and 1023 px the poster is the 864 px capture (LazyDemo.astro), whose graph is centred at 78.4 %
-   of the width with its top at 40.1 % of the height. */
-@media (min-width: 884px) and (max-width: 1023px) {
-  .dx-demo-start {
-    left: 78.4%;
-    bottom: calc(59.9% + clamp(8px, 4%, 24px));
+.dx-demo-loading {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--dx-muted);
+  font: 400 15px/1.4 var(--dx-sans);
+  outline: none;
+}
+
+.dx-demo-progress {
+  position: relative;
+  width: 96px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--dx-rule);
+}
+
+.dx-demo-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--dx-accent);
+  animation: dx-demo-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes dx-demo-progress {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
   }
 }
 
-/* Below 884 px the stage is narrower than the 820 px the demo needs for its side-by-side layout, so the demo
-   stacks its graph under the view (its index.html): the stage is then that layout's 9:16 frame from the start,
+.dx-demo.is-failed .dx-demo-loading {
+  width: 37.5%; /* the status column of the wide poster (300 of 800 px): the sentence wraps inside it */
+  color: var(--dx-fg);
+  text-align: center;
+  white-space: normal;
+}
+
+.dx-demo.is-failed .dx-demo-progress {
+  display: none;
+}
+
+/* The demo could not start: the poster's drawn tabs and graph no longer look usable. */
+.dx-demo.is-failed .dx-demo-stage img {
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dx-demo-progress::after {
+    width: 100%;
+    opacity: 0.5;
+    animation: none;
+  }
+}
+
+/* Below 864 px the stage is narrower than the 800 px column whose side-by-side layout the wide poster shows, so
+   the demo stacks its graph under the view (its index.html, below 780 px or taller than wide): the stage is then
+   that layout's 9:16 frame from the start,
    with the matching poster (LazyDemo.astro), so starting changes nothing in the page. It is at most as tall as
-   the screen less some room, but never narrower than 340 px (the demo's top row keeps its two tab groups apart
-   only from about 340 px; narrower, their labels touch or overlap), so on short screens (landscape phones, a
-   browser toolbar) it is taller than the visible area. It stays within the column, except on phones narrower
-   than 380 px, where it reaches into the side gutters up to 340 px, keeping 10 px from the screen edges (the
+   the screen less some room, but at least 340 px wide (on phones under 360 px the screen less 20 px: 300 px at
+   320; the demo keeps its controls apart down to a 300 px frame, with smaller tabs and gaps under 316 px), so on
+   short screens (landscape phones, a browser toolbar) it is taller than the visible area. It stays within the
+   column, except on phones narrower than 380 px, where it reaches into the side gutters up to 340 px, keeping
+   10 px from the screen edges (the
    demo insets its tabs and graph by 12 px, so they still sit about at the text's edge). Always centred. The
-   button sits where the status line runs, above the graph (centred; the graph's top is at 68.1 % of the
-   height). */
-@media (max-width: 883px) {
+   button and the loading line sit where the status runs, above the graph (the centre of the status block of the
+   350 x 622 poster: 50 % / 58.7 %). Landscape phones of 844-863 px (an iPhone 12-15 on its side) keep the wide
+   stage: its 780+ px frame runs the side-by-side layout, so the hand and the graph are on screen together; below
+   844 px the demo's frame would be narrower than 780 px, so landscape stays tall there. The same query as
+   TALL_MEDIA in LazyDemo.astro. */
+@media (max-width: 843px), (max-width: 863px) and (orientation: portrait) {
   .dx-demo-stage {
     --dx-stage-w: max(min(100%, max(340px, calc((100svh - 96px) * 9 / 16))), min(340px, 100vw - 20px));
     width: var(--dx-stage-w);
@@ -1225,9 +1693,23 @@ html:has(> body.page-dexgo) {
     aspect-ratio: 9 / 16;
   }
 
-  .dx-demo-start {
+  .dx-demo-start,
+  .dx-demo-loading {
     left: 50%;
-    bottom: calc(31.9% + clamp(8px, 4%, 24px));
+    top: 58.7%;
+  }
+
+  .dx-demo.is-failed .dx-demo-loading {
+    width: 88%;
+  }
+}
+
+/* Viewports under 340 px (300-319 px stages) show the poster captured in a 300 x 533 frame (SMALL_MEDIA in
+   LazyDemo.astro), whose status block is centred at 50 % / 53.7 %. */
+@media (max-width: 339px) {
+  .dx-demo-start,
+  .dx-demo-loading {
+    top: 53.7%;
   }
 }
 
@@ -1269,23 +1751,161 @@ html:has(> body.page-dexgo) {
   height: auto;
 }
 
-/* Regions: invisible at rest (the link row is the affordance); a light teal tint on hover or focus. */
+/* Regions: invisible at rest (the link row is the affordance); on hover, or while their link is hovered or focused,
+   a teal tint and a 2 px teal ring, so the region shows even where the figure is already teal (the graph). */
 .dx-hotspot {
   position: absolute;
   border-radius: 6px;
   background: transparent;
-  transition: background-color 150ms ease-out;
+  transition:
+    background-color 150ms ease-out,
+    box-shadow 150ms ease-out;
 }
 
 .dx-hotspot:hover,
 .dx-hotspot.is-lit {
-  background: rgb(67 143 135 / 0.08);
+  background: rgb(67 143 135 / 0.14);
+  box-shadow: inset 0 0 0 2px var(--dx-accent);
 }
 
-/* Phone-only: the whole image and a text link open the full-size figure. */
-.dx-method-zoom,
-.dx-spot-links .dx-method-open {
+/* The figure page (/dexgo/figure/): the figure at 1000 px in a box that scrolls sideways, under one back link; the
+   whole figure shows without scrolling where the screen is wide enough. */
+.page-dexgo-figure .site-shell {
+  max-width: calc(1000px + 80px);
+}
+
+.dx-figure-back {
+  margin: 0 0 16px;
+}
+
+.dx-figure-frame {
+  container: dx-figure / inline-size;
+  position: relative;
+}
+
+/* A side with more figure fades out over 40 px (the page script marks the sides); nothing fades without overflow. */
+.dx-figure-scroll {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+}
+
+.dx-figure-scroll.has-more-start {
+  --fade-start: 40px;
+}
+
+.dx-figure-scroll.has-more-end {
+  --fade-end: 40px;
+}
+
+/* The mask would hide the box's own ring, so the unmasked frame draws it. */
+.dx-figure-scroll:focus-visible {
+  outline: none;
+}
+
+.dx-figure-frame:has(> .dx-figure-scroll:focus-visible) {
+  outline: 2px solid var(--dx-ink);
+  outline-offset: 2px;
+}
+
+.dx-figure-scroll img {
+  display: block;
+  width: 1000px;
+  max-width: none;
+  height: auto;
+  margin-inline: auto;
+}
+
+/* A box of 900 px or more (1024-1079 px screens) shows the whole figure scaled to the box instead of scrolling the
+   last few per cent of it. */
+@container dx-figure (min-width: 900px) {
+  .dx-figure-scroll img {
+    width: 100%;
+  }
+}
+
+/* One quiet round button on each side with more figure, over the fade, vertically centred. */
+.dx-figure-more {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--dx-rule);
+  border-radius: 50%;
+  padding: 0;
+  background: var(--dx-bg);
+  color: var(--dx-fg);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.dx-figure-more[data-figure-more="-1"] {
+  left: 4px;
+}
+
+.dx-figure-more[data-figure-more="1"] {
+  right: 4px;
+}
+
+.dx-figure-more[hidden] {
   display: none;
+}
+
+.dx-figure-more svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (hover: hover) {
+  .dx-figure-more:hover {
+    border-color: var(--dx-ink);
+    color: var(--dx-ink);
+  }
+}
+
+/* Screens taller than wide: the figure sits in the middle of the space under the back link, not at the top with an
+   empty lower half. */
+@media (orientation: portrait) {
+  .page-dexgo-figure .site-shell {
+    display: grid;
+    grid-template: 1fr / minmax(0, 1fr);
+    min-height: 100svh;
+  }
+
+  .page-dexgo-figure main {
+    display: grid;
+    grid-template: auto 1fr / minmax(0, 1fr);
+  }
+
+  .dx-figure-frame {
+    align-self: center;
+  }
+}
+
+/* Below 864 px (the figure drawn under 800 px) a text link opens the full-size figure; below 720 px the whole image
+   does too. The " · " separators of the phone link line show only there. */
+.dx-method-zoom,
+.dx-spot-links .dx-method-open,
+.dx-spot-sep {
+  display: none;
+}
+
+@media (max-width: 863px) {
+  .dx-spot-links .dx-method-open {
+    display: inline-flex;
+    align-items: center;
+  }
 }
 
 .dx-spot-links {
@@ -1297,20 +1917,29 @@ html:has(> body.page-dexgo) {
   font: 600 14px/1.45 var(--dx-sans);
 }
 
+/* The section links' row is a box of its own only on phones. */
+.dx-spot-row {
+  display: contents;
+}
+
+/* The same look as the page's other text controls (.dx-control): teal 600, the underline only on hover, or while its
+   region is hovered. */
 .dx-spot-links a {
   padding: 4px 0;
   color: var(--dx-ink);
   text-decoration: underline;
-  text-decoration-color: rgb(54 122 115 / 0.35);
-  text-decoration-style: dashed;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
   text-underline-offset: 4px;
-  transition: text-decoration-color 150ms ease-out;
+  transition:
+    color 150ms ease-out,
+    text-decoration-color 150ms ease-out;
 }
 
 .dx-spot-links a:hover,
 .dx-spot-links a.is-lit {
+  color: var(--dx-ink-hover);
   text-decoration-color: currentColor;
-  text-decoration-style: solid;
 }
 
 /* Prerequisite graph: the animation cropped to its graph, nodes as buttons, the player beside it. */
@@ -1331,6 +1960,37 @@ html:has(> body.page-dexgo) {
   justify-self: center;
 }
 
+/* Stacked graph with the video's own text (640-863 px): once every task is learned, the legend is covered and the
+   Replay button rises into that white band (--replay-lift, a share of the graph's width, UnlockGraph.astro), so it
+   stays near the captions. A transform only: nothing else moves. A mouse click that starts the replay keeps it there
+   until the pointer leaves it (data-replay-held, UnlockGraph.astro). Beside the player (864 px and up) it keeps the
+   hint's baseline; on phones the HTML captions already end close above it. */
+@media (min-width: 640px) and (max-width: 863px) {
+  .dx-unlock-main {
+    container-type: inline-size;
+  }
+
+  .dx-unlock-main .dx-control {
+    transition:
+      color 150ms ease-out,
+      text-decoration-color 150ms ease-out,
+      transform 200ms ease-out;
+  }
+
+  .dx-unlock[data-state="explore"] .dx-unlock-main .dx-control,
+  .dx-unlock[data-replay-held] .dx-unlock-main .dx-control {
+    transform: translateY(calc(-1 * var(--replay-lift) * 100cqw));
+  }
+
+  /* Held over the replaying video's legend, the button masks it instead of overprinting it: a page-coloured fill
+     and a 6 px page-coloured shadow (not padding, so its hit box keeps its size). */
+  .dx-unlock[data-replay-held] .dx-unlock-main .dx-control {
+    border-radius: 4px;
+    background: var(--dx-bg);
+    box-shadow: 0 0 0 6px var(--dx-bg);
+  }
+}
+
 .dx-unlock-graph {
   position: relative;
   overflow: hidden;
@@ -1339,21 +1999,131 @@ html:has(> body.page-dexgo) {
 
 .dx-unlock-anim video {
   display: block;
-  width: var(--frame);
-  max-width: none;
+  width: 100%;
   height: auto;
   background: #ffffff;
 }
 
-.dx-unlock-legend-cover {
+/* Covers are white patches over the video's own pixels, so they keep their colour in forced-colours mode too. */
+.dx-unlock-legend-cover,
+.dx-unlock-phone-cover {
   position: absolute;
   background: #ffffff;
+  forced-color-adjust: none;
+}
+
+.dx-unlock-legend-cover {
   opacity: 0;
   transition: opacity 200ms ease-out;
 }
 
 .dx-unlock[data-state="explore"] .dx-unlock-legend-cover {
   opacity: 1;
+}
+
+/* Phones (below 640 px, graph about 350 px wide) and from 864 px (graph about 525 px wide beside the player): the
+   video's capability captions and state legend would be about 8 px. A white cover hides the video's band under the
+   base row (both texts; nothing else is drawn there in any frame) and the same words are set as HTML: the captions
+   centred under R, T, G and L, the legend under them while the unlocking plays (hidden with the video's legend once
+   every task is learned). 12 px on phones, the page's sans at 14 px from 864 px; at 640-863 px (graph 600-800 px
+   wide) the video's own text is large enough. */
+.dx-unlock-phone-cover,
+.dx-unlock-captions,
+.dx-unlock-states {
+  display: none;
+}
+
+@media (max-width: 639px), (min-width: 864px) {
+  .dx-unlock-phone-cover {
+    display: block;
+    inset: var(--cover-top) 0 0;
+  }
+
+  /* 6 px under the cover's top, so a ringed node of the base row (ring 5 px under the node) stays clear of them; the
+     legend sits 4 px lower to keep its distance from them at 360 px. */
+  .dx-unlock-captions {
+    display: block;
+    position: absolute;
+    inset: calc(var(--cover-top) + 6px) 0 auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    pointer-events: none;
+  }
+
+  .dx-unlock-captions li {
+    position: absolute;
+    top: 0;
+    left: var(--x);
+    width: max-content;
+    color: var(--dx-caption);
+    font: 400 12px/1.2 "Liberation Sans", Arial, Helvetica, sans-serif;
+    text-align: center;
+    transform: translateX(-50%);
+  }
+
+  .dx-unlock-states {
+    display: flex;
+    position: absolute;
+    inset: auto 0 calc(2.5% - 4px);
+    justify-content: center;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--dx-caption);
+    font: 400 12px/1.2 "Liberation Sans", Arial, Helvetica, sans-serif;
+    pointer-events: none;
+    transition: opacity 200ms ease-out;
+  }
+
+  .dx-unlock[data-state="explore"] .dx-unlock-states {
+    opacity: 0;
+  }
+
+  .dx-unlock-states li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .dx-unlock-states li::before {
+    width: 9px;
+    height: 9px;
+    box-sizing: border-box;
+    border: 1px solid var(--swatch-border);
+    border-radius: 2px;
+    background: var(--swatch-fill);
+    content: "";
+    forced-color-adjust: none;
+  }
+
+  .dx-unlock-states [data-state-swatch="locked"] {
+    --swatch-border: var(--dx-locked);
+    --swatch-fill: #ffffff;
+  }
+
+  .dx-unlock-states [data-state-swatch="locked"]::before {
+    border-style: dashed;
+  }
+
+  .dx-unlock-states [data-state-swatch="training"] {
+    --swatch-border: var(--dx-training);
+    --swatch-fill: var(--dx-training-bg);
+  }
+
+  .dx-unlock-states [data-state-swatch="learned"] {
+    --swatch-border: var(--dx-accent);
+    --swatch-fill: var(--dx-learned-bg);
+  }
+}
+
+@media (min-width: 864px) {
+  .dx-unlock-captions li,
+  .dx-unlock-states {
+    color: var(--dx-caption);
+    font: 400 14px/1.2 var(--dx-sans);
+  }
 }
 
 .dx-unlock-nodes {
@@ -1380,6 +2150,14 @@ html:has(> body.page-dexgo) {
     background-color 150ms ease-out;
 }
 
+/* The label's box is trimmed to the capitals (cap height to baseline) and centred in the node by the button, so the
+   selected task's white letters sit on the row's line drawn in the graph video, whatever font the device falls back
+   to (without the trim, the font's ascent and descent placed them up to 2.3 px high on phones). */
+.dx-node-label {
+  display: block;
+  text-box: trim-both cap alphabetic;
+}
+
 /* Invisible hit area: at least 44 px tall where the graph is small (a node is 7cqw tall), never more than
    3.8cqw past the node, under half of the 8.1cqw gap between rows, so it cannot reach a neighbour. */
 .dx-node::before {
@@ -1388,10 +2166,17 @@ html:has(> body.page-dexgo) {
   content: "";
 }
 
-.dx-node:hover,
 .dx-node:focus-visible {
   outline: 2px solid var(--dx-accent);
   outline-offset: 2px;
+}
+
+/* Hover rings only where a pointer hovers: on touch a tapped node would keep a ring that reads as selected. */
+@media (hover: hover) {
+  .dx-node:hover {
+    outline: 2px solid var(--dx-accent);
+    outline-offset: 2px;
+  }
 }
 
 .dx-unlock[data-state="explore"] .dx-node.is-prereq {
@@ -1399,9 +2184,23 @@ html:has(> body.page-dexgo) {
   outline-offset: 3px;
 }
 
+/* A ringed prerequisite still shows hover and focus: its dashed ring turns solid, as on every other node. */
+.dx-unlock[data-state="explore"] .dx-node.is-prereq:focus-visible {
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .dx-unlock[data-state="explore"] .dx-node.is-prereq:hover {
+    outline-style: solid;
+    outline-offset: 2px;
+  }
+}
+
 .dx-unlock[data-state="explore"] .dx-node[aria-pressed="true"] {
-  /* The darker teal: white letters keep 5:1 contrast even where the graph is small. */
-  background: var(--dx-ink);
+  /* The project video's "current task" chip (its chain ticker): teal fill, white letters (3.8:1, bold; the same task is
+     named in full in the caption under the player). */
+  background: var(--dx-accent);
   color: #ffffff;
 }
 
@@ -1411,10 +2210,26 @@ html:has(> body.page-dexgo) {
   gap: 8px;
 }
 
+/* The player keeps about one size at every width: 251 px beside the graph (864 px and up), at most 320 px under it.
+   While the unlocking plays, the clip of the preselected task is dimmed: that task is still locked there. */
 .dx-unlock-clip {
-  max-width: 440px;
+  max-width: 320px;
   width: 100%;
   margin-inline: auto;
+  transition: opacity 200ms ease-out;
+}
+
+.dx-unlock[data-state="anim"] .dx-unlock-clip {
+  opacity: 0.4;
+}
+
+/* Landscape phones (stacked layout, short screen): the clip shrinks with the screen height so that, after the reveal
+   scroll of a tap (revealPlayer() in UnlockGraph.astro puts the clip's top 16 px under the screen top), the clip and
+   its caption below are on screen together. */
+@media (max-width: 863px) and (orientation: landscape) and (max-height: 500px) {
+  .dx-unlock-clip {
+    max-width: min(320px, calc(100svh - 150px));
+  }
 }
 
 .dx-unlock-clip video {
@@ -1430,6 +2245,12 @@ html:has(> body.page-dexgo) {
   text-align: center;
 }
 
+/* Balanced, so a wrapped name or rule never ends on a lone word ("learned."); the line count stays the same. */
+.dx-unlock-task,
+.dx-unlock-rule {
+  text-wrap: balance;
+}
+
 .dx-unlock-task {
   color: var(--dx-fg);
   font-weight: 600;
@@ -1440,11 +2261,6 @@ html:has(> body.page-dexgo) {
   color: var(--dx-muted);
   font: 400 14px/1.45 var(--dx-sans);
   text-align: center;
-  visibility: hidden;
-}
-
-.dx-unlock[data-state="explore"] .dx-unlock-hint {
-  visibility: visible;
 }
 
 /* After the first selection the hint hides but keeps its line, so the graph does not move under the cursor. */
@@ -1452,23 +2268,44 @@ html:has(> body.page-dexgo) {
   visibility: hidden;
 }
 
-@media (min-width: 1024px) {
+/* Beside the graph from 864 px, where the column (and the demo stage) reaches 800 px: stacked, graph and player never
+   fit one window, so a clicked task's clip would open below the fold. Below this width a selection scrolls the clip
+   and caption into view instead (UnlockGraph.astro, `stacked`, the same breakpoint). */
+@media (min-width: 864px) {
   .dx-unlock {
     /* Widths chosen so the graph stays at least as tall as the player column (square clip, a caption whose
        rule may take two lines, hint): the row's height is the graph's and never changes on a click. */
     grid-template-columns: minmax(0, 715fr) minmax(0, 341fr);
     gap: 24px;
-    align-items: center;
+    /* Bottom-aligned (the two columns differ by about 20 px): with the hint padded like the Replay button, the two
+       lines that end the row share one baseline. */
+    align-items: end;
+  }
+
+  .dx-unlock-hint {
+    padding: 4px 0;
+  }
+
+  /* Room for a two-line task name and a two-line rule, so the column keeps its height when the selection changes
+     and the clip above does not move. */
+  .dx-unlock-caption {
+    min-height: calc(4 * 1.45em + 4px);
+    align-content: start;
   }
 }
 
+/* Phones: the paper title (subtitle, 26/400) stays above the sentence headings (22/700) and "Abstract" (20/600). */
 @media (max-width: 719px) {
   .dx-title h1 {
     font-size: 44px;
   }
 
   .dx-title .dx-subtitle {
-    font-size: 18px;
+    font-size: 26px;
+  }
+
+  .dx-label {
+    font-size: 20px;
   }
 
   .page-dexgo {
@@ -1476,15 +2313,23 @@ html:has(> body.page-dexgo) {
     --dx-head-gap: 24px;
   }
 
+  .dx-sizes {
+    --cover: 13px; /* half the 22 px heading's 26.4 px line */
+  }
+
   .dx-abstract {
     margin-top: 64px;
   }
 
   .dx-heading {
-    font-size: 28px;
+    font-size: 22px;
   }
 
-  /* Phones: the figure is a thumbnail that opens the full-size figure; the link row is the way in. */
+  /* Phones: the figure is a thumbnail that opens the full-size figure. "Open the figure" is the one control, on its
+     own 32 px line; the three section links follow as one quiet row joined by " · ". A link never breaks, and its
+     tap area is its own 26 px line box, so the areas of two lines tile instead of overlapping. Where the three do
+     not fit on one line, the last link takes a line of its own and the separator before it becomes the line break
+     (below), so no line starts or ends with a dot. The separators take no taps. */
   .dx-hotspot {
     display: none;
   }
@@ -1495,45 +2340,83 @@ html:has(> body.page-dexgo) {
     inset: 0;
   }
 
-  .dx-spot-links .dx-method-open {
-    display: inline-flex;
-    align-items: center;
-    margin-bottom: 8px;
-    text-decoration-style: solid;
-  }
-
   .dx-spot-links {
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
+    container: dx-spot-links / inline-size;
+    display: block;
+    text-align: center;
   }
 
-  .dx-spot-links a {
+  .dx-spot-links .dx-method-open {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: fit-content;
     min-height: 32px;
+    margin-inline: auto;
+  }
+
+  .dx-spot-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    line-height: 26px;
+  }
+
+  .dx-spot-links a[data-spot] {
+    padding: 0;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .dx-spot-sep {
+    display: block;
+    color: var(--dx-muted);
+    font-weight: 400;
+    white-space: pre;
+    pointer-events: none;
+  }
+}
+
+/* Phone link row narrower than the three links on one line (about 452 px of text, plus room for the fallback
+   face): the separator before the last link is an empty full-width item, so that link starts the next line. */
+@container dx-spot-links (max-width: 479px) {
+  .dx-spot-sep:last-of-type {
+    flex-basis: 100%;
+    height: 0;
+    overflow: hidden;
+    font-size: 0;
+    visibility: hidden;
   }
 }
 
 @media (max-width: 639px) {
+  /* Phones: justified lines open wide gaps in the narrow column (most browsers do not hyphenate there), so the
+     method and results paragraphs are set ragged right; the abstract stays justified (owner). */
+  .dx-prose {
+    text-align: left;
+    -webkit-hyphens: manual;
+    hyphens: manual;
+  }
+
+  .dx-abstract .dx-prose {
+    text-align: justify;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+  }
+
   .dx-sizes {
     --gap: 12px;
   }
 
+  /* 14 px labels on phones. */
   .dx-sizes figcaption {
     font-size: 14px;
   }
 
   .dx-demo-start {
+    min-height: 44px; /* the page's main call to action keeps a 44 px target on phones */
     padding: 8px 16px;
     font-size: 15px;
-  }
-
-  /* A clip with a phone cut takes the cut's aspect; the (wider) poster covers the box until it plays. */
-  .dx-clip.has-phone-cut {
-    aspect-ratio: var(--clip-phone-aspect);
-  }
-
-  .dx-clip.has-phone-cut video {
-    object-fit: cover;
   }
 }
 

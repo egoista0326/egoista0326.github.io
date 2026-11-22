@@ -1,9 +1,11 @@
 // Data for the DexGO project page (/dexgo/).
-// Strings that start with "TODO" are placeholders and are not rendered (BibTeX); links with
-// an empty `href` are not rendered either, so each item appears as soon as it is filled in.
+// Strings that start with "TODO" are placeholders and are not rendered (BibTeX); links with an empty `href` are
+// shown as muted "soon" chips when `soon` is set (Paper, Code) and left out otherwise (Video: the project video
+// plays at the top of the page).
 // Every clip's frame size is read from its file at build time, so a missing file fails the build.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { LinkChip } from '../components/LinkChips.astro';
 
 /** One video clip. Files live in public/assets/dexgo/clips/ (H.264 on white, no audio). */
 export interface Clip {
@@ -16,6 +18,8 @@ export interface Clip {
   height: number;
   /** Accessible name of the clip (not shown). */
   label: string;
+  /** Poster used instead under reduced motion (nothing plays there), e.g. an animation's end frame. */
+  stillPoster?: string;
 }
 
 const clipDir = '/assets/dexgo/clips';
@@ -27,12 +31,11 @@ const clipFile = (file: string): string => join(process.cwd(), 'public', clipDir
 const existsInClips = (file: string): boolean => existsSync(clipFile(file));
 
 /**
- * Frame size [w, h] in pixels of clips/<name>.mp4, read at build time from its video track header (the last
- * 8 bytes of the 'tkhd' box are width and height in 16.16 fixed point; audio tracks store 0). Used for cuts
- * whose size is not fixed in advance (phone and content crops).
+ * Frame size [w, h] in pixels of the MP4 file at `path`, read at build time from its video track header (the last
+ * 8 bytes of the 'tkhd' box are width and height in 16.16 fixed point; audio tracks store 0).
  */
-const frameSize = (name: string): [number, number] => {
-  const buf = readFileSync(clipFile(`${name}.mp4`));
+const mp4FrameSize = (path: string): [number, number] => {
+  const buf = readFileSync(path);
   for (let i = buf.indexOf('tkhd'); i >= 4; i = buf.indexOf('tkhd', i + 4)) {
     const size = buf.readUInt32BE(i - 4);
     if (size !== 92 && size !== 104) continue; // version 0 or 1 header; anything else is not a box
@@ -41,19 +44,43 @@ const frameSize = (name: string): [number, number] => {
     const h = buf.readUInt32BE(end - 4) / 65536;
     if (w > 0 && h > 0) return [Math.round(w), Math.round(h)];
   }
-  throw new Error(`No video frame size in ${name}.mp4`);
+  throw new Error(`No video frame size in ${path}`);
 };
 
-/** Phone cut clips/<name>.mp4 (used below 640 px) with its first-frame poster <name>.jpg and its box aspect. */
-const phoneCut = (name: string): { src: string; poster: string; aspect: string } => {
-  const [w, h] = frameSize(name);
-  return { src: `${clipDir}/${name}.mp4`, poster: `${clipDir}/${name}.jpg`, aspect: `${w} / ${h}` };
-};
+/** Frame size of clips/<name>.mp4, for cuts whose size is not fixed in advance (content crops). */
+const frameSize = (name: string): [number, number] => mp4FrameSize(clipFile(`${name}.mp4`));
 
 /** Clip clips/<name>.mp4 at its own frame size, with its first-frame poster <name>.jpg. */
 const clip = (name: string, label: string): Clip => {
   const [width, height] = frameSize(name);
   return { src: `${clipDir}/${name}.mp4`, poster: `${clipDir}/${name}.jpg`, width, height, label };
+};
+
+/** The project video at the top of the page (ProjectVideo.astro): a player with sound, unlike the muted clips. */
+export interface ProjectVideo extends Clip {
+  /** WebVTT captions of the narration (English), off until the reader turns them on in the player. */
+  captions: string;
+  /** Time in seconds where the page's playback starts (media fragment #t=); the poster is the frame at this time. */
+  start: number;
+}
+
+const videoDir = '/assets/dexgo/video';
+
+/**
+ * public/assets/dexgo/video/<name>.mp4 at its own frame size, with <name>_poster.webp (its frame at `start` s) and
+ * <name>.en.vtt.
+ */
+const projectVideo = (name: string, label: string, start: number): ProjectVideo => {
+  const [width, height] = mp4FrameSize(join(process.cwd(), 'public', videoDir, `${name}.mp4`));
+  return {
+    src: `${videoDir}/${name}.mp4`,
+    poster: `${videoDir}/${name}_poster.webp`,
+    captions: `${videoDir}/${name}.en.vtt`,
+    start,
+    width,
+    height,
+    label
+  };
 };
 
 /**
@@ -93,13 +120,16 @@ export interface ObjectItem extends Clip {
 const objectItems = (hand: 'mano' | 'sharpa', handName: string): ObjectItem[] =>
   everydayObjects
     .filter(([slug]) => existsInClips(`unseen_${hand}_${slug}.mp4`))
-    .map(([slug, name]) => ({ ...clip(`unseen_${hand}_${slug}`, `${handName} hand, ${name.toLowerCase()}`), name }));
+    .map(([slug, name]) => ({ ...clip(`unseen_${hand}_${slug}`, `${name}, ${handName} hand`), name }));
 
 /**
- * Where the hand and the object sit in a size clip, in source px, measured once over all frames of the file:
- * `handY` the hand's centre height (median over the clip), `top` the highest point drawn in any frame,
- * `left`/`right` the horizontal extent of everything drawn in any frame, `bottom` the lowest point of the object
- * at rest (median over the clip).
+ * Where the hand and the object sit in a size clip, in source px, measured once over all frames of the file
+ * (pixels darker than 240 on the white frame): `handY` the hand's centre height (median over the clip), `top` the
+ * highest point drawn in any frame, `left`/`right` the horizontal extent the row gives the clip, `bottom` the
+ * lowest point of the object at rest (median over the clip). The row's outer edges (thin `left`, long `right`) are
+ * the full extent of every frame, so nothing passes the column; the thin clip's inner edge leaves out a brief swing
+ * into the gap (to 283), and the thick clip's `left` a swing to source x 25 (45 of its 229 frames), so on phones
+ * a frame may overlap its neighbour's object; the frames multiply (global.css, .dx-size-stage), so both stay visible.
  */
 export interface SizePlace {
   handY: number;
@@ -131,13 +161,12 @@ const capabilityWords: Record<string, string> = {
 export interface GraphTask {
   /** Capability letters, e.g. 'RTL'. */
   id: string;
-  /** Words shown under the player, e.g. 'reorientation + translation + relocation'. */
-  words: string;
-  /** The same words for screen readers, joined with "and". */
+  /** Capability words shown under the player and read by screen readers, e.g. 'reorientation, translation and
+      relocation'. */
   spoken: string;
   /** The unlock rule shown under the player. */
   rule: string;
-  /** Node rectangle in pixels of the 1790x806 unlock animation (its final frame). */
+  /** Node rectangle in pixels of the 1100x806 unlock animation (its final frame). */
   rect: [x: number, y: number, w: number, h: number];
   /** Tasks with one capability fewer (empty for single capabilities). */
   prerequisites: string[];
@@ -155,7 +184,6 @@ const task = (id: string, rect: GraphTask['rect']): GraphTask => {
   const prerequisites = letters.map((_, i) => letters.filter((__, j) => j !== letters.length - 1 - i).join(''));
   return {
     id,
-    words: id.length === 4 ? 'all four capabilities' : letters.map((l) => capabilityWords[l]).join(' + '),
     spoken: id.length === 4 ? 'all four capabilities' : joinNames(letters.map((l) => capabilityWords[l])),
     rule:
       id.length === 1
@@ -172,10 +200,14 @@ export const dexgoPage = {
   title: 'DexGO',
   subtitle: 'Dexterous Grasp Transition with Object Relocation',
   metaDescription:
-    'DexGO: Dexterous Grasp Transition with Object Relocation. A reinforcement learning framework that trains a single policy to change how a hand holds an object while moving it to a desired pose.',
-  /** Alt text of the share image (the teaser poster, its first frame). */
-  shareImageAlt:
-    'A simulated hand holds a screwdriver on a table, beside a wooden board with a screw and a screwdriver holder.',
+    'DexGO trains one reinforcement learning policy that changes how a hand holds an object while moving the object to a desired world pose.',
+  /** Share image (og:image, 1200x630): a teaser frame at 6.8 s, the screwdriver held in a pinch on the screw. */
+  share: {
+    src: '/assets/dexgo/share.jpg',
+    width: 1200,
+    height: 630,
+    alt: 'A simulated hand holds a screwdriver with its fingertips, its tip on a screw in a wooden board.'
+  },
   /** In paper order; `equal` marks the co-first authors (equal contribution). */
   authors: [
     { name: 'Jiaxin Li', href: 'https://egoista0326.github.io/', equal: true },
@@ -186,29 +218,34 @@ export const dexgoPage = {
   ],
   affiliation: 'ETH Zurich',
   equalNote: 'Equal contribution',
-  // Links with an empty `href` render as inactive text.
+  // Link chips of the title block (LinkChips.astro), as on the homepage card. A link with an empty `href` is shown
+  // muted and marked "soon" when `soon` is set (Paper, Code: owner), and is left out otherwise (Video: the project
+  // video plays at the top of the page).
   links: [
-    { label: 'Paper', href: '' },
-    { label: 'Video', href: '' },
-    { label: 'Code', href: '' }
-  ],
-  /** Opening teaser of the video: the 2:1 cut (table and the whole hand path); below 640 px the 4:3 phone cut,
-      framed on the hand's path, with its own poster. */
-  teaser: {
-    ...clip(
-      'teaser_1080p_crop',
-      'A hand changes its grasp on a screwdriver to drive a screw, then changes it again to place the screwdriver in its holder.'
-    ),
-    phone: phoneCut('teaser_phone')
-  },
+    { label: 'Paper', icon: 'paper', href: '', soon: true },
+    { label: 'Video', icon: 'video', href: '', soon: false },
+    { label: 'Code', icon: 'code', href: '', soon: true }
+  ] as (LinkChip & { soon: boolean })[],
+  /** The full project video at the top of the page, in place of the teaser (owner 2026-11-22): the final cut of the
+      talk video (dexgo_showcase_alt_v30.mp4: 3 min 28 s, 1920x1080 H.264 at about 1 Mb/s, one mono AAC narration
+      track), copied byte for byte (its index, 'moov', is already at the front, so it plays while it loads). It fades
+      in from white over its first 0.33 s (frames 0-9 at 30 fps; the narration starts at 1.00 s), so the page starts
+      it at 0.4 s (frame 12, the first frame fully in) and its poster is that frame (the screwdriver held at the upper
+      left under "Different tasks need different grasps."; WebP quality 85, method 6). Captions: the narration at the
+      video's own timings (scripts/dexgo_video_captions.py from its clips.json). */
+  video: projectVideo('dexgo_video', 'DexGO project video, with narration', 0.4),
   abstract:
-    'Different tasks require an object to be held in different ways. Humans therefore often adjust their grasp while moving an object into place. Motivated by this, we study grasp transition with object relocation: given a target grasp and a desired object world pose, the hand must transition from its initial grasp to the target grasp while relocating the object to the specified pose. This problem is challenging because the goals specify only the final state without intermediate guidance, and their complexity varies widely, from minor in-hand adjustments to grasp type changes coupled with long-distance relocations. In this work, we present DexGO, a reinforcement learning framework that trains a single policy through progressive task composition. Specifically, we introduce a prerequisite graph that organizes four basic capabilities and their increasingly complex combinations, allowing simpler tasks to provide intermediate guidance for learning more complex ones. We further introduce a task-wise annealed kernel reward and a nonlinear encoding of spatial observations to facilitate precise reaching across a wide range of goal distances. Experiments demonstrate that a single policy can achieve diverse target grasps and object world poses across a wide range of task complexities, producing precise and controllable motions.',
+    'Different tasks require an object to be held in different ways. Humans therefore often adjust their grasp while moving an object into place. Motivated by this, we study \\emph{grasp transition with object relocation}: given a target grasp and a desired object world pose, the hand must transition from its initial grasp to the target grasp while relocating the object to the specified pose. This problem is challenging because the goals specify only the final state without intermediate guidance, and their complexity varies widely, from minor in-hand adjustments to grasp type changes coupled with long-distance relocations. In this work, we present DexGO, a reinforcement learning framework that trains a single policy through progressive task composition. Specifically, we introduce a prerequisite graph that organizes four basic capabilities and their increasingly complex combinations, allowing simpler tasks to provide intermediate guidance for learning more complex ones. We further introduce a task-wise annealed kernel reward and a nonlinear encoding of spatial observations to facilitate precise reaching across a wide range of goal distances. Experiments demonstrate that a single policy can achieve diverse target grasps and object world poses across a wide range of task complexities, producing precise and controllable motions.',
   method: {
     intro:
       'DexGO trains a single policy with reinforcement learning on tasks that group goals by the capabilities they require: in-hand reorientation (R), in-hand translation (T), grasp type change (G) and object relocation (L).',
     heading: 'Complex motions *combine* basic capabilities.',
     figure: {
-      src: '/assets/dexgo/method_overview.svg',
+      /** Web cut of the paper's figure (method_overview.svg): every label about 11 viewBox units (12 px at the 800 px
+          column), the observation boxes and capability chips re-spaced to fit them, the state legend and the
+          "current/target" and "grasps" captions dropped. Geometry elsewhere is the paper's, so the regions below are in
+          the same units. */
+      src: '/assets/dexgo/method_overview_web.svg',
       /** viewBox of the SVG (points of the paper's PDF figure). */
       width: 715.68,
       height: 250.56,
@@ -218,26 +255,53 @@ export const dexgoPage = {
       hotspots: [
         { target: 'prerequisite-graph', label: 'Prerequisite graph', rect: [486.8, 1.5, 226.4, 138] },
         { target: 'annealed-kernel-reward', label: 'Annealed kernel reward', rect: [215, 84, 163, 26] },
-        { target: 'observation-encoding', label: 'Nonlinear observation encoding', rect: [122, 18, 80, 77] }
+        { target: 'observation-encoding', label: 'Nonlinear observation encoding', rect: [112, 17.5, 92, 77] }
       ] as { target: string; label: string; rect: [number, number, number, number] }[],
-      /** Phone-only link to the full-size figure (the figure is a thumbnail below 720 px). */
-      openLabel: 'Open the figure'
+      /** Accessible name of the figure (the image's alt describes it). */
+      label: 'Overview of DexGO',
+      /** Link to the figure page, shown below 864 px where the figure is drawn under 800 px (a thumbnail below 720 px):
+          src/pages/dexgo/figure.astro. */
+      openLabel: 'Open the figure',
+      openHref: '/dexgo/figure/',
+      /** The figure page (titled `label`): the figure at this width in a horizontally scrolling box, so its labels read
+          on a phone. */
+      page: {
+        width: 1000,
+        backLabel: 'Back to DexGO',
+        backHref: '/dexgo/#method-overview'
+      }
     },
     graph: {
       id: 'prerequisite-graph',
       heading: 'Simple tasks *unlock* their combinations.',
-      text: 'Training starts with the four single-capability tasks; a combination task is unlocked once all its subsets with one fewer capability have been learned.',
-      animation: { ...clip('method_graph', 'Animation of the prerequisite graph: tasks unlock and are learned one after another.'), endPoster: `${clipDir}/method_graph_end.jpg` },
+      text: 'The prerequisite graph orders the 15 tasks. Training starts with the four single-capability tasks, and a combination task is unlocked once all its subsets with one fewer capability have been learned.',
+      // The video's unlock animation cut to its graph (frame x 0-1100 of the 1790 px frame) from 6.6 s, where the
+      // graph has settled in its place; poster = first frame, endPoster = last frame (every task learned).
+      animation: { ...clip('method_graph', 'Animation of the prerequisite graph: starting from the four single-capability tasks, each task is unlocked once its prerequisites are learned, up to RTGL.'), endPoster: `${clipDir}/method_graph_end.jpg` },
       hint: 'Select a task to watch an example.',
+      /** No line under the graph (owner 2026-11-22: the axes legend and the clip-speed sentence were removed). */
+      legend: '',
       defaultTask: 'RTGL',
-      /** Part of the animation frame that holds the graph (its example clips on the right are cropped away). */
-      graphWidth: 1100,
-      /** Seconds into the animation where the graph rests in its final place (before, it is centred in the full
-          frame and slides left until frame 197, 6.567 s); the page starts the animation here, one frame later, so
-          the first frame matches the poster and the graph never shifts. */
-      startAt: 6.6,
       /** Legend of the three states, covered once every task is learned: [x, y, w, h] in frame pixels. */
       legendRect: [250, 672, 600, 80] as [number, number, number, number],
+      /** Phones (below 640 px) and from 864 px, where the video's text would be about 8 px: from `top` (frame pixels)
+          down, every frame of the video shows only the capability captions under the base row (y 630-653) and the
+          state legend (y 697-727); that band is covered and the same words are set as HTML (UnlockGraph.astro), each
+          caption in two lines under its task. */
+      phoneText: {
+        top: 622,
+        captions: {
+          R: ['In-hand', 'reorientation'],
+          T: ['In-hand', 'translation'],
+          G: ['Grasp type', 'change'],
+          L: ['Object', 'relocation']
+        } as Record<string, [string, string]>,
+        states: [
+          { id: 'locked', label: 'Locked' },
+          { id: 'training', label: 'In training' },
+          { id: 'learned', label: 'Learned' }
+        ]
+      },
       tasks: [
         task('RTGL', [433, 40, 239, 71]),
         task('RTG', [43, 203, 206, 77]),
@@ -258,15 +322,23 @@ export const dexgoPage = {
     },
     kernel: {
       id: 'annealed-kernel-reward',
-      heading: 'Reward: *guidance* first, *precision* later.',
+      // No-break spaces keep "guidance first," and "precision later." whole where the heading takes two lines.
+      heading: 'Reward: *guidance*\u00a0first, *precision*\u00a0later.',
       /** Paragraph with inline TeX between $...$ (rendered by KaTeX at build time). */
-      text: 'The main reward term is a kernel on the distance to the goal: a wide kernel guides the policy from far away, and narrowing it as the policy improves brings precision. Each task has its own kernel width, which narrows at its own pace.',
-      // The curve-only cut. Its first frame is blank, so the poster is its last frame (the narrowed kernel): the
-      // figure is never empty at rest (before it plays, under reduced motion, with videos paused).
+      text: 'The reward includes a kernel on the goal distance. A wide kernel guides the policy from far away; annealing narrows it as the policy improves, moving from coarse guidance to precise goal reaching. The annealing is task-wise: each task has its own kernel width, which narrows at its own pace.',
+      // The curve-only cut, starting once the wide kernel is drawn: its first frame is the poster, so playback starts
+      // without a jump; under reduced motion (nothing plays) the poster is its last frame, the narrowed kernel.
       animation: {
-        ...clip('method_kernel_curve', 'Animation of the annealed kernel reward: as the policy improves, the kernel narrows step by step.'),
-        poster: `${clipDir}/method_kernel_curve_end.jpg`
-      }
+        ...clip(
+          'method_kernel_curve',
+          'Animation of the annealed kernel reward: as the policy improves, the kernel narrows step by step until it passes the learned width (dashed) and turns teal.'
+        ),
+        stillPoster: `${clipDir}/method_kernel_curve_end.jpg`
+      },
+      /** What the last frame draws besides the kernel (video source make_full.py: the dashed curve is the kernel at
+          the width below which a task counts as learned, paper Sec. 3.4 / 4.1; the kernel turns teal on the step that
+          takes it below). Shown under the clip, beside its replay button. */
+      note: 'Dashed: the kernel at the width below which a task counts as learned.'
     },
     encoding: {
       id: 'observation-encoding',
@@ -282,20 +354,22 @@ export const dexgoPage = {
     demo: {
       // A hyphenated word never splits at its hyphen (KeyHeading keeps it on one line).
       heading: '*Long-horizon* manipulation, live in your browser.',
-      caption: 'The policy trained with DexGO reaches one goal after another, from random tasks or from the tasks you select on the graph.',
+      // No caption under the demo (owner 2026-11-22); the line keeps only "Open in a new tab".
+      caption: '',
       src: '/dexgo/demo/index.html',
       title: 'DexGO interactive demo',
-      /** Captures of the running demo (seed 3, goal 70: a TGL goal whose grey goal hand is about 11 cm from the
-          hand, so the target grasp reads apart from the current one), its controls, status and legend hidden:
-          `poster` its wide layout, 2x of 1080x640; `posterMid` the same layout in a narrower frame (its graph panel
-          is then a larger share of the width), 2x of 864x512, same aspect, used between 884 and 1023 px;
-          `posterPhone` its stacked 9:16 layout, used where the stage is narrower than the demo's wide layout needs
-          (LazyDemo.astro), 3x of 350x622. Sizes in CSS px. */
-      poster: { src: '/assets/dexgo/demo_poster_wide.webp', width: 1080, height: 640 },
-      posterMid: { src: '/assets/dexgo/demo_poster_mid.webp', width: 864, height: 512 },
+      /** Captures of the running demo (seed 47, goal 0, MANO, round object, Random chain): since the chain data for
+          grasp changes at both rod ends (2026-11-22) goal 0 is an RGL goal, captured 0.60 s (12 control steps) into
+          its reach, where the gray goal hand's thumb and fingers show beside and under the real hand (about 53 mm
+          from it), so the target grasp reads apart from the current one; LazyDemo.astro writes RGL on the poster
+          (data-first-goal). Shown: the demo's tabs, graph and legend; hidden: its Play/Reset buttons and status
+          lines. `poster` its side-by-side layout in the
+          page's 800 px column, 2x of 800x474; `posterPhone` its stacked 9:16 layout, used where the stage is narrower
+          than the column (LazyDemo.astro), 3x of 350x622. Sizes in CSS px. */
+      poster: { src: '/assets/dexgo/demo_poster_wide.webp', width: 800, height: 474 },
       posterPhone: { src: '/assets/dexgo/demo_poster_tall.webp', width: 350, height: 622 },
       posterAlt:
-        'Preview of the demo: a simulated hand holds an elongated object; a semi-transparent goal shows the target grasp and object pose, and the graph of the 15 tasks marks the current task.',
+        'Preview of the demo: a simulated hand holds a round object; a gray goal hand and a translucent goal object show the target grasp and object pose, and the graph of the 15 tasks marks the current task.',
       startLabel: 'Start demo',
       loadingLabel: 'Loading the demo…',
       newTabLabel: 'Open in a new tab'
@@ -307,31 +381,49 @@ export const dexgoPage = {
         clip('control_screwdriver_pair_crop', 'Screwdriver: top, relocation only; bottom, grasp type change and relocation.'),
         clip('control_hammer_pair_crop', 'Hammer: top, relocation only; bottom, reorientation, translation and relocation.')
       ],
-      caption: 'Each pair shares its start (faint, left) and desired object world pose; only the target grasp differs.'
+      /** Label above each pair, in the order of `pair`. */
+      names: ['Screwdriver', 'Hammer'],
+      caption:
+        'In each clip, both rows start from the same grasp (left) and bring the object to the same world pose; only the target grasp (faint, right) differs. Top: L, relocation only. Bottom: GL for the screwdriver, RTL for the hammer.'
     },
     objects: {
       heading: '*Unseen* everyday objects.',
       /** One swipeable row per hand; a hand without clips is left out (and with it the toggle). */
       hands: [
-        { id: 'mano', label: 'MANO hand', note: '', items: objectItems('mano', 'MANO') },
+        {
+          id: 'mano',
+          label: 'MANO hand',
+          // Paper wording (Sec. 4.1 / 4.4).
+          note: '', // owner 2026-11-22: no note under the MANO carousel
+          items: objectItems('mano', 'MANO')
+        },
         {
           id: 'sharpa',
-          label: 'Sharpa hand',
-          note: 'DexGO can also be applied to a different hand morphology.',
-          items: objectItems('sharpa', 'Sharpa')
+          label: 'Sharpa Wave hand',
+          // Paper wording (Sec. 4.4).
+          note: 'The same framework, without hand-specific tuning, also trains a policy for the Sharpa Wave hand.',
+          items: objectItems('sharpa', 'Sharpa Wave')
         }
       ].filter((hand) => hand.items.length > 0)
     },
     sizes: {
-      heading: '*Beyond* the training size range.',
+      // Owner (2026-11-22): titled as examples.
+      heading: 'Examples *outside* the training range.',
       // Labels are the owner-approved video labels.
       clips: [
-        { ...sizeClip('thin', 'A thin object, 2 cm across', { handY: 133, top: 12, left: 25, right: 255, bottom: 268 }), name: 'Thin: 2\u00a0cm' },
-        { ...sizeClip('thick', 'A thick object, 7.2 cm across', { handY: 142, top: 25, left: 57, right: 378, bottom: 398 }), name: 'Thick: 7.2\u00a0cm' },
-        { ...sizeClip('long', 'A long object, 50 cm long', { handY: 387, top: 32, left: 116, right: 697, bottom: 729 }), name: 'Long: 50\u00a0cm' }
+        { ...sizeClip('thin', 'A 2 cm thin object', { handY: 133, top: 12, left: 22, right: 255, bottom: 268 }), name: 'Thin: 2\u00a0cm' },
+        { ...sizeClip('thick', 'A 7.2 cm thick object', { handY: 142, top: 25, left: 57, right: 378, bottom: 398 }), name: 'Thick: 7.2\u00a0cm' },
+        // The long clip shows the whole motion (owner 2026-11-22, MUST): every control step from the pinch at the
+        // rod's upper end (step 0, held 0.5 s) through the swing down, the grasp change and the move into place to
+        // the stable hold (step 126, held 1.0 s). The fast swing (steps 10-30) plays at 1x real time, the rest at
+        // 1.5x like the thin and thick clips. `top` is the rod's upper end in the first frame, so the long clip sets
+        // the row's headroom (--reach) and may cover part of the heading (global.css, .dx-sizes). `left` leaves out
+        // the swing's brief reach into the gap (to source x 32, steps 16-22), as before; handY, right and bottom,
+        // re-measured over the new file, differ from these by at most 2 source px and are kept.
+        { ...sizeClip('long', 'A 50 cm long object', { handY: 387, top: 32, left: 116, right: 725, bottom: 730 }), name: 'Long: 50\u00a0cm' }
       ],
-      // Training range as stated in Sec. 4.1 of the paper. A word joiner (U+2060) after each en dash keeps a range
-      // on one line.
+      // Training range as stated in Sec. 4.1 of the paper (no clip-speed statement: owner 2026-11-22). A
+      // word joiner (U+2060) after each en dash keeps a range on one line.
       caption: 'Training objects have a long axis of 10–\u206032\u00a0cm and two short axes of 3–\u20605\u00a0cm.'
     }
   },

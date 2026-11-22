@@ -1,0 +1,174 @@
+WEBVTT
+
+00:00:01.000 --> 00:00:04.491
+Different tasks require an object
+to be held in different ways.
+
+00:00:04.900 --> 00:00:09.168
+Humans often change their grasp
+while moving the object into place.
+
+00:00:09.567 --> 00:00:15.520
+In this paper, we present DexGO: dexterous
+grasp transition with object relocation.
+
+00:00:16.183 --> 00:00:19.113
+Our policy is given only the final goal,
+
+00:00:19.163 --> 00:00:21.113
+involving a target grasp
+
+00:00:21.163 --> 00:00:23.113
+and a desired object pose.
+
+00:00:24.650 --> 00:00:27.920
+The motion in between has to
+be discovered by the policy.
+
+00:00:28.320 --> 00:00:31.445
+Such complex motions are
+hard to learn from scratch.
+
+00:00:31.741 --> 00:00:33.161
+To deal with this challenge,
+
+00:00:33.161 --> 00:00:37.421
+we identify four basic capabilities
+that such motions require:
+
+00:00:37.633 --> 00:00:39.313
+in-hand reorientation,
+
+00:00:39.900 --> 00:00:41.380
+in-hand translation,
+
+00:00:41.967 --> 00:00:43.477
+grasp type change,
+
+00:00:44.067 --> 00:00:45.735
+and object relocation.
+
+00:00:46.714 --> 00:00:51.234
+A complex motion can then be modeled as
+a combination of these capabilities.
+
+00:00:51.534 --> 00:00:54.871
+Each capability and each
+combination is a task,
+
+00:00:54.871 --> 00:00:57.474
+and together they form
+a prerequisite graph.
+
+00:00:57.874 --> 00:01:01.864
+Initially, only the four
+single-capability tasks are trained.
+
+00:01:02.164 --> 00:01:06.824
+A combination task is unlocked once all
+its prerequisites have been learned.
+
+00:01:09.463 --> 00:01:12.558
+In this way, simpler tasks
+provide intermediate guidance
+
+00:01:12.558 --> 00:01:14.813
+for learning the more complex ones.
+
+00:01:18.280 --> 00:01:22.537
+In the end, a single policy
+has learned all fifteen tasks.
+
+00:01:23.617 --> 00:01:27.437
+Goals also vary widely in
+difficulty and distance:
+
+00:01:27.487 --> 00:01:29.517
+from a small in-hand adjustment,
+
+00:01:29.667 --> 00:01:32.687
+to a grasp type change
+with distant relocation.
+
+00:01:32.887 --> 00:01:37.234
+So one policy has to make both large
+movements and fine adjustments.
+
+00:01:37.983 --> 00:01:41.523
+The reward has to guide the
+policy across this whole range.
+
+00:01:41.723 --> 00:01:44.573
+We therefore propose an
+annealed kernel reward.
+
+00:01:44.673 --> 00:01:49.053
+At first, the kernel is wide,
+to guide the policy from far away.
+
+00:01:49.153 --> 00:01:51.023
+As the policy improves,
+
+00:01:51.073 --> 00:01:52.845
+it is narrowed for precision.
+
+00:01:53.283 --> 00:01:55.803
+Some tasks are learned sooner than others.
+
+00:01:56.003 --> 00:01:59.253
+So each task narrows its
+kernel at its own pace,
+
+00:01:59.403 --> 00:02:02.641
+and counts as learned once
+its kernel is narrow enough.
+
+00:02:05.000 --> 00:02:10.476
+Trained with DexGO, our policy completes
+grasp type changes where prior work fails.
+
+00:02:14.133 --> 00:02:17.763
+The policy generalizes to
+unseen everyday objects,
+
+00:02:19.700 --> 00:02:22.269
+including tools and household items.
+
+00:02:28.300 --> 00:02:32.120
+The framework can also be applied
+to a different hand morphology,
+
+00:02:35.033 --> 00:02:36.819
+with the same training settings.
+
+00:02:45.167 --> 00:02:50.225
+The policy can even complete goals on
+objects far outside the training size range.
+
+00:02:53.683 --> 00:02:56.826
+Different target grasps
+lead to distinct motions,
+
+00:02:56.826 --> 00:03:00.815
+even under the same initial
+state and desired object pose.
+
+00:03:03.033 --> 00:03:07.851
+Finally, by chaining goals, the policy
+performs long-horizon manipulation,
+
+00:03:07.851 --> 00:03:12.521
+reaching one goal after another on the
+same object, each from a different task.
+
+00:03:13.133 --> 00:03:16.300
+In summary, DexGO builds
+a prerequisite graph
+
+00:03:16.300 --> 00:03:19.614
+and introduces a task-wise
+annealed kernel reward,
+
+00:03:19.614 --> 00:03:24.923
+achieving dexterous grasp transition with
+object relocation across diverse goals.

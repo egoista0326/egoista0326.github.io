@@ -1,7 +1,9 @@
 ---
 // A horizontally swipeable row of labelled clips (scroll snap, mouse drag, previous/next buttons, arrow
-// keys on the focusable track). Each clip is its own looping playback unit of clipPlayback.ts, so only
+// keys on the focusable track, whose focus ring the unmasked frame around it draws). Each clip is its own looping playback unit of clipPlayback.ts, so only
 // the clips actually in view play: the track clips its content, which the IntersectionObserver sees.
+// The track's ends are marked (data-at-start / data-at-end) for the edge fade; at an end its button is
+// aria-disabled, not disabled, so it keeps keyboard focus.
 import ClipVideo from './ClipVideo.astro';
 import type { ObjectItem } from '../../data/dexgo';
 
@@ -15,15 +17,18 @@ const { items, label } = Astro.props;
 ---
 
 <div class="dx-carousel" data-carousel>
-  <div class="dx-carousel-track" tabindex="0" role="region" aria-label={label} data-carousel-track>
-    {
-      items.map((item) => (
-        <figure class="dx-carousel-item">
-          <ClipVideo clip={item} />
-          <figcaption>{item.name}</figcaption>
-        </figure>
-      ))
-    }
+  {/* The unmasked frame draws the track's keyboard focus ring (the track's edge-fade mask would hide it). */}
+  <div class="dx-carousel-frame">
+    <div class="dx-carousel-track" tabindex="0" role="region" aria-label={label} data-carousel-track>
+      {
+        items.map((item) => (
+          <figure class="dx-carousel-item">
+            <ClipVideo clip={item} />
+            <figcaption>{item.name}</figcaption>
+          </figure>
+        ))
+      }
+    </div>
   </div>
   <div class="dx-carousel-nav">
     <button type="button" class="dx-carousel-button" data-carousel-prev aria-label="Previous objects">
@@ -41,22 +46,31 @@ const { items, label } = Astro.props;
     const prev = root.querySelector<HTMLButtonElement>('[data-carousel-prev]')!;
     const next = root.querySelector<HTMLButtonElement>('[data-carousel-next]')!;
     const items = [...track.children] as HTMLElement[];
+    const behavior: ScrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 
-    // Buttons are disabled at the ends of the row.
+    // At the ends of the row: the button is marked disabled and the edge does not fade.
     const update = () => {
       const max = track.scrollWidth - track.clientWidth;
-      prev.disabled = track.scrollLeft <= 1;
-      next.disabled = track.scrollLeft >= max - 1;
+      const atStart = track.scrollLeft <= 1;
+      const atEnd = track.scrollLeft >= max - 1;
+      prev.setAttribute('aria-disabled', String(atStart));
+      next.setAttribute('aria-disabled', String(atEnd));
+      track.toggleAttribute('data-at-start', atStart);
+      track.toggleAttribute('data-at-end', atEnd);
     };
     // One step is the items that fit in view (at least one), so a press shows the next set.
     const step = (direction: number) => {
       const width = items[0]?.getBoundingClientRect().width ?? track.clientWidth;
       const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
       const count = Math.max(1, Math.floor((track.clientWidth + gap) / (width + gap)));
-      track.scrollBy({ left: direction * count * (width + gap), behavior: 'smooth' });
+      track.scrollBy({ left: direction * count * (width + gap), behavior });
     };
-    prev.addEventListener('click', () => step(-1));
-    next.addEventListener('click', () => step(1));
+    prev.addEventListener('click', () => {
+      if (prev.getAttribute('aria-disabled') !== 'true') step(-1);
+    });
+    next.addEventListener('click', () => {
+      if (next.getAttribute('aria-disabled') !== 'true') step(1);
+    });
     track.addEventListener('scroll', update, { passive: true });
     new ResizeObserver(update).observe(track);
     track.addEventListener('keydown', (event) => {
@@ -65,7 +79,7 @@ const { items, label } = Astro.props;
         step(event.key === 'ArrowLeft' ? -1 : 1);
       } else if (event.key === 'Home' || event.key === 'End') {
         event.preventDefault();
-        track.scrollTo({ left: event.key === 'Home' ? 0 : track.scrollWidth, behavior: 'smooth' });
+        track.scrollTo({ left: event.key === 'Home' ? 0 : track.scrollWidth, behavior });
       }
     });
 
@@ -105,7 +119,7 @@ const { items, label } = Astro.props;
       const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
       if (width > 0) {
         const index = Math.round(left / (width + gap));
-        track.scrollTo({ left: index * (width + gap), behavior: 'smooth' });
+        track.scrollTo({ left: index * (width + gap), behavior });
       }
       if (track.hasPointerCapture(event.pointerId)) track.releasePointerCapture(event.pointerId);
     };

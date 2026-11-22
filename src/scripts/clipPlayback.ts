@@ -3,6 +3,9 @@
 // A "unit" is an element with `data-play-unit`; its <video> elements play and pause together.
 //   data-play-unit=""      looping clips (one clip, or a row of clips that should move together);
 //   data-play-unit="once"  an explanatory animation: plays once and rests on its last frame.
+// A looping unit with `data-play-loops="N"` plays at most N loops on its own and then rests on its last frame
+// (WCAG 2.2.2: moving content that starts by itself stops); while `data-play-force` is set it plays on, and a loop
+// begun after the N loops (a replay) plays to its end, so the unit rests on its last frame again.
 // A unit with `data-play-hold` is skipped until the attribute is removed. A unit with
 // `data-play-force` was asked for by the user (a selected task, a replay): it plays while visible even
 // when videos are paused or reduced motion is on; the page-level button clears every such request.
@@ -14,13 +17,17 @@
 // left out by that limit goes back to its first frame instead of resting mid-clip.
 //
 // One page-level button (`data-video-toggle`, labelled with what it will do) pauses and resumes every
-// clip. With prefers-reduced-motion nothing autoplays and the button starts as "Play videos"; pages
-// without that button give videos native controls instead (or only their poster with
-// `data-reduced-motion="poster"`).
+// clip; its choice is kept for the tab's session (sessionStorage), so a reload keeps the clips paused. With
+// prefers-reduced-motion nothing autoplays and the button starts as "Play videos"; pages without that button
+// give videos native controls instead (or only their poster with `data-reduced-motion="poster"`).
 //
-// Posters given as `data-poster` load only when the video comes within LAZY_MARGIN of the viewport; a video
-// with a phone cut takes `data-poster-phone` below 640 px instead.
-// Other scripts dispatch `clips:refresh` on document after changing a unit (hold, force, src, time).
+// Nothing plays while the tab is hidden.
+//
+// Posters given as `data-poster` load only when the video comes within LAZY_MARGIN of the viewport; under
+// reduced motion a video with `data-poster-still` takes that one.
+// Other scripts dispatch `clips:refresh` on document after changing a unit (hold, force, src, time). This
+// script dispatches `clips:paused` (detail: { paused }) when the page-level button changes state; `isPaused()`
+// tells the current state.
 
 const MAX_PLAYING = 6;
 const VISIBLE_RATIO = 0.5;
@@ -38,11 +45,25 @@ interface Unit {
   playing: boolean;
   /** For one clip of a looping row: that row (whose attributes apply). */
   row?: Unit;
+  /** `data-play-loops`: loops it may still play on its own (Infinity when unlimited). */
+  loopsLeft: number;
+  /** A loop begun after the loops were used up (a replay): it plays to its end even once no longer forced. */
+  replaying: boolean;
 }
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const toggle = document.querySelector<HTMLButtonElement>('[data-video-toggle]');
-let paused = reducedMotion;
+const PAUSED_KEY = 'clips:paused';
+// The page-level button's last choice in this tab ('1' paused, '0' playing); storage may be unavailable.
+const storedPaused = (() => {
+  try {
+    return window.sessionStorage.getItem(PAUSED_KEY);
+  } catch {
+    return null;
+  }
+})();
+// Reduced motion always starts paused; otherwise a page with the button starts as it was left.
+let paused = reducedMotion || (toggle !== null && storedPaused === '1');
 // Set while something heavier (the interactive demo) runs in view; separate from the user's toggle.
 let suspended = false;
 
@@ -54,7 +75,9 @@ const newUnit = (el: HTMLElement, videos: HTMLVideoElement[], mode: Mode, row?: 
   visible: false,
   visibleHeight: 0,
   playing: false,
-  row
+  row,
+  loopsLeft: mode === 'loop' && el.dataset.playLoops ? Number(el.dataset.playLoops) : Infinity,
+  replaying: false
 });
 
 // Looping rows of several clips also get one unit per clip; layout decides which of the two plays.
@@ -79,12 +102,14 @@ if (reducedMotion && !toggle) {
 const owner = (unit: Unit) => unit.row ?? unit;
 const held = (unit: Unit) => owner(unit).el.hasAttribute('data-play-hold');
 const forced = (unit: Unit) => owner(unit).el.hasAttribute('data-play-force');
-const finished = (unit: Unit) => unit.mode === 'once' && unit.videos.every((v) => v.ended);
+const finished = (unit: Unit) =>
+  (unit.mode === 'once' && unit.videos.every((v) => v.ended)) || (unit.loopsLeft <= 0 && !forced(unit) && !unit.replaying);
 const wanted = (unit: Unit) =>
   unit.visible &&
   !held(unit) &&
   !finished(unit) &&
   !suspended &&
+  document.visibilityState === 'visible' &&
   (forced(unit) || (!paused && (toggle !== null || !reducedMotion)));
 
 // A row is stacked when its second clip starts below its first (hidden rows have no size).
@@ -95,6 +120,7 @@ const stacked = (row: Unit) => {
 
 const start = (unit: Unit) => {
   unit.playing = true;
+  if (unit.loopsLeft <= 0) unit.replaying = true;
   for (const video of unit.videos) {
     if (unit.mode !== 'loop' && video.ended) continue;
     video.play().catch(() => {
@@ -138,10 +164,35 @@ const reconcile = () => {
 };
 
 const setPaused = (value: boolean) => {
+  const changed = paused !== value;
   paused = value;
   if (toggle) toggle.textContent = paused ? 'Play videos' : 'Pause videos';
   reconcile();
+  if (changed) document.dispatchEvent(new CustomEvent('clips:paused', { detail: { paused } }));
 };
+
+/** True while the page's clips are paused (the page-level button, or reduced motion before any click). */
+export const isPaused = (): boolean => paused;
+
+// Loop-limited units: each loop end counts; the clip restarts until its loops are used up (or while forced).
+for (const unit of units.values()) {
+  if (unit.loopsLeft === Infinity) continue;
+  for (const video of unit.videos) {
+    video.loop = false;
+    video.addEventListener('ended', () => {
+      unit.loopsLeft -= 1;
+      unit.replaying = false;
+      if (wanted(unit)) {
+        if (unit.loopsLeft <= 0) unit.replaying = true;
+        video.currentTime = 0;
+        video.play().catch(() => undefined);
+      } else {
+        unit.playing = false;
+        reconcile();
+      }
+    });
+  }
+}
 
 for (const unit of units.values()) {
   if (unit.row || unit.mode !== 'once') continue;
@@ -158,6 +209,11 @@ for (const unit of units.values()) {
 toggle?.addEventListener('click', () => {
   for (const el of document.querySelectorAll('[data-play-force]')) el.removeAttribute('data-play-force');
   setPaused(!paused);
+  try {
+    window.sessionStorage.setItem(PAUSED_KEY, paused ? '1' : '0');
+  } catch {
+    // Without storage the choice holds only until the page is left.
+  }
 });
 // "Replay" buttons restart the explanatory animations inside their `data-replay-scope`.
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-replay]')) {
@@ -178,6 +234,7 @@ document.addEventListener('clips:resume', () => {
   suspended = false;
   reconcile();
 });
+document.addEventListener('visibilitychange', reconcile);
 if (toggle) setPaused(paused);
 
 if (units.size > 0) {
@@ -202,7 +259,6 @@ if (units.size > 0) {
 }
 
 // Lazy posters: hidden panels (e.g. the second hand) never come near the viewport until shown.
-const phone = window.matchMedia('(max-width: 639px)').matches;
 const lazy = [...document.querySelectorAll<HTMLVideoElement>('video[data-poster]')];
 if (lazy.length > 0) {
   const posterObserver = new IntersectionObserver(
@@ -210,7 +266,7 @@ if (lazy.length > 0) {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
         const video = entry.target as HTMLVideoElement;
-        const poster = (phone && video.dataset.posterPhone) || video.dataset.poster;
+        const poster = (reducedMotion && video.dataset.posterStill) || video.dataset.poster;
         if (poster) video.poster = poster;
         posterObserver.unobserve(video);
       }

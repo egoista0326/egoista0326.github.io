@@ -1,39 +1,45 @@
 ---
-// The prerequisite graph: the video's unlock animation, cropped to its graph, plays once and rests on
-// its last frame, where every task is learned. The nodes of that frame are buttons; the selected
-// task's clip plays in its own column (under the graph below 1024 px) with its unlock rule, and the
-// task's prerequisites are ringed on the graph.
+// The prerequisite graph: the video's unlock animation (its file is cut to the graph, from the moment the graph
+// has settled) plays once and rests on its last frame, where every task is learned. The nodes of that frame are
+// buttons; the selected task's clip plays in its own column (under the graph below 864 px, where a selection
+// scrolls it and its caption into view) with its unlock rule, and the task's prerequisites are ringed on the graph. Under reduced motion, or while the page's videos
+// are paused, the graph rests on its learned frame from the start, so the nodes are usable at once.
 import type { Clip, GraphTask } from '../../data/dexgo';
 
 interface Props {
   animation: Clip & { endPoster: string };
   tasks: GraphTask[];
   defaultTask: string;
-  /** Width in frame pixels of the graph part of the animation (from x = 0). */
-  graphWidth: number;
-  /** Seconds into the animation where playback starts. */
-  startAt: number;
   /** [x, y, w, h] of the state legend in frame pixels, covered once every task is learned. */
   legendRect: [number, number, number, number];
+  /** Phones and from 864 px: the video's text below `top` (frame pixels), set as HTML: two-line captions per task id
+      and the states. */
+  phoneText: {
+    top: number;
+    captions: Record<string, [string, string]>;
+    states: { id: string; label: string }[];
+  };
   hint: string;
 }
 
-const { animation, tasks, defaultTask, graphWidth, startAt, legendRect, hint } = Astro.props;
-const W = graphWidth;
+const { animation, tasks, defaultTask, legendRect, phoneText, hint } = Astro.props;
+const W = animation.width;
 const H = animation.height;
 const pct = (value: number, total: number) => `${((value / total) * 100).toFixed(3)}%`;
 const selected = tasks.find((task) => task.id === defaultTask) ?? tasks[0];
 const square = selected.clip.width === selected.clip.height;
+// Where the stacked layout's Replay button rises to once the legend is covered (global.css): its top 28 frame px
+// under the legend band's top, as a share of the frame width (the graph's drawn width scales it).
+const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
 ---
 
-<div class="dx-unlock" data-unlock data-state="anim" data-end-poster={animation.endPoster} data-start={startAt}>
+<div class="dx-unlock" data-unlock data-state="anim" data-end-poster={animation.endPoster} style={`--replay-lift: ${replayLift}`}>
   {/* The graph and, centred under it, the button that replays its unlocking. */}
   <div class="dx-unlock-main">
-    <div class="dx-unlock-graph" style={`aspect-ratio: ${W} / ${H}; --frame: ${((animation.width / W) * 100).toFixed(3)}%`}>
+    <div class="dx-unlock-graph" style={`aspect-ratio: ${W} / ${H}; --cover-top: ${pct(phoneText.top, H)}`}>
       <div class="dx-unlock-anim" data-play-unit="once">
-        <video muted playsinline preload="none" data-poster={animation.poster} width={animation.width} height={H} aria-label={animation.label}>
-          {/* The fragment starts the first load at startAt, so the uncropped opening frames never show. */}
-          <source src={`${animation.src}#t=${startAt}`} type="video/mp4" />
+        <video muted playsinline preload="none" data-poster={animation.poster} width={W} height={H} aria-label={animation.label}>
+          <source src={animation.src} type="video/mp4" />
         </video>
       </div>
       <div
@@ -41,13 +47,37 @@ const square = selected.clip.width === selected.clip.height;
         style={`left: ${pct(legendRect[0], W)}; top: ${pct(legendRect[1], H)}; width: ${pct(legendRect[2], W)}; height: ${pct(legendRect[3], H)}`}
       >
       </div>
+      {/* Phones and from 864 px (global.css): the video's captions and state legend, covered and set again at a
+          readable size. They repeat text drawn in the video, so they are hidden from screen readers like it. */}
+      <div class="dx-unlock-phone-cover"></div>
+      <ul class="dx-unlock-captions" aria-hidden="true">
+        {
+          tasks
+            .filter((task) => phoneText.captions[task.id])
+            .map((task) => (
+              <li style={`--x: ${pct(task.rect[0] + task.rect[2] / 2, W)}`}>
+                {phoneText.captions[task.id][0]}
+                <br />
+                {phoneText.captions[task.id][1]}
+              </li>
+            ))
+        }
+      </ul>
+      <ul class="dx-unlock-states" aria-hidden="true">
+        {phoneText.states.map((state) => <li data-state-swatch={state.id}>{state.label}</li>)}
+      </ul>
+      {/* One Tab stop (roving tabindex): the selected task, or the last one focused while inside; arrow keys move,
+          which each node's description says. */}
+      <span id="unlock-keys" class="visually-hidden">Arrow keys move between tasks.</span>
       <div class="dx-unlock-nodes" role="group" aria-label="Tasks of the prerequisite graph">
         {
           tasks.map((task) => (
             <button
               type="button"
               class="dx-node"
+              tabindex={task.id === selected.id ? 0 : -1}
               data-task={task.id}
+              data-row={task.row}
               data-src={task.clip.src}
               data-poster={task.clip.poster}
               data-words={task.spoken}
@@ -55,15 +85,16 @@ const square = selected.clip.width === selected.clip.height;
               data-prerequisites={task.prerequisites.join(' ')}
               aria-pressed={task.id === selected.id ? 'true' : 'false'}
               aria-label={`Watch task ${task.id}: ${task.spoken}`}
+              aria-describedby="unlock-keys"
               style={`left: ${pct(task.rect[0], W)}; top: ${pct(task.rect[1], H)}; width: ${pct(task.rect[2], W)}; height: ${pct(task.rect[3], H)}`}
             >
-              {task.id}
+              <span class="dx-node-label">{task.id}</span>
             </button>
           ))
         }
       </div>
     </div>
-    <button type="button" class="dx-control" data-unlock-replay aria-label="Replay the unlocking animation of the graph">Replay unlocking</button>
+    <button type="button" class="dx-control" data-unlock-replay aria-label="Replay animation of the graph">Replay animation</button>
   </div>
 
   <div class="dx-unlock-side">
@@ -86,9 +117,14 @@ const square = selected.clip.width === selected.clip.height;
 </div>
 
 <script>
-  import '../../scripts/clipPlayback';
+  import { isPaused } from '../../scripts/clipPlayback';
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The stacked layout, where the player sits under the graph: global.css `.dx-unlock` is one column below its
+  // `@media (min-width: 864px)` rule, which puts the player beside the graph.
+  const stacked = window.matchMedia('(max-width: 863px)');
+  // Space kept between the revealed clip / caption and the screen's edges, in CSS px.
+  const revealMargin = 16;
 
   for (const root of document.querySelectorAll<HTMLElement>('[data-unlock]')) {
     const animUnit = root.querySelector<HTMLElement>('.dx-unlock-anim');
@@ -100,8 +136,9 @@ const square = selected.clip.width === selected.clip.height;
     const words = root.querySelector<HTMLElement>('[data-unlock-words]');
     const rule = root.querySelector<HTMLElement>('[data-unlock-rule]');
     const hint = root.querySelector<HTMLElement>('[data-unlock-hint]');
+    const caption = root.querySelector<HTMLElement>('.dx-unlock-caption');
     const nodes = [...root.querySelectorAll<HTMLButtonElement>('[data-task]')];
-    if (!animUnit || !anim || !clipUnit || !player || !replay) continue;
+    if (!animUnit || !anim || !clipUnit || !player || !replay || !caption) continue;
 
     const refresh = () => document.dispatchEvent(new CustomEvent('clips:refresh'));
     // A click is an explicit request: that unit plays even where nothing autoplays or videos are paused.
@@ -112,13 +149,6 @@ const square = selected.clip.width === selected.clip.height;
       video.dataset.poster = url;
       if (video.hasAttribute('poster')) video.poster = url;
     };
-    const startAt = Number(root.dataset.start ?? 0);
-    // Begin where the graph has settled in its final place (the crop shows only that part of the frame);
-    // the source fragment does this on the first load, this covers browsers without media fragments.
-    anim.addEventListener('play', () => {
-      if (anim.currentTime < startAt) anim.currentTime = startAt;
-    });
-
     // "anim": the unlocking plays, the player waits. "explore": the graph rests on its learned frame.
     const setState = (state: 'anim' | 'explore') => {
       root.dataset.state = state;
@@ -159,7 +189,24 @@ const square = selected.clip.width === selected.clip.height;
       }
     };
 
+    // Stacked layout: the clip and caption a visitor asked for open under the graph, often below the screen. Unless
+    // the caption is already fully on screen (then the clip, between it and the tapped node, is too), scroll until
+    // the caption ends `revealMargin` above the screen's bottom (measured after `select`, so the caption has its new
+    // line count). Where node, clip and caption fit one screen the tapped node stays on it; where they do not (short
+    // or landscape screens), the clip's top stops `revealMargin` under the screen's top instead.
+    const revealPlayer = () => {
+      if (!stacked.matches) return;
+      const captionBottom = caption.getBoundingClientRect().bottom;
+      if (captionBottom <= window.innerHeight) return;
+      const clipTop = clipUnit.getBoundingClientRect().top;
+      window.scrollBy({
+        top: Math.min(captionBottom - (window.innerHeight - revealMargin), clipTop - revealMargin),
+        behavior: reducedMotion ? 'auto' : 'smooth'
+      });
+    };
+
     for (const node of nodes) {
+      // A user's selection (pointer, or Enter / Space on the button); the initial one is rendered on the server.
       node.addEventListener('click', () => {
         if (root.dataset.state === 'anim') {
           showEnd();
@@ -173,26 +220,82 @@ const square = selected.clip.width === selected.clip.height;
         }
         force(clipUnit);
         refresh();
+        revealPlayer();
       });
     }
 
+    // Keyboard: the graph is one Tab stop. Focus moves the stop to the focused node; leaving the graph gives it back
+    // to the selected task. Left / Right move along a row, Up / Down to the nearest node (by centre) of the next row
+    // (as in the demo's graph); Enter / Space select, as buttons do.
+    const rows = new Map<number, HTMLButtonElement[]>();
+    for (const node of nodes) {
+      const row = Number(node.dataset.row);
+      rows.set(row, [...(rows.get(row) ?? []), node]);
+    }
+    const setRover = (rover: HTMLButtonElement) => {
+      for (const node of nodes) node.tabIndex = node === rover ? 0 : -1;
+    };
+    const centre = (node: HTMLButtonElement) => {
+      const box = node.getBoundingClientRect();
+      return box.left + box.width / 2;
+    };
+    for (const node of nodes) {
+      node.addEventListener('focus', () => setRover(node));
+      node.addEventListener('keydown', (event) => {
+        const row = Number(node.dataset.row);
+        const inRow = rows.get(row) ?? [];
+        let next: HTMLButtonElement | undefined;
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+          next = inRow[inRow.indexOf(node) + (event.key === 'ArrowLeft' ? -1 : 1)];
+        } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+          const x = centre(node);
+          next = (rows.get(row + (event.key === 'ArrowUp' ? -1 : 1)) ?? []).reduce<HTMLButtonElement | undefined>(
+            (best, other) => (!best || Math.abs(centre(other) - x) < Math.abs(centre(best) - x) ? other : best),
+            undefined
+          );
+        } else {
+          return;
+        }
+        event.preventDefault(); // arrows never scroll the page from the graph
+        next?.focus();
+      });
+    }
+    root.querySelector('.dx-unlock-nodes')?.addEventListener('focusout', (event) => {
+      const to = (event as FocusEvent).relatedTarget;
+      if (to instanceof Node && nodes.some((node) => node === to)) return;
+      const pressed = nodes.find((node) => node.getAttribute('aria-pressed') === 'true');
+      if (pressed) setRover(pressed);
+    });
+
     anim.addEventListener('ended', () => setState('explore'));
 
-    replay.addEventListener('click', () => {
-      anim.currentTime = startAt;
+    replay.addEventListener('click', (event) => {
+      // 640-863 px: the explore state lifts the button (global.css). A mouse click that starts the replay keeps it
+      // there, under the pointer, until the pointer leaves it (data-replay-held), so it does not slide away.
+      if (root.dataset.state === 'explore' && (event as PointerEvent).pointerType === 'mouse') {
+        root.setAttribute('data-replay-held', '');
+      }
+      anim.currentTime = 0;
       force(animUnit);
       setState('anim');
     });
+    replay.addEventListener('pointerleave', () => root.removeAttribute('data-replay-held'));
 
     const initial = nodes.find((node) => node.getAttribute('aria-pressed') === 'true');
     if (initial) markPrerequisites(initial);
 
-    // Without autoplay, start on the learned graph so the nodes can be used right away.
-    if (reducedMotion) {
-      if (root.dataset.endPoster) setPoster(anim, root.dataset.endPoster);
+    // Without autoplay (reduced motion, or the page's videos paused), the graph rests on its learned frame so
+    // the nodes can be used right away; pausing during the unlocking jumps there too (a replay asked for by
+    // the user still plays).
+    const toEnd = () => {
+      showEnd();
       setState('explore');
-    } else {
-      setState('anim');
-    }
+    };
+    if (reducedMotion || isPaused()) toEnd();
+    else setState('anim');
+    document.addEventListener('clips:paused', (event) => {
+      const { paused } = (event as CustomEvent<{ paused: boolean }>).detail;
+      if (paused && root.dataset.state === 'anim' && !animUnit.hasAttribute('data-play-force')) toEnd();
+    });
   }
 </script>
