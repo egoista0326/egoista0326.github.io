@@ -1,22 +1,29 @@
+import type { LinkChip } from '../components/LinkChips.astro';
+import { dexgoPage } from './dexgo';
 import { newsItems, projectPlaceholder, site } from './site';
 
-// Strings that start with "TODO" are placeholders. They render with a visible
-// dashed highlight (see src/lib/placeholders.ts) so they are easy to find in preview.
+// Strings that start with "TODO" are placeholders. In `astro dev` they render with a visible dashed highlight
+// (TodoText.astro) so they are easy to find; a production build renders nothing for them.
+
+/** Break points of the bio's long words, shown as soft hyphens (U+00AD) in its rendered text. The bio is justified
+ *  (owner 2026-11-22) and these are its only in-word breaks (`hyphens: manual`), so every browser sets the same lines;
+ *  automatic hyphenation depends on the browser's dictionary. Without them a 390 px phone left word gaps of up to 4.7
+ *  spaces in the bio; with them, at most 2. */
+const bioBreaks = ['cur-rent-ly', 'stu-dent', 'in-ter-est-ed', 'dex-ter-ous', 'ma-nip-u-la-tion', 're-in-force-ment', 'learn-ing',
+  're-ceived', 'Me-chan-i-cal', 'En-gi-neer-ing', 'Uni-ver-si-ty'];
 
 export const academicProfile = {
   fullName: site.name,
-  title: 'MSc student in Robotics, Systems and Control',
-  institute: 'ETH Zurich',
-  summary: site.bio,
-  researchInterests: 'TODO: research interests',
-  // Placeholder portrait: swap `src`/`alt` for a real portrait. `objectPosition`
-  // chooses which part of the image stays visible in the square crop.
+  /** site.bio with soft hyphens at `bioBreaks` (a soft hyphen shows only at a line end). */
+  summary: bioBreaks.reduce((text, word) => text.replaceAll(word.replaceAll('-', ''), word.replaceAll('-', '\u00ad')), site.bio),
+  // A square cut of the ski photo (helmet to hands, mountains beside), 600 px for the 200 px slot at 3x.
+  // `objectPosition` chooses which part stays visible if the slot is ever not square.
   portrait: {
-    src: '/assets/photography/profile-shadow-2649.webp',
-    alt: 'Reflected self-portrait of Jiaxin Li (placeholder portrait).',
-    width: 1920,
-    height: 1280,
-    objectPosition: '49% 50%'
+    src: '/assets/profile/portrait.webp',
+    alt: 'Jiaxin Li on a ski slope with snowy mountains behind.',
+    width: 600,
+    height: 600,
+    objectPosition: '50% 50%'
   }
 };
 
@@ -31,21 +38,32 @@ export const academicLinks = [
 
 export const academicNews = newsItems;
 
-export interface ProjectLink {
-  label: string;
+/** A link chip of a project (LinkChips.astro): without `href` it is shown muted, marked "soon", not a link. */
+export type ProjectLink = LinkChip;
+
+export interface ProjectAuthor {
+  name: string;
   href: string;
+  /** Co-first author (equal contribution), marked with `*`. */
+  equal: boolean;
 }
 
 export interface ProjectEntry {
+  /** Full title, as in a publication list; links to `href`. */
   title: string;
   href: string;
-  description: string;
-  /** Thumbnail image path under public/ (also the video poster); '' renders a placeholder. */
-  thumbnail: string;
-  /** Optional muted looping video shown in place of the image; '' for none. */
-  thumbnailVideo: string;
+  /** In paper order. The site owner (`site.name`) is shown in bold and not linked. */
+  authors: ProjectAuthor[];
+  /** Note explaining the `*` of equal-contribution authors. */
+  equalNote: string;
+  /** Muted looping clip (H.264, no audio) and its first frame as poster; frame size in px. */
+  media: { video: string; poster: string; width: number; height: number };
   links: ProjectLink[];
 }
+
+/** The DexGO page's link with this label, if it has a target yet (dexgo.ts owns the paper and code links). */
+const dexgoLink = (label: string): string | undefined =>
+  dexgoPage.links.find((link) => link.label === label)?.href || undefined;
 
 export const academicProjects: {
   heading: string;
@@ -55,18 +73,31 @@ export const academicProjects: {
   heading: 'Projects',
   entries: [
     {
-      title: 'DexGO',
+      title: `${dexgoPage.title}: ${dexgoPage.subtitle}`,
       href: '/dexgo/',
-      description: 'Dexterous grasp transition with object relocation: a reinforcement learning framework that trains a single policy to change how a hand holds an object while moving it to a desired pose.',
-      // A still of the teaser cropped to the hand driving the screw (the full frame shows the whole table,
-      // so the hand would be a few pixels at card size).
-      thumbnail: '/assets/dexgo/card_thumbnail.webp',
-      thumbnailVideo: '',
-      links: [{ label: 'Project page', href: '/dexgo/' }]
+      authors: dexgoPage.authors,
+      equalNote: dexgoPage.equalNote,
+      // Card cut of the DexGO teaser (from teaser_1080p.mp4): one fixed 1280x720 window, the same in every frame, that
+      // holds the hand's whole path, the screw base and the rack (no zoom or pan), scaled to 640x360; the loop starts in
+      // the pinch (poster = frame 0).
+      media: {
+        video: '/assets/dexgo/card_teaser.mp4',
+        poster: '/assets/dexgo/card_teaser.webp',
+        width: 640,
+        height: 360
+      },
+      links: [
+        { label: 'Paper', icon: 'paper', href: dexgoLink('Paper') },
+        { label: 'Project Page', icon: 'globe', href: '/dexgo/' },
+        { label: 'Code', icon: 'code', href: dexgoLink('Code') }
+      ]
     }
   ],
   empty: projectPlaceholder
 };
+
+/** The News section is hidden for now (owner 2026-11-22); the items stay in site.ts. */
+export const showNews = false;
 
 export const academicEducation = [
   {
@@ -77,8 +108,8 @@ export const academicEducation = [
   },
   {
     institution: 'Shanghai Jiao Tong University',
-    degree: "Bachelor's degree",
-    major: 'Mechanical Engineering',
+    degree: 'BEng in Mechanical Engineering',
+    major: '',
     period: '2021 – 2025'
   }
 ];

@@ -14,11 +14,14 @@ interface Props {
   bodyClass?: string;
   /** The page writes its own Open Graph / Twitter tags in the head slot; the generic ones are skipped. */
   ownShareTags?: boolean;
+  /** og:image of the page (Head.astro). */
+  shareImage?: { src: string; width: number; height: number; alt: string };
 }
 
-const { title, description, canonicalPath, bodyClass, ownShareTags = false } = Astro.props;
-// Photography pages get the theme/language switches in the header and the early preference script
-// in <head> (Head.astro); every other page stays in the default light, English presentation.
+const { title, description, canonicalPath, bodyClass, ownShareTags = false, shareImage } = Astro.props;
+// Every page gets the theme switch in the header and applies the stored theme before the first paint
+// (Head.astro), so a theme chosen on one page holds on the others; photography pages also get the language
+// switch (the other pages are English only).
 const isPhotography = Astro.url.pathname.startsWith('/photography/');
 ---
 
@@ -31,6 +34,7 @@ const isPhotography = Astro.url.pathname.startsWith('/photography/');
       canonicalPath={canonicalPath}
       shareTags={!ownShareTags}
       photographyPreferences={isPhotography}
+      shareImage={shareImage}
     />
     <slot name="head" />
   </head>
@@ -49,7 +53,7 @@ const isPhotography = Astro.url.pathname.startsWith('/photography/');
     </a>
     <div class="site-shell">
       <SiteHeader currentPath={Astro.url.pathname}>
-        {isPhotography ? <PhotographyPreferences /> : null}
+        <PhotographyPreferences languages={isPhotography} />
       </SiteHeader>
       <main id="main" tabindex="-1">
         <slot />

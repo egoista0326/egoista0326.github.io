@@ -1,6 +1,5 @@
 ---
 import SiteLayout from '../layouts/SiteLayout.astro';
-import TodoText from '../components/TodoText.astro';
 import AcademicSection from '../components/academic/AcademicSection.astro';
 import EducationList from '../components/academic/EducationList.astro';
 import NewsTimeline from '../components/academic/NewsTimeline.astro';
@@ -11,16 +10,16 @@ import {
   academicLinks,
   academicNews,
   academicProfile,
-  academicProjects
+  academicProjects,
+  showNews
 } from '../data/academic';
 import { site } from '../data/site';
 
-const role = `${academicProfile.title} at ${academicProfile.institute}`;
 const portrait = academicProfile.portrait;
 const links = academicLinks.filter((link) => link.href);
 ---
 
-<SiteLayout title={site.title} description={site.description}>
+<SiteLayout title={site.title} description={site.description} shareImage={site.shareImage}>
   <section class="academic-intro" aria-labelledby="page-title">
     {
       portrait.src ? (
@@ -39,12 +38,7 @@ const links = academicLinks.filter((link) => link.href);
     }
     <div class="academic-intro-copy">
       <h1 id="page-title">{academicProfile.fullName}</h1>
-      <p class="role-line">{role}</p>
       <p class="academic-bio">{academicProfile.summary}</p>
-      <p class="research-interests">
-        <span class="research-interests-label">Research interests:</span>
-        <TodoText text={academicProfile.researchInterests} />
-      </p>
       <ul class="contact-links" aria-label="Academic links">
         {
           links.map((link) => (
@@ -57,9 +51,14 @@ const links = academicLinks.filter((link) => link.href);
     </div>
   </section>
 
-  <AcademicSection title="News">
-    <NewsTimeline items={academicNews} />
-  </AcademicSection>
+  {
+    // News is hidden until there is more than one item (owner 2026-11-22); set showNews in src/data/academic.ts.
+    showNews ? (
+      <AcademicSection title="News">
+        <NewsTimeline items={academicNews} />
+      </AcademicSection>
+    ) : null
+  }
 
   <AcademicSection title={academicProjects.heading}>
     {

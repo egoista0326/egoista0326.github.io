@@ -18,6 +18,9 @@ const isActive = (href: string) => {
   <a class="site-mark" href="/" aria-label={`${site.name} academic homepage`}>
     {site.name}
   </a>
+  {/* The switches (slot) come before the nav in the source as on screen (beside the name on phones, left of the nav
+      on wider screens), so the Tab order follows the visual order. */}
+  <slot />
   <nav class="site-nav" aria-label="Primary navigation">
     {
       navItems.map((item) => (
@@ -26,10 +29,10 @@ const isActive = (href: string) => {
           class:list={['nav-link', { 'is-active': isActive(item.href) }]}
           aria-current={isActive(item.href) ? 'page' : undefined}
         >
-          {item.label}
+          <span data-lang-inline="en">{item.label}</span>
+          <span data-lang-inline="zh">{item.labelZh}</span>
         </a>
       ))
     }
   </nav>
-  <slot />
 </header>

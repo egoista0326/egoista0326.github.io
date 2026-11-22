@@ -5,7 +5,10 @@ interface Props {
   text: string;
 }
 
+// A placeholder ("TODO: ...") is highlighted in `astro dev` so it is easy to find, and renders nothing in a
+// production build, so no placeholder reaches the published site.
 const { text } = Astro.props;
+const placeholder = isPlaceholder(text);
 ---
 
-{isPlaceholder(text) ? <span class="todo-text">{text}</span> : text}
+{placeholder ? (import.meta.env.PROD ? null : <span class="todo-text">{text}</span>) : text}
