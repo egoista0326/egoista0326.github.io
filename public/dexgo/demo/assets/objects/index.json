@@ -33,7 +33,7 @@
   ],
   "pitch_deg": 65.0,
   "dwell_steps": 10,
-  "timeout_steps": 600,
+  "timeout_steps": 1200,
   "recover_mm": 20.0,
   "recover_deg": 20.0,
   "palm_up": [
@@ -56,7 +56,7 @@
   "relocation_tries": 200,
   "max_turn_deg": 120.0,
   "max_object_step_m": 0.6,
-  "drop_relation_m": 0.15,
+  "drop_distance_m": 0.02,
   "recoveries_in_row": 2,
   "roll_variety": {
    "90": [
@@ -110,19 +110,23 @@
    "records": {
     "E_n": 2093,
     "T_b": 491,
-    "E_r": 2022
+    "E_r": 2022,
+    "T_s": 487
    },
    "options": {
     "er": true,
     "er_start": true,
     "er_inhand": true,
     "variety": true,
-    "variety_composites": false
+    "variety_composites": false,
+    "switch_try_keys": true,
+    "ts": true
    },
    "families": {
     "E_n": "Enclosure",
     "E_r": "Reversed enclosure",
-    "T_b": "Pinch"
+    "T_b": "Pinch",
+    "T_s": "Pinch at the other end"
    }
   },
   {
@@ -154,19 +158,23 @@
    "records": {
     "E_n": 2122,
     "T_b": 471,
-    "E_r": 2140
+    "E_r": 2140,
+    "T_s": 462
    },
    "options": {
     "er": true,
     "er_start": true,
     "er_inhand": true,
     "variety": false,
-    "variety_composites": true
+    "variety_composites": true,
+    "switch_try_keys": true,
+    "ts": true
    },
    "families": {
     "E_n": "Enclosure",
     "E_r": "Reversed enclosure",
-    "T_b": "Pinch"
+    "T_b": "Pinch",
+    "T_s": "Pinch at the other end"
    }
   }
  ]

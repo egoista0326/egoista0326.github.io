@@ -24,55 +24,55 @@
   </asset>
 
   <worldbody>
-    <body name="sliderBar">
+    <body name="sliderBar" gravcomp="1">
       <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-      <body name="right_wrist">
+      <body name="right_wrist" gravcomp="1">
         <inertial pos="-0.0342879 -0.00198336 4.85957e-05" quat="1 6.91213e-05 0.000112204 0.000149355" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
         <joint name="x_joint" type="slide" range="-10 10" actuatorfrcrange="-100 100" armature="20.038" damping="134.5" axis="1 0 0"/>
-        <body name="right_wrist_y">
+        <body name="right_wrist_y" gravcomp="1">
           <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
           <joint name="y_joint" type="slide" range="-10 10" actuatorfrcrange="-100 100" armature="20.038" damping="134.5" axis="0 1 0"/>
-          <body name="right_wrist_z">
+          <body name="right_wrist_z" gravcomp="1">
             <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
             <joint name="z_joint" type="slide" range="-10 10" actuatorfrcrange="-100 100" armature="20.038" damping="134.5"/>
-            <body name="right_wrist_rx">
+            <body name="right_wrist_rx" gravcomp="1">
               <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
               <joint name="x_rotation_joint" range="-6.28 6.28" actuatorfrcrange="-100 100" armature="0.00992491" damping="20" axis="1 0 0"/>
-              <body name="right_wrist_ry">
+              <body name="right_wrist_ry" gravcomp="1">
                 <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                 <joint name="y_rotation_joint" range="-6.28 6.28" actuatorfrcrange="-100 100" armature="0.00849044" damping="20" axis="0 1 0"/>
-                <body name="right_wrist_rz">
+                <body name="right_wrist_rz" gravcomp="1">
                   <inertial pos="0 0 0" quat="0.5 0.5 0.5 0.5" mass="0.0162162" diaginertia="1.48432e-05 9.20675e-06 7.60675e-06"/>
                   <joint name="z_rotation_joint" range="-6.28 6.28" actuatorfrcrange="-10 10" armature="0.00205424" damping="20"/>
                   <geom pos="-0.0956699 -0.00638343 -0.0061863" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_wrist"/>
-                  <body name="right_index_fixed">
+                  <body name="right_index_fixed" gravcomp="1">
                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                    <body name="right_index1" pos="-0.0880973 -0.00520036 0.020686">
+                    <body name="right_index1" pos="-0.0880973 -0.00520036 0.020686" gravcomp="1">
                       <inertial pos="-0.0184105 0.00337297 0.00148585" quat="1 2.20032e-07 4.00455e-07 4.16719e-07" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                      <body name="right_index1_y">
+                      <body name="right_index1_y" gravcomp="1">
                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                         <joint name="right_index1_y_joint" range="-1 1" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.055853 0.998353 0.0131148"/>
-                        <body name="right_index1_z">
+                        <body name="right_index1_z" gravcomp="1">
                           <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.00363849" diaginertia="1.47359e-07 1.2491e-07 1.2491e-07"/>
                           <joint name="right_index1_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="0.228591 0 0.973522"/>
                           <geom pos="-0.00757268 -0.00118307 -0.0268723" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_index1"/>
-                          <body name="right_index2" pos="-0.0326789 0.00400936 0.00221707">
+                          <body name="right_index2" pos="-0.0326789 0.00400936 0.00221707" gravcomp="1">
                             <inertial pos="-0.0112131 -0.000167142 2.32336e-05" quat="1 7.5545e-08 1.0264e-07 1.13034e-07" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                            <body name="right_index2_y">
+                            <body name="right_index2_y" gravcomp="1">
                               <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                              <body name="right_index2_z">
+                              <body name="right_index2_z" gravcomp="1">
                                 <inertial pos="0 0 0" mass="0.00285635" diaginertia="9.15627e-08 9.15627e-08 8.03349e-08"/>
                                 <joint name="right_index2_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="0.0676883 0 0.997707"/>
                                 <geom pos="0.0251062 -0.00519243 -0.0290894" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_index2"/>
-                                <body name="right_index3" pos="-0.0221559 -0.00129842 -0.000114119">
+                                <body name="right_index3" pos="-0.0221559 -0.00129842 -0.000114119" gravcomp="1">
                                   <inertial pos="-0.0111328 -0.000501862 -0.000143096" quat="1 3.69524e-08 7.12713e-08 7.9293e-08" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                  <body name="right_index3_y">
+                                  <body name="right_index3_y" gravcomp="1">
                                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                    <body name="right_index3_z">
+                                    <body name="right_index3_z" gravcomp="1">
                                       <inertial pos="0 0 0" mass="0.00174813" diaginertia="4.44974e-08 4.44974e-08 3.14664e-08"/>
                                       <joint name="right_index3_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.00515064 0 0.999987"/>
                                       <geom pos="0.0472621 -0.003894 -0.0289752" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_index3"/>
-                                      <body name="right_index_tip" pos="-0.0254822 0.00118412 -0.000501383">
+                                      <body name="right_index_tip" pos="-0.0254822 0.00118412 -0.000501383" gravcomp="1">
                                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                                       </body>
                                     </body>
@@ -85,34 +85,34 @@
                       </body>
                     </body>
                   </body>
-                  <body name="right_middle_fixed">
+                  <body name="right_middle_fixed" gravcomp="1">
                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                    <body name="right_middle1" pos="-0.0946605 -0.00147896 -0.00335754">
+                    <body name="right_middle1" pos="-0.0946605 -0.00147896 -0.00335754" gravcomp="1">
                       <inertial pos="-0.0140409 0.00236965 -0.00297553" quat="1 2.67384e-07 5.78975e-07 6.01564e-07" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                      <body name="right_middle1_y">
+                      <body name="right_middle1_y" gravcomp="1">
                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                         <joint name="right_middle1_y_joint" range="-1 1" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.0156023 0.999878 -0.0005534"/>
-                        <body name="right_middle1_z">
+                        <body name="right_middle1_z" gravcomp="1">
                           <inertial pos="0 0 0" mass="0.00636394" diaginertia="4.0299e-07 4.0299e-07 2.5774e-07"/>
                           <joint name="right_middle1_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.035447 0 0.999372"/>
                           <geom pos="-0.00100949 -0.00490447 -0.00282876" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_middle1"/>
-                          <body name="right_middle2" pos="-0.0311827 0.00186133 -0.00559451">
+                          <body name="right_middle2" pos="-0.0311827 0.00186133 -0.00559451" gravcomp="1">
                             <inertial pos="-0.0130836 -0.000209653 -0.00221531" quat="1 7.1902e-08 9.63022e-08 1.03591e-07" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                            <body name="right_middle2_y">
+                            <body name="right_middle2_y" gravcomp="1">
                               <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                              <body name="right_middle2_z">
+                              <body name="right_middle2_z" gravcomp="1">
                                 <inertial pos="0 0 0" mass="0.00306654" diaginertia="1.0672e-07 1.0672e-07 8.62464e-08"/>
                                 <joint name="right_middle2_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.176591 0 0.984284"/>
                                 <geom pos="0.0301732 -0.00676579 0.00276574" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_middle2"/>
-                                <body name="right_middle3" pos="-0.0229046 -0.0012521 -0.00394451">
+                                <body name="right_middle3" pos="-0.0229046 -0.0012521 -0.00394451" gravcomp="1">
                                   <inertial pos="-0.013412 -0.00013217 -0.00208169" quat="1 3.7739e-08 6.37008e-08 6.94846e-08" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                  <body name="right_middle3_y">
+                                  <body name="right_middle3_y" gravcomp="1">
                                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                    <body name="right_middle3_z">
+                                    <body name="right_middle3_z" gravcomp="1">
                                       <inertial pos="0 0 0" mass="0.00212245" diaginertia="5.97942e-08 5.97942e-08 4.48367e-08"/>
                                       <joint name="right_middle3_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.169716 0 0.985493"/>
                                       <geom pos="0.0530778 -0.00551369 0.00671026" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_middle3"/>
-                                      <body name="right_middle_tip" pos="-0.0256922 0.00384685 -0.00413625">
+                                      <body name="right_middle_tip" pos="-0.0256922 0.00384685 -0.00413625" gravcomp="1">
                                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                                       </body>
                                     </body>
@@ -125,34 +125,34 @@
                       </body>
                     </body>
                   </body>
-                  <body name="right_pinky_fixed">
+                  <body name="right_pinky_fixed" gravcomp="1">
                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                    <body name="right_pinky1" pos="-0.068787 -0.00994033 -0.0432093">
+                    <body name="right_pinky1" pos="-0.068787 -0.00994033 -0.0432093" gravcomp="1">
                       <inertial pos="-0.00729834 0.00120967 -0.00707704" quat="1 7.44136e-08 1.06668e-07 1.12295e-07" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                      <body name="right_pinky1_y">
+                      <body name="right_pinky1_y" gravcomp="1">
                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                         <joint name="right_pinky1_y_joint" range="-1 1" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.102854 0.992596 -0.064609"/>
-                        <body name="right_pinky1_z">
+                        <body name="right_pinky1_z" gravcomp="1">
                           <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.00205094" diaginertia="5.02479e-08 5.01964e-08 5.01964e-08"/>
                           <joint name="right_pinky1_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.531923 0 0.846793"/>
                           <geom pos="-0.026883 0.0035569 0.037023" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_pinky1"/>
-                          <body name="right_pinky2" pos="-0.0170144 6.18252e-05 -0.0124988">
+                          <body name="right_pinky2" pos="-0.0170144 6.18252e-05 -0.0124988" gravcomp="1">
                             <inertial pos="-0.00786047 0.00108253 -0.00618461" quat="1 3.57305e-08 5.18939e-08 5.51682e-08" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                            <body name="right_pinky2_y">
+                            <body name="right_pinky2_y" gravcomp="1">
                               <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                              <body name="right_pinky2_z">
+                              <body name="right_pinky2_z" gravcomp="1">
                                 <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.00193832" diaginertia="4.74889e-08 4.49095e-08 4.49095e-08"/>
                                 <joint name="right_pinky2_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.592027 0 0.805918"/>
                                 <geom pos="-0.00986855 0.00349507 0.0495218" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_pinky2"/>
-                                <body name="right_pinky3" pos="-0.0158669 -0.000691156 -0.0103319">
+                                <body name="right_pinky3" pos="-0.0158669 -0.000691156 -0.0103319" gravcomp="1">
                                   <inertial pos="-0.00881048 -0.000957834 -0.00502779" quat="1 1.30922e-08 2.0605e-08 2.22185e-08" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                  <body name="right_pinky3_y">
+                                  <body name="right_pinky3_y" gravcomp="1">
                                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                    <body name="right_pinky3_z">
+                                    <body name="right_pinky3_z" gravcomp="1">
                                       <inertial pos="0 0 0" mass="0.000822249" diaginertia="1.13458e-08 1.13458e-08 1.02781e-08"/>
                                       <joint name="right_pinky3_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.545672 0 0.837999"/>
                                       <geom pos="0.00599835 0.00418623 0.0598537" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_pinky3"/>
-                                      <body name="right_pinky_tip" pos="-0.0170934 0.00154868 -0.0103154">
+                                      <body name="right_pinky_tip" pos="-0.0170934 0.00154868 -0.0103154" gravcomp="1">
                                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                                       </body>
                                     </body>
@@ -165,34 +165,34 @@
                       </body>
                     </body>
                   </body>
-                  <body name="right_ring_fixed">
+                  <body name="right_ring_fixed" gravcomp="1">
                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                    <body name="right_ring1" pos="-0.0817356 -0.00395742 -0.0266732">
+                    <body name="right_ring1" pos="-0.0817356 -0.00395742 -0.0266732" gravcomp="1">
                       <inertial pos="-0.0122936 0.00247827 -0.000698965" quat="1 1.80709e-07 2.87791e-07 2.97415e-07" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                      <body name="right_ring1_y">
+                      <body name="right_ring1_y" gravcomp="1">
                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                         <joint name="right_ring1_y_joint" range="-1 1" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.0437111 0.998942 -0.0142645"/>
-                        <body name="right_ring1_z">
+                        <body name="right_ring1_z" gravcomp="1">
                           <inertial pos="0 0 0" mass="0.0055546" diaginertia="2.94753e-07 2.94753e-07 2.24961e-07"/>
                           <joint name="right_ring1_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.310234 0 0.95066"/>
                           <geom pos="-0.0139344 -0.00242601 0.0204869" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_ring1"/>
-                          <body name="right_ring2" pos="-0.0283143 0.00206701 -0.00509854">
+                          <body name="right_ring2" pos="-0.0283143 0.00206701 -0.00509854" gravcomp="1">
                             <inertial pos="-0.0112011 -0.00038999 -0.00420265" quat="1 8.14513e-08 1.7085e-07 1.74484e-07" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                            <body name="right_ring2_y">
+                            <body name="right_ring2_y" gravcomp="1">
                               <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                              <body name="right_ring2_z">
+                              <body name="right_ring2_z" gravcomp="1">
                                 <inertial pos="0 0 0" mass="0.00336013" diaginertia="1.3092e-07 1.3092e-07 9.45037e-08"/>
                                 <joint name="right_ring2_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.177219 0 0.984171"/>
                                 <geom pos="0.0143799 -0.00449301 0.0255854" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_ring2"/>
-                                <body name="right_ring3" pos="-0.0235205 -0.00168811 -0.00763382">
+                                <body name="right_ring3" pos="-0.0235205 -0.00168811 -0.00763382" gravcomp="1">
                                   <inertial pos="-0.0119942 -8.53267e-05 -0.00351911" quat="1 3.16975e-08 6.55458e-08 6.99772e-08" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                  <body name="right_ring3_y">
+                                  <body name="right_ring3_y" gravcomp="1">
                                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                    <body name="right_ring3_z">
+                                    <body name="right_ring3_z" gravcomp="1">
                                       <inertial pos="0 0 0" mass="0.00174529" diaginertia="4.43317e-08 4.43317e-08 3.14152e-08"/>
                                       <joint name="right_ring3_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="-0.308707 0 0.951157"/>
                                       <geom pos="0.0379004 -0.0028049 0.0332192" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_ring3"/>
-                                      <body name="right_ring_tip" pos="-0.0244357 0.00385892 -0.00734048">
+                                      <body name="right_ring_tip" pos="-0.0244357 0.00385892 -0.00734048" gravcomp="1">
                                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                                       </body>
                                     </body>
@@ -205,34 +205,34 @@
                       </body>
                     </body>
                   </body>
-                  <body name="right_thumb_fixed">
+                  <body name="right_thumb_fixed" gravcomp="1">
                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                    <body name="right_thumb1" pos="-0.0240897 -0.0155223 0.0258128">
+                    <body name="right_thumb1" pos="-0.0240897 -0.0155223 0.0258128" gravcomp="1">
                       <inertial pos="-0.00536514 -0.00257659 0.0129758" quat="1 6.17719e-07 7.41827e-07 1.11456e-06" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                      <body name="right_thumb1_y">
+                      <body name="right_thumb1_y" gravcomp="1">
                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                         <joint name="right_thumb1_y_joint" range="-0.8 2.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="0.458215 0.505111 0.73137"/>
-                        <body name="right_thumb1_z">
+                        <body name="right_thumb1_z" gravcomp="1">
                           <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                           <joint name="right_thumb1_z_joint" range="-0.8 2.3" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="0.632399 -0.763473 0.131075"/>
                           <geom pos="-0.0715802 0.00913891 -0.0319991" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_thumb1"/>
-                          <body name="right_thumb2" pos="-0.0196332 0.000891287 0.0236996">
+                          <body name="right_thumb2" pos="-0.0196332 0.000891287 0.0236996" gravcomp="1">
                             <inertial pos="-0.0107558 -0.00234512 0.00848123" quat="1 2.1576e-07 3.1801e-07 3.39181e-07" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                            <body name="right_thumb2_y">
+                            <body name="right_thumb2_y" gravcomp="1">
                               <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                              <body name="right_thumb2_z">
+                              <body name="right_thumb2_z" gravcomp="1">
                                 <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.00590733" diaginertia="2.95366e-07 2.91532e-07 2.91532e-07"/>
                                 <joint name="right_thumb2_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="0.429565 -0.816119 0.386554"/>
                                 <geom pos="-0.051947 0.00824762 -0.0556987" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_thumb2"/>
-                                <body name="right_thumb3" pos="-0.0222177 -0.00543297 0.0145241">
+                                <body name="right_thumb3" pos="-0.0222177 -0.00543297 0.0145241" gravcomp="1">
                                   <inertial pos="-0.0117975 -0.00227036 0.00918961" quat="1 1.56789e-07 3.32251e-07 3.47959e-07" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                  <body name="right_thumb3_y">
+                                  <body name="right_thumb3_y" gravcomp="1">
                                     <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
-                                    <body name="right_thumb3_z">
+                                    <body name="right_thumb3_z" gravcomp="1">
                                       <inertial pos="0 0 0" mass="0.00464018" diaginertia="2.4445e-07 2.4445e-07 1.48486e-07"/>
                                       <joint name="right_thumb3_z_joint" range="-0.2 1.75" actuatorfrcrange="-1.5 1.5" armature="0.001" axis="0.442947 -0.815484 0.372537"/>
                                       <geom pos="-0.0297292 0.0136806 -0.0702228" quat="1 0 0 0" type="mesh" condim="4" friction="0.75" rgba="0.917969 0.765 0.5234 1" mesh="right_thumb3"/>
-                                      <body name="right_thumb_tip" pos="-0.0260135 -0.00267844 0.0238821">
+                                      <body name="right_thumb_tip" pos="-0.0260135 -0.00267844 0.0238821" gravcomp="1">
                                         <inertial pos="0 0 0" mass="1e-07" diaginertia="1e-12 1e-12 1e-12"/>
                                       </body>
                                     </body>

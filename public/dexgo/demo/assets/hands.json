@@ -1,0 +1,8 @@
+{
+ "format": "hands-v1",
+ "note": "Hands of the demo in tab order, the first is the default (app/hands.js). root: the hand's asset root relative to assets/ (layout of assets/); moving a hand's assets changes only its root. minScale: the follow camera's zoom-out floor in px per metre (default app/main.js FOLLOW.scale[0], 1350, tuned on MANO).",
+ "hands": [
+  {"id": "mano", "label": "MANO", "root": "./", "look": "colliders"},
+  {"id": "sharpa", "label": "Sharpa", "root": "sharpa_local/", "look": "visual", "visual": "sharpa_visual/visual.json", "minScale": 600}
+ ]
+}

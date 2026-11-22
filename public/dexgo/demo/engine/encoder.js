@@ -1,24 +1,36 @@
-// The v7 actor input obs141: the 8 actor fields of the wrist_local291 encoding, in the checkpoint's actor_fields
-// order. Port of observations/encoders.py encode_wrist_local (distance_map "log", compact layout) restricted to
-// the fields the actor reads, plus simulation/scene.py nearest_surface_vectors.
-// All poses world frame, SI units; H = the actual wrist link frame (right_wrist_rz); joints in source order (26).
+// The v7 actor input: the 8 actor fields of the wrist_local encoding (MANO wrist_local291 -> obs141, Sharpa
+// wrist_local299 -> obs147), in the checkpoint's actor_fields order. Port of observations/encoders.py
+// encode_wrist_local (distance_map "log", compact layout) restricted to the fields the actor reads, plus
+// simulation/scene.py nearest_surface_vectors.
+// Hand-agnostic (2026-11-22): the widths come from the frame, nF = q.length - 6 finger joints and nL = links.length / 3
+// surface links (MANO 20 / 20, Sharpa 22 / 20); actorFields(nF, nL) is the field layout of that hand.
+// All poses world frame, SI units; H = the actual wrist link frame (MANO right_wrist_rz, Sharpa right_hand_C_MC);
+// joints in source order (6 wrist + nF fingers).
 
 import {
   add3, clamp, matmul, matmulT, matTmul, mulTVec, mulVec, radialLog, so3Log, sub3, vec3,
 } from './math.js';
 
-/** Field order and widths of obs141 (must equal policy/actor.json "fields"). */
-export const ACTOR_FIELDS = [
-  ['finger_position', 20],
-  ['finger_pd_error', 20],
-  ['object_goal', 6],
-  ['gravity_direction', 3],
-  ['surface', 60],
-  ['process_relation', 6],
-  ['task_wrist_error', 6],
-  ['finger_reference', 20],
-];
-export const OBS_DIM = ACTOR_FIELDS.reduce((n, [, w]) => n + w, 0); // 141
+/** Field order and widths of the actor input of a hand with nFingers finger joints and nLinks surface links (must
+ * equal the actor header's "fields": actor_mlp.json / actor.json). */
+export function actorFields(nFingers, nLinks = 20) {
+  return [
+    ['finger_position', nFingers],
+    ['finger_pd_error', nFingers],
+    ['object_goal', 6],
+    ['gravity_direction', 3],
+    ['surface', 3 * nLinks],
+    ['process_relation', 6],
+    ['task_wrist_error', 6],
+    ['finger_reference', nFingers],
+  ];
+}
+/** Width of that input (MANO 141, Sharpa 147). */
+export const obsDim = (nFingers, nLinks = 20) => 3 * nFingers + 3 * nLinks + 21;
+
+/** MANO's layout (obs141: 20 fingers, 20 surface links), kept for the MANO tests and the ONNX reference. */
+export const ACTOR_FIELDS = actorFields(20, 20);
+export const OBS_DIM = obsDim(20, 20); // 141
 
 const GRAVITY_W = vec3(0, 0, -9.81);
 
@@ -64,27 +76,29 @@ export function pdError(wristP, wristR, targetP, targetR) {
 }
 
 /**
- * Encode obs141 of one frame.
- * @param {object} frame  {q, qd (26), rootP, rootR, wristP, wristR, objP, objR, links (60)} world
- * @param {object} goal   {objectP, objectR, objToHandP, objToHandR, fingerRef (20), wristP, wristR}
- * @param {ArrayLike<number>} pdTarget (26) the PD target decided at the previous control step (source order)
- * @param {ArrayLike<number>} lower, upper (26) joint limits (model jnt_range, source order)
- * @param {Float64Array} surfaceLocal (600) object-frame surface samples
+ * Encode the actor input of one frame (obs141 MANO, obs147 Sharpa); n = 6 + nF joints, nL surface links.
+ * @param {object} frame  {q, qd (n), rootP, rootR, wristP, wristR, objP, objR, links (3 nL)} world
+ * @param {object} goal   {objectP, objectR, objToHandP, objToHandR, fingerRef (nF), wristP, wristR}
+ * @param {ArrayLike<number>} pdTarget (n) the PD target decided at the previous control step (source order)
+ * @param {ArrayLike<number>} lower, upper (n) joint limits (model jnt_range, source order)
+ * @param {Float64Array} surfaceLocal (3 P) object-frame surface samples (P = 200)
  * @param {object} config encoder_config of the checkpoint (task.json control.encoder)
  * @returns {{obs: Float64Array, surface: {vectors, distances}}}
  */
 export function encodeActor(frame, goal, pdTarget, lower, upper, surfaceLocal, config) {
   if ((config.distance_map ?? 'log') !== 'log') throw new Error('only the log distance map is ported');
-  const obs = new Float64Array(OBS_DIM);
+  const q = frame.q;
+  const n = q.length, nF = n - 6, dim = obsDim(nF, frame.links.length / 3);
+  if (goal.fingerRef.length !== nF) throw new Error(`goal finger reference ${goal.fingerRef.length} wide, hand ${nF}`);
+  const obs = new Float64Array(dim);
   let o = 0;
   const put3 = (v) => { obs[o++] = v[0]; obs[o++] = v[1]; obs[o++] = v[2]; };
   const rh = frame.wristR;
-  const q = frame.q;
 
   // finger_position: 2 (q - lower) / span - 1, clipped
-  for (let i = 6; i < 26; i++) obs[o++] = clamp((2 * (q[i] - lower[i])) / (upper[i] - lower[i]) - 1, -1, 1);
+  for (let i = 6; i < n; i++) obs[o++] = clamp((2 * (q[i] - lower[i])) / (upper[i] - lower[i]) - 1, -1, 1);
   // finger_pd_error: 2 (target - q) / span, clipped
-  for (let i = 6; i < 26; i++) obs[o++] = clamp((2 * (pdTarget[i] - q[i])) / (upper[i] - lower[i]), -1, 1);
+  for (let i = 6; i < n; i++) obs[o++] = clamp((2 * (pdTarget[i] - q[i])) / (upper[i] - lower[i]), -1, 1);
 
   // object_goal: transforms.goal_error_in_wrist_frame, then radial maps
   const goalP = mulTVec(rh, sub3(goal.objectP, frame.objP));
@@ -118,10 +132,10 @@ export function encodeActor(frame, goal, pdTarget, lower, upper, surfaceLocal, c
 
   // finger_reference: sign(d) (1 - exp(-(|d| / sigma)^2)), d = q - q_B*
   const sigma = config.finger_reference_sigma;
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < nF; i++) {
     const d = q[6 + i] - goal.fingerRef[i];
     obs[o++] = Math.sign(d) * -Math.expm1(-((Math.abs(d) / sigma) ** 2));
   }
-  if (o !== OBS_DIM) throw new Error(`encoder wrote ${o} of ${OBS_DIM} columns`);
+  if (o !== dim) throw new Error(`encoder wrote ${o} of ${dim} columns`);
   return { obs, surface };
 }

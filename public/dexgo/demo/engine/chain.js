@@ -3,16 +3,16 @@
 // (assets/objects/<id>/chain.json). Pure JS; the physics and the policy are an engine/loop.js Episode.
 //
 // Names (the Python ones):
-//   record     one cached grasp of a family (E_n enclosure, T_b pinch, E_r reversed enclosure): relation C = (c_p, c_r),
-//              the object in the wrist frame (m, rotation), and the fingers q_B* (20, rad); pd (20, rad) its finger
-//              PD target (start rule; E_n and E_r only)
+//   record     one cached grasp of a family (E_n enclosure, T_b pinch at the +Y end, E_r reversed enclosure, T_s pinch
+//              at the -Y end): relation C = (c_p, c_r), the object in the wrist frame (m, rotation), and the fingers
+//              q_B* (nF, rad); pd (nF, rad) its finger PD target (start rule; E_n and E_r only)
 //   design     the current designed goal state (family f, record i, wrist goal H* = (hP, hR), world); each node
 //              builds the next design from it, never from the measured state
 //   goal       engine/loop.js makeGoal(hP, hR, c_p, c_r, q_B*): wrist goal H*, object goal G* = H* C*, finger
 //              reference q_B*; the fields the viewer ghost reads (wristP / wristR, objectP / objectR, fingerRef)
-//   node       R roll, T slide, G grasp switch (E_n <-> T_b, with er also E_r <-> T_b), RT / RG / TG / RTG
-//              composites, L relocation; a name ending in L adds a relocation (new wrist goal near home); nodes
-//              without L keep H*
+//   node       R roll, T slide, G grasp switch (E_n <-> T_b, with er also E_r <-> T_b, with ts also E_n / E_r <->
+//              T_s), RT / RG / TG / RTG composites, L relocation; a name ending in L adds a relocation (new wrist
+//              goal near home); nodes without L keep H*
 //   latch      the demo gate (15 mm / 15 deg on object goal and relation, 0.05 m/s, 1 rad/s) held 3 control steps
 //
 // Options (chain_mujoco.py "Options", 2026-11-21; all off = v2 exactly; index.json "options" per object, mapped by
@@ -28,6 +28,33 @@
 //                      with none yet, the sign order is a permutation draw
 //   varietyComposites  (variety) false: drawn magnitudes only in R and T; RG rolls 60, TG slides 5 / 4 / 3 (v2
 //                      order, one sign order for all three); the sign rule everywhere
+//   switchTryKeys      (option D, chain_mujoco --switch-try-keys, 2026-11-22) in RG / TG / RTG (and their L
+//                      versions) built op-then-switch (RG: roll 60 then switch; TG / RTG from an enclosure: slide /
+//                      srs then switch), the op walks its keys in its usual order (magnitudes, sign rule or drawn
+//                      signs; each draw made when the walk reaches it, as Python's generator expressions) and takes
+//                      the first whose landed record has a switch partner (hasPartner), else the first key the
+//                      table has (the default). Its info gets switch_try = {key, default, differed, partner}. The
+//                      switch-then-op orders are unchanged. Off: the draws of the options above exactly
+//   ts                 (chain_mujoco --ts, 2026-11-22, owner: grasp changes at both rod ends; a chain-table-v3 table with
+//                      T_s) T_s, the pinch at the rod's -Y end, as a 4th family beside T_b (the pinch at the +Y end).
+//                      From an enclosure (E_n, or E_r with er) a switch is one integers draw over the joined partner
+//                      lists, T_b partners first ('switch'), then T_s partners ('switch_T_s'); the target family is the
+//                      list the partner came from. From T_s exactly as from T_b ('switch' = its E_n partners; with er
+//                      one integers draw over 'switch' then 'switch_E_r'; without er choice over 'switch').
+//                      hasPartner counts an enclosure's T_s partners, so switchTryKeys (D) does too. T_s has the
+//                      pinch ops (rolls only); TG / RTG from T_s switch first, as from T_b. nearest runs over E_n,
+//                      T_b (, E_r), T_s (T_s last: ties keep the earlier order). Starts unchanged. Off: no T_s, no
+//                      extra draw
+// Diagnostics (chain_mujoco's, no draw): a switch's info has switch_pair = [from family, record, to family, record];
+// a log entry has from_family, available_nodes (the buildable nodes, GENERATOR_ORDER), g_available (some node with G
+// among them) and available_try (those whose op key differed from the default under D). Options B (switch_near) and
+// C (er_share) of chain_mujoco.py are not ported (not shipped), nor their diagnostic available_near.
+//
+// Hands (2026-11-22, Sharpa port): the generator is hand-agnostic. The finger width nF of a record comes from the
+// table (q length / n: MANO 20, Sharpa 22), and the start wrist palm_up (the reset root rotation, = the home wrist)
+// is the Generator option palmUp: index.json "options" "palm_up" (chain_mujoco.Generator keyword palm_up =
+// PALM_UPS[hand]); without it MANO's PALM_UP. Sharpa: [[0, 0, -1], [0, 1, 0], [1, 0, 0]] = MANO palm_up x
+// bench_goals.SHARPA_TO_MANO, the same physical pose in the Sharpa wrist frame.
 //
 // API
 //   NODES                 the 15 node names in display order (the viewer's); GENERATOR_ORDER: chain_mujoco.NODES,
@@ -41,19 +68,25 @@
 //   ROLL_VARIETY, SLIDE_VARIETY   the variety magnitudes (deg by requested roll 90 / 60; cm), chain_mujoco's
 //   decodeTable(json)     chain.json -> typed arrays (integer / scale, the same doubles Python decodes)
 //   generatorOptions(entry)  Generator options of an index.json object entry: {nodes, er, variety, erStart,
-//                         erInhand, varietyComposites} from its "nodes" and "options" (er_start, er_inhand,
-//                         variety_composites); a missing option takes the v2 default
-//   new Generator(table, facts, rng, {nodes, er, variety, erStart, erInhand, varietyComposites})   twin of
-//                         chain_mujoco.Generator (defaults = v2: er false, variety false, erStart true, erInhand true,
-//                         varietyComposites true). table: chain.json (raw or decoded); facts: world_facts.json;
+//                         erInhand, varietyComposites, switchTryKeys, ts, palmUp} from its "nodes" and "options"
+//                         (er_start, er_inhand, variety_composites, switch_try_keys, ts, palm_up); a missing option
+//                         takes the v2 default (ts false; palm_up: MANO's PALM_UP)
+//   new Generator(table, facts, rng, {nodes, er, variety, erStart, erInhand, varietyComposites, switchTryKeys, ts,
+//                 palmUp})
+//                         twin of chain_mujoco.Generator (defaults = v2: er false, variety false, erStart true,
+//                         erInhand true, varietyComposites true, switchTryKeys false, ts false). table: chain.json (raw or
+//                         decoded); facts: world_facts.json;
 //                         nodes: the allowed node set (index.json "nodes"), iterated in GENERATOR_ORDER. Methods
 //                         (Python name): rec, op (_op), roll, slide, slideRoll (slide_roll), switch, chain, inHand
-//                         (in_hand), relocation, build, nearest, candidates, remember; field last = {roll, slide}
-//                         ('+' | '-' | null, the sign rule's memory). A built design is {family, record, hP, hR,
-//                         info}; info as Python's dict (roll_deg, slide_m, switch, wrist_step_m, wrist_turn_deg).
-//   startState(gen, i, family = 'E_n')   twin of start_state: {handRoot (13), objectRoot (13), q (26), target (26)}
-//                         of record i of a start family (E_n, E_r): hand root at the reset root with the palm_up
-//                         wrist, wrist joints 0
+//                         (in_hand), relocation, build, nearest, candidates, remember, hasPartner (has_partner),
+//                         _first; field last = {roll, slide} ('+' | '-' | null, the sign rule's memory). A built
+//                         design is {family, record, hP, hR, info}; info as Python's dict (roll_deg, slide_m, switch,
+//                         switch_pair, switch_try, wrist_step_m, wrist_turn_deg).
+//   startState(gen, i, family = 'E_n')   twin of start_state: {handRoot (13), objectRoot (13), q (6 + nF), target
+//                         (6 + nF)} of record i of a start family (E_n, E_r): hand root at the reset root with the
+//                         palm_up wrist (gen.rootR), wrist joints 0
+//   surfaceGap(s, surfaceLocal)   smallest hand surface link to object surface sample distance (m) of a state;
+//                         dropped(s, surfaceLocal) = surfaceGap > DROP_DISTANCE_M (the runner's drop rule)
 //   new ChainRunner({episode, generator, rng, mode = 'random' | 'manual', onFailure = 'restart' | 'end',
 //                    maxNodes = Infinity, recover = true, dwell, timeout})
 //     restart()           fresh start grasp from a random E_n record (one integers draw), or with er (erStart) from
@@ -67,7 +100,10 @@
 //                                     index = its 0-based position in the current chain
 //                           'latch'   {node, t, step}  t = latch time (s) since the goal was installed
 //                           'done'    {node, goalsDone}  DWELL steps after the latch
-//                           'timeout' {node}  no latch within TIMEOUT steps;  'drop' {node}  relation error > 0.15 m
+//                           'timeout' {node}  no latch within TIMEOUT steps;  'drop' {node}  the training drop rule
+//                                     (dropped below, 2026-11-22): every hand surface link farther than
+//                                     DROP_DISTANCE_M (0.02 m) from the object's surface samples on the state after
+//                                     the control step; checked in every phase (reach, dwell, idle) after 'done'
 //                           'recover' {family, record, mm, deg, goal}  after a timeout: the record nearest the
 //                                     measured grasp is within 20 mm / 20 deg; the chain continues from it with the
 //                                     measured wrist as H* (goal = its hold goal; at most 2 recoveries in a row)
@@ -90,10 +126,21 @@
 //     result()            the current chain in run_chain's return format {start_family, start_record, nodes_done,
 //                         timeouts, end, sim_s, log} (log entries as Python's: node, family, record, result, latch_s,
 //                         final_goal_mm, final_goal_deg, available, from_family (the design's family the node was
-//                         built from), info..., recovered_to)
+//                         built from), available_nodes, g_available, available_try, info..., recovered_to; a
+//                         'no node available' entry: node null, result, from_family ... available_try)
 // The Episode the runner drives: resetTo({handRoot, objectRoot, q, target}), setGoal(goal), await step(), and the
-// fields s (state), errors (gate errors of the installed goal), task.control.gate, policyDt.
+// fields s (state; the drop rule reads s.objP, s.objR, s.links), errors (gate errors of the installed goal),
+// surfaceLocal (the object-frame surface samples), task.control.gate, policyDt.
+//
+// Drop rule (2026-11-22, drop_bug/FIX.md; replaces "relation position error > 0.15 m against the goal just
+// installed", which failed held objects at the first step of a goal whose designed relation lies > 0.15 m away: the
+// Sharpa thumb-side switches): the training termination of both v7 actors (rod line rewards/common.py object_dropped,
+// tasks/keyframe.py, drop_distance 0.02): the object counts as dropped when EVERY hand surface link origin (the 20
+// links of control.json "surface_links", the encoder's) is farther than DROP_DISTANCE_M from the nearest of the
+// object's surface samples (the encoder's grasp_samples; encoder.js nearestSurfaceVectors). Hand-agnostic: each hand
+// brings its own links. It never compares the object with a goal, so a goal change cannot fire it; no random draw.
 
+import { nearestSurfaceVectors } from './encoder.js';
 import { Gate, makeGoal } from './loop.js';
 import {
   add3, matmul, matmulT, matrixToQuatXyzw, matTmul, mulTVec, mulVec, quatWxyzToMatrix, rotationAngle, sub3,
@@ -111,13 +158,14 @@ export const SETTINGS = Object.freeze({
   MAX_TURN_DEG: 120.0, MAX_OBJECT_STEP_M: 0.6, RELOCATION_TRIES: 200, // v7's checks (bench_goals._motion)
   DWELL: 10, TIMEOUT: 600, // control steps (0.5 s, 30 s)
   RECOVER_MM: 20.0, RECOVER_DEG: 20.0, RECOVERIES_IN_ROW: 2,
-  DROP_RELATION_M: 0.15, // the object this far (relation position error) off the hand: drop
+  DROP_DISTANCE_M: 0.02, // m: every hand surface link farther than this from the object: dropped (training's drop_distance)
 });
 export const START_FAMILY = 'E_n'; // the default family of startState (the only start family without er)
 /** chain_mujoco.ROLL_VARIETY (deg, by the requested roll: R 90, the roll of RG 60) and SLIDE_VARIETY (cm). */
 export const ROLL_VARIETY = Object.freeze({ 90: Object.freeze([45, 60, 75, 90, 120]), 60: Object.freeze([45, 60, 75, 90]) });
 export const SLIDE_VARIETY = Object.freeze([2, 3, 4, 5]);
-/** bench_goals.MANO_WRISTS palm_up (row-major), the reset root rotation of a chain start. */
+/** bench_goals.MANO_WRISTS palm_up (row-major), the reset root rotation of a MANO chain start (the default; another
+ * hand passes its own through the Generator option palmUp, index.json "options" "palm_up"). */
 export const PALM_UP = Object.freeze([1, 0, 0, 0, 0, 1, 0, -1, 0]);
 
 const S = SETTINGS;
@@ -178,8 +226,8 @@ export function makeRng(seed = 1) {
 
 // ------------------------------------------------------------------------------------------------ table
 /**
- * chain.json -> {<family>: {n, cP (3n), cR (9n), q (20n), pd (20n) | null, ops: {key: {next, slide, roll}}, switch,
- * switch_E_r (T_b only, else null)}}.
+ * chain.json -> {<family>: {n, nF, cP (3n), cR (9n), q (nF n), pd (nF n) | null, ops: {key: {next, slide, roll}}, switch,
+ * switch_E_r (T_b / T_s, else null), switch_T_s (E_n / E_r of a table with T_s, else null)}}.
  * Every value is integer / scale (export_chain_web.decode_table does the same divisions); the rotation is the
  * quaternion normalized, then mju_quat2Mat's formula.
  */
@@ -203,7 +251,10 @@ export function decodeTable(table) {
       ops[key] = { next: Int32Array.from(o.next), slide: Float64Array.from(o.slide, (v) => v / sc.slide),
         roll: Float64Array.from(o.roll, (v) => v / sc.roll) };
     }
-    families[f] = { n, cP, cR, q, pd, ops, switch: e.switch, switch_E_r: e.switch_E_r ?? null };
+    const nF = q.length / n; // fingers per record (MANO 20, Sharpa 22)
+    if (!Number.isInteger(nF)) throw new Error(`chain.json ${f}: ${q.length} finger values for ${n} records`);
+    families[f] = { n, nF, cP, cR, q, pd, ops, switch: e.switch, switch_E_r: e.switch_E_r ?? null,
+      switch_T_s: e.switch_T_s ?? null };
   }
   return { decoded: true, objectId: table.object_id, rod: table.rod, startFamilies: table.start_families, families };
 }
@@ -212,7 +263,8 @@ export function decodeTable(table) {
 export function generatorOptions(entry) {
   const o = entry.options ?? {};
   return { nodes: entry.nodes, er: o.er ?? false, variety: o.variety ?? false, erStart: o.er_start ?? true,
-    erInhand: o.er_inhand ?? true, varietyComposites: o.variety_composites ?? true };
+    erInhand: o.er_inhand ?? true, varietyComposites: o.variety_composites ?? true,
+    switchTryKeys: o.switch_try_keys ?? false, ts: o.ts ?? false, palmUp: o.palm_up ? o.palm_up.flat() : PALM_UP };
 }
 
 // ------------------------------------------------------------------------------------------------ generator
@@ -240,11 +292,13 @@ export class Generator {
    * @param {object} facts world_facts.json: box_low / box_high (m, the object goal's keyframe box), root_position
    * @param {object} rng the draw interface (makeRng or an injected replay)
    * @param {{nodes?: string[], er?: boolean, variety?: boolean, erStart?: boolean, erInhand?: boolean,
-   *   varietyComposites?: boolean}} [options] allowed nodes (index.json "nodes"; iterated in GENERATOR_ORDER) and
-   *   the generator options (header; defaults = v2)
+   *   varietyComposites?: boolean, switchTryKeys?: boolean, ts?: boolean, palmUp?: ArrayLike<number>}} [options]
+   *   allowed nodes
+   *   (index.json "nodes"; iterated in GENERATOR_ORDER), the generator options (header; defaults = v2) and the start
+   *   wrist palmUp (9, row-major; default MANO's PALM_UP)
    */
   constructor(table, facts, rng, { nodes, er = false, variety = false, erStart = true, erInhand = true,
-    varietyComposites = true } = {}) {
+    varietyComposites = true, switchTryKeys = false, ts = false, palmUp = PALM_UP } = {}) {
     this.table = decodeTable(table);
     this.fam = this.table.families;
     this.rng = rng;
@@ -254,30 +308,34 @@ export class Generator {
     this.variety = variety;
     this.erStart = er && erStart;
     this.erInhand = erInhand;
-    this.fams = er ? ['E_n', 'T_b', 'E_r'] : ['E_n', 'T_b'];
+    this.ts = ts; // T_s, the pinch at the -Y end: appended last (nearest's tie order kept)
+    if (ts && !this.fam.T_s) throw new Error('option ts needs a chain table with T_s records (chain-table-v3)');
+    this.fams = [...(er ? ['E_n', 'T_b', 'E_r'] : ['E_n', 'T_b']), ...(ts ? ['T_s'] : [])];
+    this.pinches = ts ? ['T_b', 'T_s'] : ['T_b'];
     this.slideFams = er ? ['E_n', 'E_r'] : ['E_n'];
     this.varietyComposites = varietyComposites;
+    this.switchTryKeys = switchTryKeys; // option D
     this.last = { roll: null, slide: null };
     this.boxLow = Float64Array.from(facts.box_low);
     this.boxHigh = Float64Array.from(facts.box_high);
     this.rootP = Float64Array.from(facts.root_position);
-    this.rootR = Float64Array.from(PALM_UP);
+    this.rootR = Float64Array.from(palmUp); // the hand's start wrist (chain_mujoco PALM_UPS[hand])
     this.homeP = Float64Array.from(this.rootP); // wrist joints 0: wrist = root
-    this.homeR = Float64Array.from(PALM_UP);
+    this.homeR = Float64Array.from(palmUp);
   }
 
   /** {cP, cR, q, pd} of record i of family f (views into the table; pd null outside the start families). */
   rec(f, i) {
-    const t = this.fam[f];
+    const t = this.fam[f], w = t.nF;
     return { cP: t.cP.subarray(3 * i, 3 * i + 3), cR: t.cR.subarray(9 * i, 9 * i + 9),
-      q: t.q.subarray(20 * i, 20 * i + 20), pd: t.pd ? t.pd.subarray(20 * i, 20 * i + 20) : null };
+      q: t.q.subarray(w * i, w * i + w), pd: t.pd ? t.pd.subarray(w * i, w * i + w) : null };
   }
 
   /** _op: [next record, realized slide m, realized roll deg] of a transition, the partner list of 'switch' /
-   * 'switch_E_r', or null. */
+   * 'switch_E_r' / 'switch_T_s', or null. */
   op(f, i, key) {
     const t = this.fam[f];
-    if (key === 'switch' || key === 'switch_E_r') {
+    if (key === 'switch' || key === 'switch_E_r' || key === 'switch_T_s') {
       const ps = t[key]?.[i];
       return ps && ps.length ? ps : null;
     }
@@ -310,49 +368,61 @@ export class Generator {
     }
   }
 
-  roll(f, i, deg) {
+  /**
+   * {family, record, info} of the first key of keys (an iterable; a generator makes its draws as it is walked) that
+   * the table has, info = fields(transition); null if none (chain_mujoco Generator._first). Option D: with want
+   * (f, record) -> boolean, the first key whose landed record satisfies it (walking further keys and their draws),
+   * else the first the table has (the default); info then gets switch_try = {key, default, differed, partner (want
+   * met)}.
+   */
+  _first(f, i, keys, fields, want = null) {
+    let def = null;
+    for (const key of keys) {
+      const t = this.op(f, i, key);
+      if (t === null) continue;
+      if (want === null) return { family: f, record: t[0], info: fields(t) };
+      if (def === null) def = [key, t];
+      if (want(f, t[0])) {
+        return { family: f, record: t[0],
+          info: { ...fields(t), switch_try: { key, default: def[0], differed: key !== def[0], partner: true } } };
+      }
+    }
+    if (def === null) return null;
+    const [key, t] = def;
+    return { family: f, record: t[0],
+      info: { ...fields(t), switch_try: { key, default: key, differed: false, partner: false } } };
+  }
+
+  roll(f, i, deg, want = null) {
     if (!this._inhandOk(f)) return null;
+    let keys;
     if (this.variety) {
       const mags = deg === 90 || this.varietyComposites ? this.rng.permutation(ROLL_VARIETY[deg]) : [deg];
       const signs = this._signs('roll');
-      for (const d of mags) {
-        for (const s of signs) {
-          const t = this.op(f, i, `roll${s}${d}`);
-          if (t !== null) return { family: f, record: t[0], info: { roll_deg: t[2] } };
-        }
-      }
-      return null;
+      keys = mags.flatMap((d) => signs.map((s) => `roll${s}${d}`));
+    } else {
+      keys = this.rng.permutation(['+', '-']).map((s) => `roll${s}${deg}`);
     }
-    for (const s of this.rng.permutation(['+', '-'])) {
-      const t = this.op(f, i, `roll${s}${deg}`);
-      if (t !== null) return { family: f, record: t[0], info: { roll_deg: t[2] } };
-    }
-    return null;
+    return this._first(f, i, keys, (t) => ({ roll_deg: t[2] }), want);
   }
 
-  slide(f, i, composite = false) {
+  slide(f, i, composite = false, want = null) {
     if (!this.slideFams.includes(f) || !this._inhandOk(f)) return null;
+    let keys;
     if (this.variety) {
       const mags = composite && !this.varietyComposites ? [5, 4, 3] : this.rng.permutation(SLIDE_VARIETY);
       const signs = this._signs('slide');
-      for (const cm of mags) {
-        for (const s of signs) {
-          const t = this.op(f, i, `slide${s}${cm}`);
-          if (t !== null) return { family: f, record: t[0], info: { slide_m: t[1] } };
-        }
-      }
-      return null;
+      keys = mags.flatMap((cm) => signs.map((s) => `slide${s}${cm}`));
+    } else { // one sign draw per magnitude, made only when the walk reaches that magnitude
+      const rng = this.rng;
+      keys = (function* walk() {
+        for (const cm of [5, 4, 3]) for (const s of rng.permutation(['+', '-'])) yield `slide${s}${cm}`;
+      })();
     }
-    for (const cm of [5, 4, 3]) {
-      for (const s of this.rng.permutation(['+', '-'])) {
-        const t = this.op(f, i, `slide${s}${cm}`);
-        if (t !== null) return { family: f, record: t[0], info: { slide_m: t[1] } };
-      }
-    }
-    return null;
+    return this._first(f, i, keys, (t) => ({ slide_m: t[1] }), want);
   }
 
-  slideRoll(f, i, small = false) {
+  slideRoll(f, i, small = false, want = null) {
     if (!this.slideFams.includes(f) || !this._inhandOk(f)) return null;
     const p = small ? 'srs' : 'sr';
     let keys;
@@ -362,25 +432,38 @@ export class Generator {
     } else {
       keys = this.rng.permutation([p + '++', p + '+-', p + '-+', p + '--']);
     }
-    for (const key of keys) {
-      const t = this.op(f, i, key);
-      if (t !== null) return { family: f, record: t[0], info: { slide_m: t[1], roll_deg: t[2] } };
-    }
-    return null;
+    return this._first(f, i, keys, (t) => ({ slide_m: t[1], roll_deg: t[2] }), want);
   }
 
+  /** Record i of family f has a switch partner (a pinch under er: in E_n or in E_r; an enclosure under ts: in T_b
+   * or in T_s) (has_partner). */
+  hasPartner(f, i) {
+    if (this.er && this.pinches.includes(f)) return this.op(f, i, 'switch') !== null || this.op(f, i, 'switch_E_r') !== null;
+    if (this.ts && !this.pinches.includes(f)) return this.op(f, i, 'switch') !== null || this.op(f, i, 'switch_T_s') !== null;
+    return this.op(f, i, 'switch') !== null;
+  }
+
+  /** {family, record, info} of a switch to a random partner; info.switch_pair = the table pair used. */
   switch(f, i) {
-    if (this.er && f === 'T_b') { // partners in E_n and E_r: one draw over both lists
+    let to, rec;
+    if (this.er && this.pinches.includes(f)) { // partners in E_n and E_r: one draw over both lists
       const both = [...(this.op(f, i, 'switch') ?? []).map((p) => ['E_n', p]),
         ...(this.op(f, i, 'switch_E_r') ?? []).map((p) => ['E_r', p])];
       if (!both.length) return null;
-      const [to, rec] = both[Number(this.rng.integers(both.length))];
-      return { family: to, record: Number(rec), info: { switch: `${f}->${to}` } };
+      [to, rec] = both[Number(this.rng.integers(both.length))];
+    } else if (this.ts && !this.pinches.includes(f)) { // ts: an enclosure's T_b and T_s partners, one draw over both
+      const both = [...(this.op(f, i, 'switch') ?? []).map((p) => ['T_b', p]),
+        ...(this.op(f, i, 'switch_T_s') ?? []).map((p) => ['T_s', p])];
+      if (!both.length) return null;
+      [to, rec] = both[Number(this.rng.integers(both.length))];
+    } else {
+      const ps = this.op(f, i, 'switch');
+      if (!ps) return null;
+      to = f === 'E_n' || f === 'E_r' ? 'T_b' : 'E_n';
+      rec = this.rng.choice(ps);
     }
-    const ps = this.op(f, i, 'switch');
-    if (!ps) return null;
-    const to = f === 'E_n' || f === 'E_r' ? 'T_b' : 'E_n';
-    return { family: to, record: Number(this.rng.choice(ps)), info: { switch: `${f}->${to}` } };
+    rec = Number(rec);
+    return { family: to, record: rec, info: { switch: `${f}->${to}`, switch_pair: [f, Number(i), to, rec] } };
   }
 
   chain(f, i, ops) {
@@ -397,19 +480,21 @@ export class Generator {
 
   /** {family, record, info} of the in-hand part of node (no L), null if not buildable. */
   inHand(node, f, i) {
-    const roll = (deg) => (f2, i2) => this.roll(f2, i2, deg);
+    // D: an op before the switch walks its keys for a landed record with a partner (want); after it, as before
+    const want = this.switchTryKeys ? (f2, i2) => this.hasPartner(f2, i2) : null;
+    const roll = (deg, w = null) => (f2, i2) => this.roll(f2, i2, deg, w);
     const sw = (f2, i2) => this.switch(f2, i2);
-    const sl = (f2, i2) => this.slide(f2, i2, true);
-    const smallSr = (f2, i2) => this.slideRoll(f2, i2, true);
+    const sl = (w = null) => (f2, i2) => this.slide(f2, i2, true, w);
+    const smallSr = (w = null) => (f2, i2) => this.slideRoll(f2, i2, true, w);
     const slideFirst = this.slideFams.includes(f);
     if (node === 'R') return this.roll(f, i, 90);
     if (node === 'T') return this.slide(f, i);
     if (node === 'RT') return this.slideRoll(f, i);
     if (node === 'G') return this.switch(f, i);
     const orders = {
-      RG: [[roll(60), sw], [sw, roll(60)]],
-      TG: slideFirst ? [[sl, sw]] : [[sw, sl]],
-      RTG: slideFirst ? [[smallSr, sw]] : [[sw, smallSr]],
+      RG: [[roll(60, want), sw], [sw, roll(60)]],
+      TG: slideFirst ? [[sl(want), sw]] : [[sw, sl()]],
+      RTG: slideFirst ? [[smallSr(want), sw]] : [[sw, smallSr()]],
     }[node];
     if (!orders) throw new Error(`unknown node ${node}`);
     for (const ops of orders) {
@@ -468,7 +553,7 @@ export class Generator {
 
   /** {family, record, mm, deg} of the record nearest the measured relation (cP m, cR row-major), by the score
    * mm / RECOVER_MM + deg / RECOVER_DEG over the generator's families (first minimum; the earlier family of
-   * E_n, T_b, E_r wins ties). */
+   * E_n, T_b, E_r, T_s wins ties). */
   nearest(cP, cR) {
     let best = null;
     for (const f of this.fams) {
@@ -512,6 +597,21 @@ export function startState(gen, i, family = START_FAMILY) {
     target: Float64Array.from([...z6, ...pd]),
   };
 }
+
+/**
+ * Smallest distance (m) from any hand surface link origin (s.links, 3 L, world) to the nearest of the object's surface
+ * samples (surfaceLocal, 3 P, object frame, placed at s.objP / s.objR): the training's drop quantity (the minimum over
+ * links of scene.nearest_surface_vectors; chain_mujoco.surface_gap).
+ */
+export function surfaceGap(s, surfaceLocal) {
+  const { distances } = nearestSurfaceVectors(surfaceLocal, s.objP, s.objR, s.links);
+  let gap = Infinity;
+  for (let l = 0; l < distances.length; l++) if (distances[l] < gap) gap = distances[l];
+  return gap;
+}
+
+/** The drop rule (rod line object_dropped): every hand surface link farther than DROP_DISTANCE_M from the object. */
+export const dropped = (s, surfaceLocal) => surfaceGap(s, surfaceLocal) > S.DROP_DISTANCE_M;
 
 // ------------------------------------------------------------------------------------------------ runner
 const copy3 = (v) => Float64Array.from(v);
@@ -632,7 +732,7 @@ export class ChainRunner {
     this.totalSteps += 1;
     const e = ep.errors, s = ep.s;
     if (this.phase === 'idle') {
-      if (e[2] > S.DROP_RELATION_M) {
+      if (dropped(s, ep.surfaceLocal)) {
         events.push({ type: 'drop', node: this.node });
         this._fail('drop', events);
       }
@@ -647,7 +747,7 @@ export class ChainRunner {
     }
     let result = null;
     if (this.latched > 0 && this.stepInGoal >= this.latched + this.dwell) result = 'done';
-    else if (e[2] > S.DROP_RELATION_M) result = 'drop';
+    else if (dropped(s, ep.surfaceLocal)) result = 'drop';
     else if (this.latched < 0 && this.stepInGoal >= this.timeout) result = 'timeout';
     if (result === null) return events;
     this._logGoal(result, e);
@@ -707,7 +807,7 @@ export class ChainRunner {
     const cands = this._candidates();
     const names = Object.keys(cands);
     if (!names.length) {
-      this.log.push({ node: null, result: 'no node available' });
+      this.log.push({ node: null, result: 'no node available', ...this._diag(cands) });
       return this._fail('no node available', events);
     }
     this.noNodeRestarts = 0;
@@ -719,11 +819,19 @@ export class ChainRunner {
     return undefined;
   }
 
+  /** run_chain's diagnostics of the candidates of the current design (no draw; Python's available_near, option B,
+   * is not ported). */
+  _diag(cands) {
+    const names = Object.keys(cands);
+    return { from_family: this.design.family, available_nodes: names, g_available: names.some((n) => n.includes('G')),
+      available_try: names.filter((n) => cands[n].info.switch_try?.differed === true) };
+  }
+
   _install(node, events) {
     const built = this._cands[node];
     this.availableCount = Object.keys(this._cands).length;
+    this.diag = this._diag(this._cands);
     this._cands = null;
-    this.fromFamily = this.design.family;
     this.design = { family: built.family, record: built.record, hP: built.hP, hR: built.hR };
     this.gen.remember(built.info);
     this.goal = this._makeGoal(this.design);
@@ -744,7 +852,7 @@ export class ChainRunner {
       node: this.node, family: this.design.family, record: this.design.record, result,
       latch_s: this.latched > 0 ? this.latched / this.stepsPerSecond : null,
       final_goal_mm: pyRound(1000 * e[0], 1), final_goal_deg: pyRound(degrees(e[1]), 1),
-      available: this.availableCount, from_family: this.fromFamily, ...this.nodeInfo,
+      available: this.availableCount, ...this.diag, ...this.nodeInfo,
     });
   }
 

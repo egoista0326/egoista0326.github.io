@@ -4,39 +4,77 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DexGO interactive demo</title>
+  <!-- the project page's three icons, in its order (personal_web src/layouts/ProjectLayout.astro): never the site's -->
+  <link rel="icon" href="/dexgo/favicon.ico" sizes="32x32">
   <link rel="icon" href="/dexgo/favicon.svg" type="image/svg+xml">
-  <meta name="description" content="A MANO hand policy trained with DexGO reaches goal after goal in a MuJoCo simulation that runs in the browser.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
+  <link rel="apple-touch-icon" href="/dexgo/apple-touch-icon.png">
+  <meta name="description" content="Policies trained with DexGO for the MANO and Sharpa Wave hands reach one goal after another in a MuJoCo simulation that runs in your browser.">
+  <!-- the published address and the project page's share image (personal_web src/data/dexgo.ts, share) -->
+  <link rel="canonical" href="https://egoista0326.github.io/dexgo/demo/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="DexGO">
+  <meta property="og:url" content="https://egoista0326.github.io/dexgo/demo/">
+  <meta property="og:title" content="DexGO interactive demo">
+  <meta property="og:description" content="Policies trained with DexGO for the MANO and Sharpa Wave hands reach one goal after another in a MuJoCo simulation that runs in your browser.">
+  <meta property="og:image" content="https://egoista0326.github.io/assets/dexgo/share.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A simulated hand holds a screwdriver with its fingertips, its tip on a screw in a wooden board.">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- Source Sans 3 from the site itself (no third-party request): the project page's own file and face (personal_web
+       public/fonts/source-sans-3/, src/styles/global.css), so the embedded demo takes it from the page's cache. A
+       local preview of web/ at / serves its development copy web/fonts/source-sans-3/ (not staged). -->
+  <link rel="preload" href="/fonts/source-sans-3/source-sans-3-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- opened alone (not framed by the project page): the stacked layout's scale is capped (--u, below); inline, so the
+       cap holds from the first paint -->
+  <script>if (window.self === window.top) document.documentElement.dataset.standalone = '';</script>
   <style>
+    @font-face {
+      font-family: "Source Sans 3"; font-style: normal; font-weight: 400 700; font-display: swap;
+      src: url("/fonts/source-sans-3/source-sans-3-latin-var.woff2") format("woff2");
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+        U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
     /* Tokens of the DexGO project page (personal_web src/styles/global.css, .page-dexgo): white, Source Sans 3,
        teal accent #438f87 (graph, underline), ink #367a73 (buttons, links). Light only, as the page.
        Two layouts, chosen by the viewport (the iframe): side by side when wide (the graph right of the view), stacked
-       when tall or narrow (below). Both fill the viewport without scrolling. */
+       when tall or narrow (below). Both fill the viewport without scrolling. The status block keeps a fixed height
+       (room for a two-line task, the goals and a two-line note; one note line when stacked), its lines top-aligned,
+       so the graph never moves when a task name wraps or a note appears. */
     :root {
       --bg: #ffffff; --fg: #1e2528; --muted: #586366; --rule: #dde3e1;
       --accent: #438f87; --ink: #367a73; --ink-hover: #2b665f;
       --sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
-      --side: clamp(340px, 34vw, 440px);
+      --side: clamp(300px, 30vw, 380px); /* 300 px in the page's 800 px frame: the view gets 452 px */
       color-scheme: light;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; background: var(--bg); }
     body { color: var(--fg); font: 400 16px/1.45 var(--sans); }
     [hidden] { display: none !important; }
+    .visually-hidden {
+      position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
     :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
     .demo {
-      display: grid; gap: 8px 28px; padding: 12px 16px; height: 100vh; height: 100dvh;
+      display: grid; gap: 8px 20px; padding: 12px 16px; height: 100vh; height: 100dvh;
       grid-template-columns: minmax(0, 1fr) var(--side);
       grid-template-rows: auto minmax(0, 1fr);
       grid-template-areas: "controls controls" "view side";
     }
 
     /* control row: the page's tab toggles (underline) and its text controls (Play / Pause demo, Reset) */
-    .controls { grid-area: controls; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 32px; }
-    .group { display: flex; align-items: center; gap: 4px 20px; }
+    /* one row from a 780 px frame with the Hand group too (2026-11-22: gaps 24 / 12 px, were 32 / 20 px; at 800 px
+       "Manual" ends 35 px before "Pause demo", 11 px more than the gap the row needs; 16 px between the groups in
+       780-799 px frames, below) */
+    .controls { grid-area: controls; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+    /* The side-by-side layout also runs in 780-799 px frames (the page's wide stage on 844-863 px landscape phones,
+       a standalone window): there the 24 px group gap no longer leaves room for one row. (Stacked, .controls is
+       display: contents and this does nothing.) */
+    @media (max-width: 799px) { .controls { column-gap: 16px; } }
+    .group { display: flex; align-items: center; gap: 4px 12px; }
     .group-label { color: var(--muted); font-size: 14px; }
     .toggle {
       appearance: none; border: 0; border-bottom: 2px solid transparent; padding: 4px 0; background: none;
@@ -45,7 +83,8 @@
     }
     .toggle:hover { color: var(--fg); }
     .toggle[aria-pressed="true"] { border-bottom-color: var(--accent); color: var(--fg); }
-    .toggle:disabled { cursor: default; }
+    .toggle:disabled, .toggle[aria-disabled="true"] { cursor: default; }
+    .toggle:disabled:hover, .toggle[aria-disabled="true"]:hover { color: var(--muted); }
     .actions { display: flex; align-items: center; gap: 8px 24px; margin-left: auto; }
     #play { min-width: 5.6em; text-align: left; } /* "Play demo" / "Pause demo" without the row moving */
     .link {
@@ -61,8 +100,17 @@
     /* 3D view: white, no frame (the videos sit on white) */
     #view { grid-area: view; position: relative; min-height: 0; min-width: 0; background: var(--bg); }
     /* one finger scrolls the page (vertical); two fingers orbit and zoom; the wheel scrolls the page (Ctrl / Cmd + wheel
-       zooms, app/main.js) */
-    #view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+       zooms, app/main.js). The view's edges fade out (24 px; 32 px on the right, next to the panel) instead of cutting
+       the hand, the object or the goal ghost with a hard line. */
+    #view canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y;
+      -webkit-mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 32px), transparent),
+        linear-gradient(to bottom, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+      -webkit-mask-composite: source-in;
+      mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 32px), transparent),
+        linear-gradient(to bottom, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+      mask-composite: intersect;
+    }
     #view canvas#axes { pointer-events: none; }
     .hint {
       position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); margin: 0; padding: 2px 8px;
@@ -74,23 +122,41 @@
       position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 16px;
       color: var(--muted); font-size: 16px; text-align: center; pointer-events: none;
     }
+    /* a switch's loading line fades in (it stays at least 0.4 s once shown, app/main.js endSwitch) */
+    #loading:not([hidden]) { animation: dx-line-in 150ms ease-out both; }
+    @keyframes dx-line-in { from { opacity: 0; } }
 
     /* side: status line over the graph */
-    .side { grid-area: side; align-self: center; display: grid; gap: 16px; min-width: 0; }
-    .status { display: grid; gap: 2px; }
+    /* centred in its row while it fits (auto margins); taller than its row (a short window), it starts at the row's top
+       and the page scrolls, instead of growing upward over the control row (align-self: center did) */
+    .side { grid-area: side; align-self: start; margin-block: auto; display: grid; gap: 16px; min-width: 0; }
+    .status { display: grid; gap: 2px; align-content: start; min-height: calc(2 * 18px * 1.35 + 15px * 1.45 + 2 * 14px * 1.45 + 4px); }
     .status p { margin: 0; }
-    .task { min-height: 1.35em; font-size: 18px; line-height: 1.35; }
-    .task b { margin-right: 8px; color: var(--ink); font-weight: 700; }
-    .goals { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
-    .note { min-height: 1.45em; color: var(--muted); font-size: 14px; }
+    .task { font-size: 18px; line-height: 1.35; }
+    .task b { margin-right: 4px; color: var(--ink); font-weight: 700; } /* + the space after it */
+    .task b:empty { display: none; }
+    .goals { color: var(--muted); font-size: 15px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+    .note { color: var(--muted); font-size: 14px; line-height: 1.45; }
     .note.is-flash { color: #a0523b; } /* the video's "in training" brown, for a failed goal */
+    .note.is-done { color: var(--ink); font-weight: 600; } /* a reached goal, held about 1 s */
     #graph { width: 100%; }
-    .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; margin: 4px 0 0; color: #5f6368; font-size: 14px; }
+    /* legend: the graph's three node looks, then the goal ghost of the view (two columns) */
+    .legend {
+      display: grid; grid-template-columns: auto auto; justify-content: center; gap: 4px 24px; margin: 6px 0 0;
+      color: #5f6368; font-size: 14px;
+    }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
     .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1.3px solid; }
+    /* the node looks of app/graph.js: the project video's current / learned / locked chips */
     .legend .l-current { background: #438f87; border-color: #438f87; }
     .legend .l-available { background: #e3eeea; border-color: #438f87; }
-    .legend .l-unavailable { background: #fff; border-color: #b5b9bf; }
+    .legend .l-unavailable { background: #fff; border-color: #b5b9bf; border-style: dashed; }
+    /* the goal: the goal hand's grey and the goal object's green as they show on white (app/main.js LOOK; median
+       rendered colours), dashed as the goal axes */
+    .legend .l-goal {
+      border: 1.3px dashed #8a948f;
+      background: linear-gradient(135deg, rgb(189 192 195) 0 50%, rgb(212 228 226) 50% 100%);
+    }
 
     /* marker scene (?scene=marker): one goal per start row, no graph */
     body[data-scene="marker"] .chain-only { display: none !important; }
@@ -99,51 +165,116 @@
     .marker-status .ok { color: var(--ink); font-weight: 600; }
     .marker-status .muted { color: var(--muted); }
 
-    /* Tall or narrow viewports (the page's phone frame, about 9:16; any frame narrower than 820 px or not wider than
-       tall): one row of tabs on top, the view below it takes the remaining height (Play / Pause demo and Reset in its
-       top-right corner), then the status and the compact graph. Everything fits the viewport (no scrolling) down to
-       about 480 px. */
-    @media (max-width: 819px), (max-aspect-ratio: 1/1) {
+    /* Tall or narrow viewports (the page's phone frame, about 9:16; any frame narrower than 780 px or not wider than
+       tall): one row of tabs on top (Hand left, Object right), the view below it takes the remaining height (the Mode
+       tabs in its top-left corner, Play / Pause demo and Reset in its top-right corner), then the status and the
+       compact graph. Everything fits the viewport (no scrolling) down to
+       about 480 px. From 780 px the side-by-side layout fits (the project page embeds it in an 800 px frame: one
+       row of controls, the graph panel at its 340 px minimum). app/main.js matches the same query (STACKED).
+       Sizes are in --u, one 350 px layout px scaled to the frame: the layout of a 350 x 622 frame (the project page's
+       phone frame, whose capture is its poster) scaled by min(width / 350, height / 622). The page's tablet frames
+       (9:16, 522-610 px wide at 640-863 px viewports) then show exactly the poster's layout, only larger, so starting
+       the demo changes nothing there either. Kept within 0.96-2 in the page's frames (on phones under 336 px the frame
+       is 300-315 px wide and stays at the 0.96 floor; the rule after this block keeps its top row apart). Opened
+       alone (a window, not the page's frame: data-standalone, set by the head script) the scale stops at 1.25, so on
+       portrait tablets the view keeps about half the screen instead of the graph and tabs growing to twice the phone
+       size; the cap only bites in windows wider than 437 px and taller than 777 px. */
+    @media (max-width: 779px), (max-aspect-ratio: 1/1) {
+      :root { --u: clamp(0.96px, min(100vw / 350, 100vh / 622), 2px); }
+      :root[data-standalone] { --u: clamp(0.96px, min(100vw / 350, 100vh / 622), 1.25px); }
       .demo {
-        height: 100vh; height: 100dvh; min-height: 480px; padding: 12px; gap: 8px 16px;
+        height: 100vh; height: 100dvh; min-height: calc(480 * var(--u)); padding: calc(12 * var(--u));
+        gap: calc(8 * var(--u)) calc(16 * var(--u));
         grid-template-columns: auto minmax(0, 1fr);
-        grid-template-rows: auto minmax(160px, 1fr) auto auto;
-        grid-template-areas: "objects modes" "view view" "status status" "graph graph";
+        grid-template-rows: auto minmax(calc(150 * var(--u)), 1fr) auto auto;
+        grid-template-areas: "hands objects" "view view" "status status" "graph graph";
       }
       .controls, .side { display: contents; }
-      #view { margin-inline: -12px; } /* full width: the width sets the hand's size */
-      .objects-group { grid-area: objects; }
-      .modes-group { grid-area: modes; justify-self: end; }
-      .group { gap: 4px 16px; }
+      #view { margin-inline: calc(-12 * var(--u)); } /* full width: the width sets the hand's size */
+      .hands-group { grid-area: hands; }
+      .objects-group { grid-area: objects; justify-self: end; }
+      .modes-group { grid-area: view; justify-self: start; align-self: start; z-index: 1; }
+      .group { gap: calc(4 * var(--u)) calc(16 * var(--u)); }
       .group-label { display: none; }
-      .toggle { font-size: 15px; padding: 2px 0; }
-      .actions { grid-area: view; justify-self: end; align-self: start; z-index: 1; margin: 0; gap: 4px 16px; }
-      .link { font-size: 15px; }
+      .toggle {
+        font-size: calc(15 * var(--u)); padding: calc(2 * var(--u)) 0; border-bottom-width: calc(2 * var(--u));
+      }
+      .actions {
+        grid-area: view; justify-self: end; align-self: start; z-index: 1; margin: 0;
+        gap: calc(4 * var(--u)) calc(16 * var(--u));
+      }
+      .link { font-size: calc(15 * var(--u)); padding: calc(4 * var(--u)) 0; text-underline-offset: calc(4 * var(--u)); }
       .status, #marker-status { grid-area: status; }
-      .graph-box { grid-area: graph; }
-      .task { min-height: 0; font-size: 16px; line-height: 1.3; }
-      .goals { font-size: 14px; }
-      .note { min-height: 1.4em; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .legend { gap: 2px 14px; margin-top: 2px; font-size: 12.5px; }
-      .legend i { width: 12px; height: 12px; }
+      /* the graph at most 420 layout px wide (frames taller than 9:16), centred */
+      .graph-box { grid-area: graph; justify-self: center; width: 100%; max-width: calc(420 * var(--u)); }
+      .status { gap: calc(2 * var(--u)); min-height: calc((2 * 16 * 1.3 + 14 * 1.45 + 13 * 1.4 + 4) * var(--u)); }
+      /* opened alone in a wide window (--u capped at 1.25), the graph is a centred column of at most 420 --u: the
+         status sits in the same column, its text starting at the graph's left edge (in the page's frames the graph
+         takes the full width, so this changes nothing there) */
+      :root[data-standalone] .status { justify-self: center; width: 100%; max-width: calc(420 * var(--u)); }
+      .task { font-size: calc(16 * var(--u)); line-height: 1.3; }
+      .task b { margin-right: calc(4 * var(--u)); }
+      .goals { font-size: calc(14 * var(--u)); }
+      .note { font-size: calc(13 * var(--u)); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .legend {
+        display: flex; flex-wrap: wrap; gap: calc(2 * var(--u)) calc(12 * var(--u)); margin-top: calc(2 * var(--u));
+        font-size: calc(12.5 * var(--u));
+      }
+      .legend span { gap: calc(6 * var(--u)); }
+      .legend i, .legend .l-goal { width: calc(12 * var(--u)); height: calc(12 * var(--u)); border-width: calc(1.3 * var(--u)); }
+      .hint { bottom: calc(8 * var(--u)); padding: calc(2 * var(--u)) calc(8 * var(--u)); font-size: calc(13 * var(--u)); }
+      #loading { padding: calc(16 * var(--u)); font-size: calc(16 * var(--u)); }
+      #view canvas {
+        -webkit-mask-image: linear-gradient(to right, transparent, #000 calc(24 * var(--u)), #000 calc(100% - 24 * var(--u)), transparent),
+          linear-gradient(to bottom, transparent, #000 calc(24 * var(--u)), #000 calc(100% - 24 * var(--u)), transparent);
+        mask-image: linear-gradient(to right, transparent, #000 calc(24 * var(--u)), #000 calc(100% - 24 * var(--u)), transparent),
+          linear-gradient(to bottom, transparent, #000 calc(24 * var(--u)), #000 calc(100% - 24 * var(--u)), transparent);
+      }
     }
-    @media (prefers-reduced-motion: reduce) { * { transition-duration: 0s !important; } }
+    /* Frames under 316 px (phones under 336 px, where the page's stage is 100vw - 20 px): the Mode tabs and Play / Reset
+       share the view's top edge; a step smaller labels and gaps keep them apart. The legend's four items need about
+       288 px on one line (at --u 0.96, gaps 8 --u) and the frame gives 277-291: two rows of two (as the side-by-side
+       legend), never "Goal" alone on a second line. */
+    @media (max-width: 315px) {
+      .toggle, .link { font-size: calc(14 * var(--u)); }
+      .group, .actions { column-gap: calc(12 * var(--u)); }
+      .legend { display: grid; grid-template-columns: auto auto; justify-content: center; column-gap: calc(16 * var(--u)); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition-duration: 0s !important; }
+      #loading:not([hidden]) { animation: none; }
+    }
+    /* Forced colours (Windows contrast themes): the transparent underline of an unpressed tab would turn into the text
+       colour, so every tab looked pressed; only the pressed one keeps a (Highlight) underline. The legend's swatches
+       keep their own fills and borders: forced, all four were the same outlined box. */
+    @media (forced-colors: active) {
+      .toggle { border-bottom-color: Canvas; }
+      .toggle[aria-pressed="true"] { border-bottom-color: Highlight; }
+      .legend i, .legend .l-goal { forced-color-adjust: none; }
+    }
   </style>
   <script type="importmap">
     { "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
   </script>
 </head>
 <body data-scene="chain">
-  <div class="demo">
-    <div class="controls" role="toolbar" aria-label="Demo controls">
+  <!-- the page's main landmark and heading when opened alone; embedded in the project page (whose main and h1 hold
+       it), app/main.js drops the role and the heading -->
+  <div class="demo" role="main">
+    <h1 class="visually-hidden">DexGO interactive demo</h1>
+    <div class="controls" role="group" aria-label="Demo controls">
+      <div class="group hands-group chain-only" role="group" aria-label="Hand">
+        <span class="group-label" aria-hidden="true">Hand</span>
+        <span id="hands" class="group"></span>
+      </div>
       <div class="group objects-group chain-only" role="group" aria-label="Object">
         <span class="group-label" aria-hidden="true">Object</span>
         <span id="objects" class="group"></span>
       </div>
       <div class="group modes-group chain-only" role="group" aria-label="Mode">
         <span class="group-label" aria-hidden="true">Mode</span>
-        <button type="button" class="toggle" data-mode="random" aria-pressed="true">Random chain</button>
-        <button type="button" class="toggle" data-mode="manual" aria-pressed="false">Manual</button>
+        <button type="button" class="toggle" data-mode="random" aria-pressed="true" disabled>Random chain</button>
+        <button type="button" class="toggle" data-mode="manual" aria-pressed="false" disabled>Manual</button>
       </div>
       <div class="actions">
         <label id="colliders-toggle" class="check marker-only" hidden><input type="checkbox" id="colliders"> Show colliders</label>
@@ -151,21 +282,24 @@
         <button type="button" id="reset" class="link" disabled>Reset</button>
       </div>
     </div>
-    <div id="view" aria-label="3D view of the hand and the object; drag to rotate, Ctrl + scroll or pinch to zoom">
+    <div id="view"> <!-- the canvas carries the view's name (role img, app/main.js) -->
       <canvas id="axes" aria-hidden="true"></canvas>
       <p id="zoom-hint" class="hint" aria-hidden="true">Ctrl + scroll to zoom</p>
       <p id="loading">Loading the demo…</p>
     </div>
     <div class="side">
-      <div class="status chain-only" role="status" aria-live="polite">
-        <p class="task"><b id="task-code"></b><span id="task-words"></span></p>
+      <!-- not a live region (it changes every 1-3 s): #announce speaks goal changes and results, throttled -->
+      <div class="status chain-only">
+        <p class="task"><b id="task-code"></b> <span id="task-words"></span></p>
         <p id="goals" class="goals"></p>
         <p id="note" class="note"></p>
       </div>
+      <p id="announce" class="visually-hidden chain-only" role="status"></p>
       <div class="graph-box chain-only">
         <div id="graph"></div>
         <p class="legend" aria-hidden="true"><span><i class="l-current"></i>Current</span>
-          <span><i class="l-available"></i>Available next</span><span><i class="l-unavailable"></i>Not available</span></p>
+          <span><i class="l-available"></i>Available next</span><span><i class="l-unavailable"></i>Not available</span>
+          <span><i class="l-goal"></i>Goal</span></p>
       </div>
       <div id="marker-status" class="marker-status marker-only" role="status"></div>
     </div>

@@ -1,16 +1,20 @@
 // The v7 actor as a plain-JS MLP: the runtime policy (onnxruntime-web is only a test reference since 2026-11-21).
-// Weights: assets/policy/actor_mlp.{json,bin} (../scripts/export_mlp.py, checkpoint af31c6ee), the network of
-// export_onnx.Actor:
-//   input  obs141 (141) raw encoded columns (encoder.js ACTOR_FIELDS order), cast to float32 as the ONNX input was
-//   x      clamp((obs141 - mean) / std, -clip, clip), each operation rounded to float32 (the ONNX graph's arithmetic)
-//   h      Linear 141->512, ELU; Linear 512->256, ELU; Linear 256->128, ELU (alpha 1)
-//   output Linear 128->26: the mean action, latent units (clipped to [-1, 1] only by the decoder)
+// Weights: policy/actor_mlp.{json,bin} of a hand's asset root (MANO: assets/, ../scripts/export_mlp.py, checkpoint
+// af31c6ee; Sharpa: checkpoint f0058680, ../sharpa/scripts/export_mlp_sharpa.py), the network of export_onnx.Actor:
+//   input  obs (input_dim: MANO obs141, Sharpa obs147) raw encoded columns (encoder.js actorFields order of the hand),
+//          cast to float32 as the ONNX input was
+//   x      clamp((obs - mean) / std, -clip, clip), each operation rounded to float32 (the ONNX graph's arithmetic)
+//   h      Linear input_dim->512, ELU; Linear 512->256, ELU; Linear 256->128, ELU (alpha 1)
+//   output Linear 128->output_dim (MANO 26, Sharpa 28 = 6 wrist + the fingers): the mean action, latent units
+//          (clipped to [-1, 1] only by the decoder)
+// Hand-agnostic (2026-11-22): every width comes from the header (input_dim, output_dim, fields); the header's field
+// layout must equal the encoder's actorFields(output_dim - 6, surface width / 3).
 // Weights are Float32Array (W out x in, row-major). Accumulation (constructor option): 'f64' (default) sums the
 // float32 products in Float64 and keeps the activations in Float64; 'f32' rounds every product, sum and activation to
 // float32 (Math.fround). Measured against onnxruntime-web on 2000 recorded inputs (test/mlp.test.mjs): f64 is closer
 // (README). Same interface as engine/policy.js Policy: static async create(...), async act(obs), async release().
 
-import { ACTOR_FIELDS, OBS_DIM } from './encoder.js';
+import { actorFields } from './encoder.js';
 
 const f32 = Math.fround;
 const elu = (x) => (x > 0 ? x : Math.expm1(x));
@@ -65,8 +69,10 @@ export class MlpPolicy {
 
   constructor(header, bytes, { accumulate = 'f64' } = {}) {
     const fields = header.fields.map((f) => [f.field, f.width]);
-    if (JSON.stringify(fields) !== JSON.stringify(ACTOR_FIELDS))
-      throw new Error(`actor_mlp.json fields ${JSON.stringify(fields)} differ from the encoder's`);
+    const surface = header.fields.find((f) => f.field === 'surface');
+    const expected = actorFields(header.output_dim - 6, (surface?.width ?? 0) / 3);
+    if (JSON.stringify(fields) !== JSON.stringify(expected))
+      throw new Error(`actor_mlp.json fields ${JSON.stringify(fields)} differ from the encoder's ${JSON.stringify(expected)}`);
     if (header.dtype !== 'float32' || header.byte_order !== 'little') throw new Error('actor_mlp.bin must be float32 LE');
     if (new Uint8Array(Uint16Array.of(1).buffer)[0] !== 1) throw new Error('big-endian host');
     if (!['f64', 'f32'].includes(accumulate)) throw new Error(`accumulate ${accumulate}`);
@@ -82,18 +88,24 @@ export class MlpPolicy {
       W: w.subarray(l.weight.offset, l.weight.offset + l.in_features * l.out_features),
       b: w.subarray(l.bias.offset, l.bias.offset + l.out_features),
     }));
-    if (this.layers[0].nIn !== OBS_DIM) throw new Error('input width');
+    this.inputDim = header.input_dim; // MANO 141, Sharpa 147
+    this.outputDim = header.output_dim; // MANO 26, Sharpa 28
+    const width = fields.reduce((n, [, w]) => n + w, 0);
+    if (this.layers[0].nIn !== this.inputDim || width !== this.inputDim || this.mean.length !== this.inputDim)
+      throw new Error('input width');
+    if (this.layers[this.layers.length - 1].nOut !== this.outputDim) throw new Error('output width');
     this.accumulate = accumulate;
     const Buf = accumulate === 'f64' ? Float64Array : Float32Array;
-    this.x = new Buf(OBS_DIM);
+    this.x = new Buf(this.inputDim);
     this.h = this.layers.map((l) => new Buf(l.nOut));
     this.header = header;
   }
 
-  /** Synchronous forward pass. @param {ArrayLike<number>} obs (141) @returns {Float64Array} (26) */
+  /** Synchronous forward pass. @param {ArrayLike<number>} obs (inputDim) @returns {Float64Array} (outputDim) */
   forward(obs) {
     const { mean, std, clip, x } = this;
-    for (let i = 0; i < OBS_DIM; i++) {
+    if (obs.length !== this.inputDim) throw new Error(`obs ${obs.length} wide, actor ${this.inputDim}`);
+    for (let i = 0; i < this.inputDim; i++) {
       const v = f32(f32(f32(obs[i]) - mean[i]) / std[i]);
       x[i] = v > clip ? clip : v < -clip ? -clip : v;
     }
@@ -116,7 +128,7 @@ export class MlpPolicy {
     return Float64Array.from(input);
   }
 
-  /** Same call as Policy.act (the engine awaits it). @returns {Promise<Float64Array>} (26) */
+  /** Same call as Policy.act (the engine awaits it). @returns {Promise<Float64Array>} (outputDim) */
   async act(obs) {
     return this.forward(obs);
   }

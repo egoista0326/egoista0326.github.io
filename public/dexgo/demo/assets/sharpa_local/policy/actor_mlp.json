@@ -1,0 +1,203 @@
+{
+ "format": "mlp-float32-v1",
+ "dtype": "float32",
+ "byte_order": "little",
+ "floats": 243906,
+ "bytes": 975624,
+ "input": "obs147",
+ "output": "action",
+ "input_dim": 147,
+ "output_dim": 28,
+ "fields": [
+  {
+   "field": "finger_position",
+   "start": 0,
+   "width": 22,
+   "columns299": [
+    0,
+    22
+   ]
+  },
+  {
+   "field": "finger_pd_error",
+   "start": 22,
+   "width": 22,
+   "columns299": [
+    22,
+    44
+   ]
+  },
+  {
+   "field": "object_goal",
+   "start": 44,
+   "width": 6,
+   "columns299": [
+    88,
+    94
+   ]
+  },
+  {
+   "field": "gravity_direction",
+   "start": 50,
+   "width": 3,
+   "columns299": [
+    94,
+    97
+   ]
+  },
+  {
+   "field": "surface",
+   "start": 53,
+   "width": 60,
+   "columns299": [
+    97,
+    157
+   ]
+  },
+  {
+   "field": "process_relation",
+   "start": 113,
+   "width": 6,
+   "columns299": [
+    232,
+    238
+   ]
+  },
+  {
+   "field": "task_wrist_error",
+   "start": 119,
+   "width": 6,
+   "columns299": [
+    238,
+    244
+   ]
+  },
+  {
+   "field": "finger_reference",
+   "start": 125,
+   "width": 22,
+   "columns299": [
+    244,
+    266
+   ]
+  }
+ ],
+ "action_meanings": [
+  "x",
+  "y",
+  "z",
+  "rx",
+  "ry",
+  "rz",
+  "index_0",
+  "index_1",
+  "index_2",
+  "index_3",
+  "middle_0",
+  "middle_1",
+  "middle_2",
+  "middle_3",
+  "pinky_0",
+  "pinky_1",
+  "pinky_2",
+  "pinky_3",
+  "pinky_4",
+  "ring_0",
+  "ring_1",
+  "ring_2",
+  "ring_3",
+  "thumb_0",
+  "thumb_1",
+  "thumb_2",
+  "thumb_3",
+  "thumb_4"
+ ],
+ "normaliser": {
+  "mean": {
+   "offset": 0,
+   "length": 147
+  },
+  "std": {
+   "offset": 147,
+   "length": 147
+  },
+  "clip": 5.0,
+  "epsilon": 1e-05,
+  "formula": "x = clamp((obs147 - mean) / std, -clip, clip) in float32; std = sqrt(float32(running_var) + epsilon) in float32 (export_onnx.Actor)"
+ },
+ "layers": [
+  {
+   "in_features": 147,
+   "out_features": 512,
+   "activation": "elu",
+   "alpha": 1.0,
+   "weight": {
+    "offset": 294,
+    "shape": [
+     512,
+     147
+    ]
+   },
+   "bias": {
+    "offset": 75558
+   }
+  },
+  {
+   "in_features": 512,
+   "out_features": 256,
+   "activation": "elu",
+   "alpha": 1.0,
+   "weight": {
+    "offset": 76070,
+    "shape": [
+     256,
+     512
+    ]
+   },
+   "bias": {
+    "offset": 207142
+   }
+  },
+  {
+   "in_features": 256,
+   "out_features": 128,
+   "activation": "elu",
+   "alpha": 1.0,
+   "weight": {
+    "offset": 207398,
+    "shape": [
+     128,
+     256
+    ]
+   },
+   "bias": {
+    "offset": 240166
+   }
+  },
+  {
+   "in_features": 128,
+   "out_features": 28,
+   "activation": "none",
+   "alpha": null,
+   "weight": {
+    "offset": 240294,
+    "shape": [
+     28,
+     128
+    ]
+   },
+   "bias": {
+    "offset": 243878
+   }
+  }
+ ],
+ "provenance": {
+  "hand": "sharpa",
+  "observation": "wrist_local299",
+  "checkpoint": "v7sharpadirscont2_end.pt",
+  "checkpoint_id": "f0058680",
+  "checkpoint_sha256": "f00586801ee59c5fb9cdde553adf078e21bdff2dc946054a25a08c970ee937bc",
+  "source": "sharpa/scripts/export_mlp_sharpa.py: the checkpoint via mj_port.Policy(hand='sharpa') and export_onnx.Actor (export_mlp.py's format)",
+  "bin_sha256": "811d3a7d42688b9a7d3ed749fe02ec49be9a21f495d1f9fda83cbd56ee602cf9"
+ }
+}

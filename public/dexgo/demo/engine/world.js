@@ -1,8 +1,15 @@
-// One MANO hand + object MuJoCo world (port of mj_port.World). The MuJoCo module (@mujoco/mujoco, single
-// threaded) is passed in, so this file runs unchanged in Node, a page or a worker. Units SI, poses world frame.
+// One hand + object MuJoCo world (port of mj_port.World). The MuJoCo module (@mujoco/mujoco, single threaded) is
+// passed in, so this file runs unchanged in Node, a page or a worker. Units SI, poses world frame.
+// Hand-agnostic (2026-11-22): the n hand joints are the given native joint names (MANO 26, Sharpa 28; source order:
+// the 6 wrist joints x, y, z, rx, ry, rz, then the fingers). The hand root and the wrist link are read from the
+// model's joint tree, not named: the wrist link is the body of the sixth wrist joint (rz) and the root is the parent
+// body of the first one (x). MANO: sliderBar / right_wrist_rz (mj_port.HANDS["mano"]); Sharpa: sharpa_root0 /
+// right_hand_C_MC (mj_port.HANDS["sharpa"]). Hand-specific physics (Sharpa's gravcomp on the hand bodies, its PhysX
+// hulls) is compiled from scene.xml; nothing here depends on it.
 
 import { matrixToQuatXyzw, mulTVec, mulVec, quatWxyzToMatrix } from './math.js';
 
+/** MANO's body names (mj_port.HANDS["mano"]); World derives the root and wrist from the joint tree (see the header). */
 export const BODY_NAMES = { root: 'sliderBar', wrist: 'right_wrist_rz', object: 'object' };
 export const OBJECT_JOINT = 'object_free';
 
@@ -27,8 +34,8 @@ export async function loadModel(mujoco, loader, xmlName = 'scene.xml') {
 export class World {
   /**
    * @param {object} mujoco module; @param {object} model MjModel
-   * @param {string[]} jointNames the 26 hand joints, source order (task.json control.native_joints)
-   * @param {string[]} linkNames the 20 surface links (task.json control.surface_links)
+   * @param {string[]} jointNames the n hand joints, source order (task.json / control.json native_joints)
+   * @param {string[]} linkNames the 20 surface links (task.json / control.json surface_links)
    */
   constructor(mujoco, model, jointNames, linkNames) {
     this.mj = mujoco;
@@ -43,13 +50,17 @@ export class World {
       return i;
     };
     const jid = jointNames.map((n) => id('mjOBJ_JOINT', n));
+    this.n = jid.length; // hand joints: 6 wrist + the fingers
     this.qadr = Int32Array.from(jid, (j) => model.jnt_qposadr[j]);
     this.dadr = Int32Array.from(jid, (j) => model.jnt_dofadr[j]);
     const range = model.jnt_range;
     this.lower = Float64Array.from(jid, (j) => range[2 * j]);
     this.upper = Float64Array.from(jid, (j) => range[2 * j + 1]);
-    this.root = id('mjOBJ_BODY', BODY_NAMES.root);
-    this.wrist = id('mjOBJ_BODY', BODY_NAMES.wrist);
+    this.wrist = model.jnt_bodyid[jid[5]]; // the body the rz joint moves: the wrist link
+    this.root = model.body_parentid[model.jnt_bodyid[jid[0]]]; // the body the x joint hangs from: the hand root
+    const name = (b) => mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY.value, b);
+    this.rootName = name(this.root);
+    this.wristName = name(this.wrist);
     this.obj = id('mjOBJ_BODY', BODY_NAMES.object);
     this.links = Int32Array.from(linkNames, (n) => id('mjOBJ_BODY', n));
     const fj = id('mjOBJ_JOINT', OBJECT_JOINT);
@@ -60,7 +71,7 @@ export class World {
 
   /**
    * Reset to one start row (mj_port.World.reset). handRoot / objectRoot (13): position, quaternion wxyz,
-   * linear and angular velocity (world); q (26) hand joints. The hand root body is moved in the model.
+   * linear and angular velocity (world); q (n) hand joints. The hand root body is moved in the model.
    */
   reset(handRoot, objectRoot, q) {
     const { mj, model: m, data: d } = this;
@@ -69,7 +80,7 @@ export class World {
     for (let i = 0; i < 3; i++) bp[3 * this.root + i] = handRoot[i];
     for (let i = 0; i < 4; i++) bq[4 * this.root + i] = handRoot[3 + i];
     const qpos = d.qpos, qvel = d.qvel;
-    for (let i = 0; i < 26; i++) qpos[this.qadr[i]] = q[i];
+    for (let i = 0; i < this.n; i++) qpos[this.qadr[i]] = q[i];
     for (let i = 0; i < 7; i++) qpos[this.oq + i] = objectRoot[i];
     const r = quatWxyzToMatrix(objectRoot.slice(3, 7));
     const wBody = mulTVec(r, objectRoot.slice(10, 13)); // free joint: body-frame angular velocity
@@ -106,17 +117,17 @@ export class World {
     };
   }
 
-  /** Current hand joint positions (26, source order). */
-  jointQ(out = new Float64Array(26)) {
+  /** Current hand joint positions (n, source order). */
+  jointQ(out = new Float64Array(this.n)) {
     const qpos = this.data.qpos;
-    for (let i = 0; i < 26; i++) out[i] = qpos[this.qadr[i]];
+    for (let i = 0; i < this.n; i++) out[i] = qpos[this.qadr[i]];
     return out;
   }
 
-  /** Write the effort (26, source order) into qfrc_applied at the joints' dofs. */
+  /** Write the effort (n, source order) into qfrc_applied at the joints' dofs. */
   applyEffort(effort) {
     const f = this.data.qfrc_applied;
-    for (let i = 0; i < 26; i++) f[this.dadr[i]] = effort[i];
+    for (let i = 0; i < this.n; i++) f[this.dadr[i]] = effort[i];
   }
 
   step() {
@@ -144,7 +155,7 @@ export class World {
 
   /**
    * World poses of every geom (as geomPoses) in another configuration, by forward kinematics (mj_kinematics) on a
-   * second MjData; the simulated data is untouched. The 26 hand joints at q (source order), the object body at
+   * second MjData; the simulated data is untouched. The n hand joints at q (source order), the object body at
    * objP / objR (world, rotation row-major), any other joint as in the simulated state. The hand root pose is the
    * model's (reset() sets it). Visual use: the goal ghost (hand at the goal configuration, object at its goal pose).
    */
@@ -152,7 +163,7 @@ export class World {
     const { mj, model: m } = this;
     const d = this.scratch, qpos = d.qpos;
     qpos.set(this.data.qpos);
-    for (let i = 0; i < 26; i++) qpos[this.qadr[i]] = q[i];
+    for (let i = 0; i < this.n; i++) qpos[this.qadr[i]] = q[i];
     const quat = matrixToQuatXyzw(objR); // x, y, z, w; MuJoCo's free joint takes w, x, y, z
     for (let i = 0; i < 3; i++) qpos[this.oq + i] = objP[i];
     for (let i = 0; i < 4; i++) qpos[this.oq + 3 + i] = quat[(i + 3) % 4];

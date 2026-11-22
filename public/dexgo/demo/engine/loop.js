@@ -1,6 +1,8 @@
 // The closed policy loop of mj_port.run_row: goal construction (make_goal), one control step (encode -> policy ->
 // decode -> decimation x (PD effort, mj_step)), the demo gate errors (gate_errors) and the latch (latch).
-// Frames: world; H = wrist link (right_wrist_rz); relations "object in hand" C* = (c_r, c_p) map object to wrist.
+// Frames: world; H = wrist link (MANO right_wrist_rz, Sharpa right_hand_C_MC); relations "object in hand" C* =
+// (c_r, c_p) map object to wrist. Hand-agnostic (2026-11-22): n = 6 + nF hand joints (World.n; MANO 26, Sharpa 28),
+// nF finger references.
 // Chains (engine/chain.js, chain_mujoco.run_chain): resetTo() starts from a given state (a record start) instead of
 // a task.json row, and setGoal() switches the goal mid-episode, keeping the PD target and the physics state.
 
@@ -17,7 +19,7 @@ const rows3 = (m) => Float64Array.from(m.flat());
 
 /**
  * Goal of one row (mj_port.make_goal): wrist goal H* = (hR, hP), relation C* = (cR, cP) (object in hand),
- * object goal G* = H* C*, object-to-hand B = C*^-1, finger reference q_B* (20).
+ * object goal G* = H* C*, object-to-hand B = C*^-1, finger reference q_B* (nF).
  */
 export function makeGoal(hP, hR, cP, cR, finger) {
   return {
@@ -34,12 +36,12 @@ export function makeGoal(hP, hR, cP, cR, finger) {
 }
 
 /**
- * Hand configuration (26, source order) of a goal, for drawing the goal hand: the wrist joints that put the wrist
+ * Hand configuration (6 + nF, source order) of a goal, for drawing the goal hand: the wrist joints that put the wrist
  * link at the wrist goal H* relative to the hand root (sourceTargetFromWorldPose, the Euler branch nearest the
  * current wrist joints), then the finger target q_B*. s: a World.state() (rootP, rootR, q).
  */
 export function goalConfiguration(goal, s) {
-  const q = new Float64Array(26);
+  const q = new Float64Array(6 + goal.fingerRef.length);
   sourceTargetFromWorldPose(s.rootP, s.rootR, goal.wristP, goal.wristR, s.q.subarray(3, 6), q.subarray(0, 6));
   q.set(goal.fingerRef, 6);
   return q;
@@ -86,6 +88,8 @@ export class Episode {
   constructor({ world, policy, task, surfaceLocal, startRuleDt = START_RULE_DT, freshKinematics = true }) {
     this.world = world;
     this.policy = policy;
+    if (policy?.outputDim !== undefined && policy.outputDim !== world.n)
+      throw new Error(`policy acts on ${policy.outputDim} joints, the world's hand has ${world.n}`);
     this.task = task;
     this.surfaceLocal = Float64Array.from(surfaceLocal.flat ? surfaceLocal.flat() : surfaceLocal);
     this.spec = controlSpec(task.control);
@@ -118,8 +122,8 @@ export class Episode {
 
   /**
    * Reset to a given state instead of a task.json row (chain_mujoco.run_chain's start: chain.js startState of a
-   * record). handRoot / objectRoot (13): position, quaternion wxyz, linear and angular velocity (world); q (26) hand
-   * joints; target (26) the PD target. The goal is installed with setGoal (here if given; step() needs one).
+   * record). handRoot / objectRoot (13): position, quaternion wxyz, linear and angular velocity (world); q (n) hand
+   * joints; target (n) the PD target. The goal is installed with setGoal (here if given; step() needs one).
    */
   resetTo({ handRoot, objectRoot, q, target, goal = null }) {
     this.resetState(handRoot, objectRoot, q, target);
@@ -178,10 +182,10 @@ export class Episode {
   /** decimation physics steps with the explicit PD effort toward target (run_row inner loop). */
   physics(target) {
     const w = this.world, dt = w.dt;
-    const q = new Float64Array(26), fd = new Float64Array(26), effort = new Float64Array(26);
+    const n = w.n, q = new Float64Array(n), fd = new Float64Array(n), effort = new Float64Array(n);
     for (let j = 0; j < this.decimation; j++) {
       w.jointQ(q);
-      for (let i = 0; i < 26; i++) fd[i] = (q[i] - this.prevQ[i]) / dt;
+      for (let i = 0; i < n; i++) fd[i] = (q[i] - this.prevQ[i]) / dt;
       pdEffort(target, q, fd, this.spec, effort);
       this.prevQ.set(q);
       w.applyEffort(effort);

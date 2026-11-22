@@ -1,5 +1,6 @@
 // Viewer page of the DexGO demo. Two scenes:
-// - chain (default): the long-horizon mode. Goal after goal on one object (assets/objects/index.json): "Random
+// - chain (default): the long-horizon mode. One hand of assets/hands.json (tabs "MANO" | "Sharpa"; app/hands.js) and
+//   goal after goal on one object of that hand's objects/index.json (MANO: assets/objects/index.json): "Random
 //   chain" draws each next task at random among the available ones, "Manual" waits for a click on an available node
 //   of the prerequisite graph (app/graph.js). A failed goal (timeout or drop, decided by engine/chain.js) restarts
 //   from a fresh start grasp, shown as a quick fade-in.
@@ -12,15 +13,27 @@
 //   the interpolated wrist pose and finger angles, subdivided once (engine/skin_surface.js) and textured with the
 //   renders' baked skin albedo; its 16 convex colliders are hidden (marker scene: "Show colliders" overlays them).
 //   Without the albedo: flat skin colour. Without mano_local/, or with SKIN = false in app/config.js (the public
-//   build, which then requests nothing from mano_local/): the colliders are the hand, in a skin tone matched to the
-//   textured skin's rendered mean, the skin's roughness and specular, creased normals (smooth sides, sharp rims).
+//   build, which then requests nothing from mano_local/): the colliders are the hand, the angular look of the first
+//   public demo (owner 2026-11-22: the smooth "skin" surfaces of review r9 rounds 1-7, app/hull_surface.js, were
+//   rejected as unnatural): each of MANO's 16 convex hulls drawn as it is (its own vertices and faces; creased
+//   normals: a hard edge wherever two faces meet at more than 45 deg), the digit bases as the colliders are, in a flat
+//   skin tone with the skin's roughness and specular, no sheen. app/hull_surface.js is no longer imported.
+// - Hands with look "visual" in assets/hands.json (Sharpa): the hand's own render meshes (visual.json / visual.bin of
+//   tools/export_hand_visual.py, the URDF's visual meshes decimated), each posed from its link's collider geom
+//   (app/hands.js partOffsets), creased normals; the silvery grey shell and green fingertip pads of the project
+//   video's Sharpa clips (owner 2026-11-22; LOOK.visual); its colliders are hidden (still posed: the follow camera
+//   reads them). The goal hand is the same meshes in the collider goal hand's one-layer grey. Fetched only when that
+//   hand is chosen.
 // - Light: the renders' three studio softboxes as directional lights (one casts soft shadows), a RoomEnvironment
-//   PMREM environment, ACES filmic tone mapping.
-// - Goal ghost: goal object (paper green) and goal hand (grey: wrist goal H*, finger target q_B*), each 40 % opaque,
-//   drawn in a first pass UNDER the real frame (the videos' target layer composited under the frame), so they never
-//   hide the real hand or object. A new goal fades in over 0.28 s. The worker sends the poses of every geom at the
-//   goal state (forward kinematics on a second MjData). The goal hand is the MANO skin at the goal (a 2 mm inflated
-//   shell) with the skin, else its 16 colliders at those poses (the public build).
+//   PMREM environment, ACES filmic tone mapping; a visual-look hand takes its own, lower share of the environment
+//   (LOOK.visual fill), so its shading keeps the video's contrast.
+// - Goal ghost: goal object (paper green, 40 % per surface) and goal hand (cool grey: wrist goal H*, finger target
+//   q_B*), drawn in a first pass UNDER the real frame (the videos' target layer composited under the frame), so they
+//   never hide the real hand or object. A new goal fades in over 0.28 s. The worker sends the poses of every geom at
+//   the goal state (forward kinematics on a second MjData). The goal hand is the MANO skin at the goal (a 2 mm inflated
+//   shell) with the skin, else the same 16 collider hulls at those poses: drawn after the goal object as ONE layer (a
+//   depth pre-pass, then only its nearest surface, LOOK.ghostHandOpacity), so its fingers show through the goal object
+//   and overlapping hulls do not stack into dark blots. A visual-look hand (Sharpa): its render meshes in that layer.
 // - Axes: object frame solid, goal frame dashed at 50 %, screen space on top (app/axes_overlay.js).
 // - Camera: chain scene a follow camera (section "follow camera" below: it fits hand, object and goal ghost; with
 //   ?camera=fixed the fixed camera per object, aimed at the start grasp with the relocation range in view); marker
@@ -38,24 +51,72 @@ import { fetchLoader } from '../engine/loader.js';
 import { AxesOverlay } from './axes_overlay.js';
 import { SKIN } from './config.js';
 import { TaskGraph, taskWords } from './graph.js';
+import { decodeVisual, partOffsets, resolveHands } from './hands.js';
 
 const params = new URLSearchParams(location.search);
 const SCENE = params.get('scene') === 'marker' ? 'marker' : 'chain';
 const MODEL = params.get('model') ?? 'm_marker'; // marker scene
 const SEED = params.has('seed') ? Number(params.get('seed')) : null; // chain scene: reproducible runs
+// seeded runs keep the seed for this many goals, then re-seed (the worker's OPENING_GOALS, 10, without the parameter;
+// tests that replay a whole Node chain pass ?opening=Infinity)
+const OPENING = params.has('opening') ? Number(params.get('opening')) : undefined;
 // The worker owns the playback speed (twice real time) and reports it with the model; interpolation follows its wall
 // period, while the camera smoothing, ghost fade, restart fade and notes keep wall time.
 const SLOW_STEP = Number(params.get('slowstep')) || 0; // test only: extra busy ms per control step in the worker
 const $ = (id) => document.getElementById(id);
 const ui = {
   play: $('play'), reset: $('reset'), view: $('view'), axes: $('axes'), loading: $('loading'),
-  colliders: $('colliders'), collidersToggle: $('colliders-toggle'), objects: $('objects'),
+  colliders: $('colliders'), collidersToggle: $('colliders-toggle'), objects: $('objects'), hands: $('hands'),
   modes: [...document.querySelectorAll('[data-mode]')], code: $('task-code'), words: $('task-words'),
-  goals: $('goals'), note: $('note'), graph: $('graph'), marker: $('marker-status'),
+  goals: $('goals'), note: $('note'), graph: $('graph'), marker: $('marker-status'), announce: $('announce'),
 };
 document.body.dataset.scene = SCENE;
 const LOCAL = new URL('../assets/mano_local/', import.meta.url).href;
 const ASSETS = new URL('../assets/', import.meta.url).href;
+
+// --------------------------------------------------------------------------------------------- embedding page
+// The project page (LazyDemo.astro) keeps its poster over this frame until the first frame is drawn
+// ('dexgo-demo-ready'), and shows the failure sentence instead of its loading line when the demo cannot start
+// ('dexgo-demo-failed', {message}). Same origin only; nothing is posted when the page is opened alone.
+// While embedded it also reports whether the simulation runs ('dexgo-demo-running', {running}): Play / Pause, the view
+// leaving the screen, a hidden tab or the chain's end; the page suspends its own clips only while the demo runs in view.
+// With every model it reports the hand ('dexgo-demo-hand', {hand, first}: its hands.json id, whether it is the first
+// entry), so the page's "Open in a new tab" opens the same hand (?hand=<id>, none for the first).
+// After a keyboard start the page sends 'dexgo-focus': "Pause demo" takes the focus with a visible ring.
+const FAILED = 'The demo could not start in this browser.'; // details go to the console
+const NO_WEBGL = 'The demo needs WebGL 2, which this browser has turned off or does not support.';
+const EMBEDDED = window.parent !== window;
+if (EMBEDDED) { // one main landmark and one h1 on the project page (axe landmark-unique, heading-order)
+  document.querySelector('.demo[role="main"]')?.removeAttribute('role');
+  document.querySelector('.demo > h1')?.remove();
+}
+function tellPage(type, extra = {}) {
+  if (!EMBEDDED) return;
+  window.parent.postMessage({ type, message: '', ...extra }, location.origin);
+}
+// a hand or object switch under way, from the click until its model arrives (or a hand's files fail to download):
+// {timer, shownAt} (the delayed loading line of a hand or object switch; when it was shown, 0 while not); null
+// otherwise (beginSwitch, endSwitch)
+let switching = null;
+// a switch's loading line still on screen after its switch ended, until it has been up LINE_MIN_MS: {since, timer}
+// (endSwitch); null otherwise
+let lineHold = null;
+/** The demo cannot start (no WebGL 2, a failed download or model load): say so in the view and to the page. */
+function fail(detail, message = FAILED) {
+  clearTimeout(switching?.timer); // a pending switch's loading line would replace the sentence
+  clearTimeout(lineHold?.timer); // a held switch line would hide it
+  lineHold = null;
+  ui.loading.hidden = false;
+  ui.loading.textContent = message;
+  console.error(detail);
+  tellPage('dexgo-demo-failed', { message });
+}
+let focusWanted = false; // the page asked for the focus before the controls were enabled
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || e.source !== window.parent || e.data?.type !== 'dexgo-focus') return;
+  if (ui.play.disabled) focusWanted = true;
+  else ui.play.focus({ focusVisible: true });
+});
 
 // --------------------------------------------------------------------------------------------- look (video values)
 const linear = (r, g, b) => new THREE.Color().setRGB(r, g, b, THREE.LinearSRGBColorSpace);
@@ -70,11 +131,38 @@ const LOOK = {
   toneExposure: 1.1, // by eye: mean back-of-hand sRGB (197, 166, 146) vs (201, 167, 137) in the screwdriver poster
   skinFlat: 0xe6c3a0, // without the albedo
   colliderSkin: 0xb4826c, // the colliders drawn as the hand (no skin): rendered like the textured skin's mean tone
+  shadowIntensity: 0.7, // the key light's shadow (hand on object and on itself): 70 % dark, so no crevice goes black
   // everyday_L.py GOAL: --ghost-color 0.2711,0.5024,0.4737 --ghost-opacity 0.4 --hand-color 0.36,0.385,0.375
-  // --hand-opacity 0.4 --hand-inflate 0.002 (linear RGB; roughness 0.5, overlay.GHOST)
+  // --hand-opacity 0.4 --hand-inflate 0.002 (linear RGB; roughness 0.5, overlay.GHOST). The collider goal hand (public
+  // build) is a dark, cool, matte grey at a low opacity, drawn as one layer: the video's 0.36 grey at 40 % read at
+  // about 217/255 on white (1.4:1) and vanished inside the goal object (review r9 round 2); at 64 % it read at 159/255,
+  // darker than the real hand (round 3). At 42 % (seeds 3, 7, 12, 20 samples each, isolated renders): median 192/255 on
+  // white, RGB about (189, 192, 195), 23 levels under the real hand's median; over the goal object it changes the
+  // luminance by 13.7 or more at the 5th percentile (a lighter grey at 64 % matched the goal object's luminance on its
+  // lit palm).
+  // a visual-look hand (Sharpa): the look of the project video's Sharpa clips (owner 2026-11-22), material N1 of
+  // runs/demo/20261116_sharpa_variety/render/material_test.py (render_multi.py --sharpa-body 0.30,0.30,0.30
+  // --sharpa-pad 0.0331,1.0,0.0331, Principled, linear RGB): mid-grey shell roughness 0.45, metallic 0, specular 0.5;
+  // the URDF's green elastomer pads rgba (0.2, 1, 0.2) read as sRGB #33FF33, roughness 0.7; Cycles, Filmic Medium High
+  // Contrast, exposure -1, world (0.78, 0.83, 0.9) at 0.18. The 0.30 grey reads silvery there: lit faces near white
+  // under the large softboxes, a broad specular sheen, crevices and turned-away faces dark under the dim world.
+  // Here (ACES, three directional lights, one shadow, no ambient occlusion) the same values render flat and bright, so
+  // these are matched to the video frames (tools/sharpa_material.mjs vs tools/sharpa_video_stats.py, README "Sharpa
+  // material"): `fill` = the hand's own environment intensity (envMapIntensity; the scene's is LOOK.environment),
+  // `specular` = specularIntensity (1 = F0 0.04). Shell sRGB grey p25 / p50 / p75 / p95 161 / 178 / 204 / 226 vs the
+  // video's hand 133 / 182 / 213 / 234; pads median (111, 210, 106) vs (101, 231, 101) (ACES moves a bright saturated
+  // green toward yellow-white: the URDF green renders (188, 237, 146); this one is near the closest ACES reaches).
+  // Was (r9 round 8, 2026-11-22, a wrong spec) a near-white shell 0.62 with near-black pads 0.02.
+  visual: {
+    shell: { color: linear(0.25, 0.25, 0.25), roughness: 0.4, specular: 1.8, fill: 0.05 },
+    pad: { color: linear(0, 0.45, 0.04), roughness: 0.7, specular: 1, fill: 0 },
+  },
+  visualCrease: Math.PI / 5, // normals smooth across fillets, sharp at shell edges (angle between faces > 36 deg)
   ghostObject: linear(0.2711, 0.5024, 0.4737),
-  ghostHand: linear(0.36, 0.385, 0.375),
+  ghostHand: linear(0.36, 0.385, 0.375), // the MANO skin's goal hand (local preview)
+  ghostColliderHand: linear(0.05, 0.06, 0.068), // matte (roughness 0.85): no bright highlight that would blend into the goal object
   ghostOpacity: 0.4,
+  ghostHandOpacity: 0.42, // the collider goal hand, one layer
   ghostInflate: 0.002,
   ghostFadeMs: 280, // a new goal fades in
   // everyday_L.py compose(): axis length min(0.15 x ortho_scale (the longer image side), 0.10 m), 8 px at 1280 px
@@ -106,7 +194,17 @@ const MIN_SCALE = 900; // px per metre at the target
 const FRAME_MARGIN = 0.035; // m, added to each half size (collider hulls around their centres)
 
 // --------------------------------------------------------------------------------------------- scene
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+let renderer = null;
+try { // three.js r187 needs WebGL 2: checked first, so a browser without it gets the message instead of three's error
+  const probe = document.createElement('canvas').getContext('webgl2');
+  if (!probe) throw new Error('WebGL 2 is not available');
+  probe.getExtension('WEBGL_lose_context')?.loseContext();
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+} catch (err) {
+  fail(`The demo needs WebGL 2: ${err?.message ?? err}`, NO_WEBGL);
+}
+// Without WebGL nothing below can run: module evaluation stops here (no worker, no downloads); the message stays.
+if (!renderer) await new Promise(() => {});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = LOOK.toneExposure;
@@ -115,6 +213,9 @@ renderer.shadowMap.type = THREE.PCFShadowMap; // Vogel-disk PCF, soft with shado
 renderer.shadowMap.autoUpdate = false; // updated once per frame, in the main pass
 renderer.autoClear = false;
 ui.view.insertBefore(renderer.domElement, ui.axes);
+renderer.domElement.setAttribute('role', 'img'); // the view's name (axe: a label needs a role; the div has none)
+renderer.domElement.setAttribute('aria-label',
+  '3D view of the hand and the object; drag to rotate, Ctrl + scroll or pinch to zoom');
 const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -130,13 +231,44 @@ renderer.domElement.style.touchAction = 'pan-y'; // OrbitControls sets 'none'
 const zoomHint = $('zoom-hint');
 if (/Mac|iPhone|iPad/.test(navigator.platform)) zoomHint.textContent = '\u2318 + scroll to zoom';
 let hintTimer = 0;
+// Ctrl / Cmd + wheel zooms here, never in OrbitControls: three's OrbitControls takes a Ctrl + wheel whose Control
+// keydown its own document did not see (keyboard focus in the embedding page) for a trackpad pinch and multiplies it
+// by 10 (review r9 round 3: -40 % per notch, the camera ended inside the rod). One rule for a mouse notch and a pinch:
+// the distance to the target scales by exp(ZOOM.rate x px), px = deltaY in pixels clamped to +-ZOOM.clampPx (a 100 px
+// notch -10.4 % / +11.6 %; a trackpad pinch event of 1-10 px 0.1-1.1 %), within ZOOM.range x the automatic distance
+// (setZoomBounds; OrbitControls applies the same bounds to the two-finger pinch on touch screens).
+const ZOOM = { rate: 0.0011, clampPx: 150, range: [0.35, 3] };
+let zoomBase = 0; // the automatic camera distance (m) the zoom bounds refer to
+/** Bound the viewer's zoom to ZOOM.range x the automatic distance (the fixed camera's, or the follow camera's). */
+function setZoomBounds(distance) {
+  zoomBase = distance;
+  controls.minDistance = ZOOM.range[0] * distance;
+  controls.maxDistance = ZOOM.range[1] * distance;
+}
+const zoomOffset = new THREE.Vector3();
+function zoomWheel(e) {
+  const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1); // lines / pages -> px
+  const scale = Math.exp(ZOOM.rate * THREE.MathUtils.clamp(px, -ZOOM.clampPx, ZOOM.clampPx));
+  zoomOffset.subVectors(camera.position, controls.target);
+  const distance = zoomOffset.length();
+  if (!(distance > 0) || !(zoomBase > 0)) return;
+  const next = THREE.MathUtils.clamp(distance * scale, controls.minDistance, controls.maxDistance);
+  camera.position.copy(controls.target).addScaledVector(zoomOffset, next / distance);
+  controls.update(); // the follow camera then keeps this distance (follow.manual) until Reset or an object switch
+  kick();
+}
 ui.view.addEventListener('wheel', (e) => {
-  if (e.ctrlKey || e.metaKey) return; // OrbitControls zooms (and prevents the page from scrolling)
+  if (e.ctrlKey || e.metaKey) { // zoom (a trackpad pinch arrives as Ctrl + wheel); no page zoom, no OrbitControls
+    e.preventDefault();
+    e.stopPropagation();
+    zoomWheel(e);
+    return;
+  }
   e.stopPropagation(); // never reaches OrbitControls: the page scrolls
   zoomHint.classList.add('is-shown');
   clearTimeout(hintTimer);
   hintTimer = setTimeout(() => zoomHint.classList.remove('is-shown'), 1400);
-}, { capture: true, passive: true });
+}, { capture: true, passive: false });
 const axes = new AxesOverlay(ui.axes);
 
 const studio = LOOK.lights.map(([x, y, z, energy], i) => {
@@ -149,6 +281,7 @@ const studio = LOOK.lights.map(([x, y, z, energy], i) => {
     light.shadow.mapSize.set(1024, 1024);
     Object.assign(light.shadow.camera, { left: -0.22, right: 0.22, top: 0.22, bottom: -0.22, near: 0.2, far: 2.2 });
     light.shadow.radius = 3;
+    light.shadow.intensity = LOOK.shadowIntensity;
     light.shadow.bias = -0.0003;
     light.shadow.normalBias = 0.0015;
   }
@@ -167,8 +300,12 @@ function aimStudio(center) {
 function resize() {
   const { clientWidth: w, clientHeight: h } = ui.view;
   // the Play / Reset overlay at the top of the view (stacked layout): the follow camera keeps the span below it
-  const actions = ui.play.parentElement.getBoundingClientRect(), view = ui.view.getBoundingClientRect();
-  follow.reserve = actions.bottom > view.top && actions.top < view.bottom ? Math.ceil(actions.bottom - view.top) + 6 : 0;
+  // (and the Mode tabs in its top-left corner, same row, since 2026-11-22)
+  const view = ui.view.getBoundingClientRect();
+  follow.reserve = Math.max(0, ...[ui.play.parentElement, ui.modes[0].parentElement].map((el) => {
+    const r = el.getBoundingClientRect();
+    return r.bottom > view.top && r.top < view.bottom ? Math.ceil(r.bottom - view.top) + 6 : 0;
+  }));
   renderer.setSize(w, h, false);
   axes.resize(w, h, renderer.getPixelRatio());
   camera.aspect = w / Math.max(h, 1);
@@ -179,7 +316,9 @@ function resize() {
 }
 new ResizeObserver(resize).observe(ui.view);
 
-/** three.js geometry of one MuJoCo geom (mjtGeom: 0 plane, 2 sphere, 3 capsule, 4 ellipsoid, 5 cylinder, 6 box, 7 mesh). */
+/** three.js geometry of one MuJoCo geom (mjtGeom: 0 plane, 2 sphere, 3 capsule, 4 ellipsoid, 5 cylinder, 6 box, 7 mesh).
+ *  A mesh (the object's convex pieces, MANO's 16 hulls) is drawn as it is: its own vertices and faces, creased normals
+ *  (the public collider hand's angular look, owner 2026-11-22). */
 function geometryOf(g) {
   const [a, b, c] = g.size;
   switch (g.type) {
@@ -194,7 +333,10 @@ function geometryOf(g) {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(g.vert), 3));
       geo.setIndex(Array.from(g.face));
-      return toCreasedNormals(geo, g.isObject ? Math.PI / 6 : Math.PI / 4); // smooth sides, sharp rims
+      // smooth sides, sharp rims. In millimetres: toCreasedNormals joins vertices on a 0.01-unit grid, which in metres
+      // shared one normal among facets up to 1 cm apart and shaded the round rod in flat bands of about five facets
+      geo.scale(1000, 1000, 1000);
+      return toCreasedNormals(geo, g.isObject ? Math.PI / 6 : Math.PI / 4).scale(1e-3, 1e-3, 1e-3);
     }
     default: return null;
   }
@@ -205,26 +347,41 @@ let prevPoses = null, nextPoses = null, arrived = 0, lastInfo = null, lastChain 
 // wall ms per control step (the worker's policy_dt / speed); span: the interpolation time, that step or, while frames
 // arrive later than it (a device slower than twice real time), their smoothed arrival interval
 let stepMs = 25, span = 25;
-let prevHand = null, nextHand = null; // wrist position (3), rotation (9, row-major), finger angles (20)
+let prevHand = null, nextHand = null; // wrist position (3), rotation (9, row-major), finger angles (MANO 20)
 let prevObject = null, nextObject = null; // object body position (3), rotation (9, row-major)
 let goal = null, axisLength = 0.08; // goal from the worker (objectP/R, wristP/R, finger); axis length (m)
 let ghostShown = 0; // performance.now() when the current goal appeared (its fade-in)
 let posed = false; // the current model's meshes have received a pose (hidden until then)
 const handMeshes = []; // the hand's collider meshes: [mesh, its opaque material]
 const objectMeshes = []; // the object's meshes (their geometry bounding boxes frame the follow camera)
+// ghostByGeom: the goal ghost of each geom
+let ghostByGeom = [];
+// render parts of a visual-look hand (Sharpa): {geom (its link's collider geom), offset (Matrix4: the part in that
+// geom's frame), mesh, ghost / depth (the goal hand's part)}; the geometries and materials belong to the look (kept)
+let parts = [];
+// the hand's look (assets/hands.json "look"): {kind: 'colliders'} or {kind: 'visual', parts, geometries, shell, pad}
+let look = { kind: 'colliders' };
+// The collider goal hand in one layer (ghost pass): its depth first (no colour), then its colour on its nearest surface
+// only, both after the goal object (renderOrder), so its fingers show through the goal object.
+const GHOST_ORDER = { object: 1, handDepth: 2, hand: 3 };
 
 /** Remove the previous model's meshes (object switch: the worker loads another model). */
 function clearScene() {
-  const all = [...meshes, ...ghosts, ...handGhosts].filter(Boolean);
+  const depths = handGhosts.map((g) => g.userData.depth);
+  const all = [...meshes, ...ghosts, ...handGhosts, ...depths].filter(Boolean);
   for (const mesh of all) {
     scene.remove(mesh);
-    if (mesh.material !== colliderOverlay && mesh.material !== handGhostMaterial) mesh.material.dispose(); // not shared
+    if (mesh.material !== colliderOverlay && mesh.material !== handGhostMaterial
+      && mesh.material !== ghostDepthMaterial) mesh.material.dispose(); // not shared
   }
   for (const g of new Set(all.map((m) => m.geometry))) g.dispose();
   for (const [, opaque] of handMeshes) opaque.dispose();
+  for (const p of parts) scene.remove(p.mesh, p.ghost, p.depth); // the look's geometries and materials stay
+  parts = [];
   meshes = [];
   ghosts = [];
   handGhosts = [];
+  ghostByGeom = [];
   goal = null; // the new model's first frame brings its goal
   handMeshes.length = 0;
   objectMeshes.length = 0;
@@ -234,6 +391,8 @@ function clearScene() {
 
 function buildScene(geoms) {
   clearScene();
+  // one mesh per geom: the object's pieces and the hand's collider hulls (MANO: drawn as the hand; a visual-look hand
+  // draws its render meshes below, its hulls stay hidden but posed: the follow camera and tests read them)
   for (const [id, g] of geoms.entries()) {
     const geo = geometryOf(g);
     if (!geo || g.rgba[3] === 0) { meshes.push(null); continue; }
@@ -244,6 +403,7 @@ function buildScene(geoms) {
     mesh.matrixAutoUpdate = false;
     mesh.castShadow = mesh.receiveShadow = !!g.isObject;
     mesh.visible = false; // until the first frame
+    mesh.userData.geom = id;
     scene.add(mesh);
     meshes.push(mesh);
     if (!g.isObject) handMeshes.push([mesh, mesh.material]);
@@ -252,15 +412,39 @@ function buildScene(geoms) {
       objectMeshes.push(mesh);
     }
     // its goal ghost (the object's, or one part of the collider goal hand), placed by the worker's ghost poses
-    const ghost = new THREE.Mesh(geo, g.isObject ? ghostMaterial(LOOK.ghostObject) : handGhostMaterial);
-    ghost.matrixAutoUpdate = false;
-    ghost.layers.set(GHOST);
-    ghost.visible = false;
+    const ghost = ghostMesh(geo, g.isObject ? ghostMaterial(LOOK.ghostObject) : handGhostMaterial,
+      g.isObject ? GHOST_ORDER.object : GHOST_ORDER.hand);
     ghost.userData.geom = id;
-    scene.add(ghost);
+    if (!g.isObject) ghost.userData.depth = ghostMesh(geo, ghostDepthMaterial, GHOST_ORDER.handDepth);
+    ghostByGeom[id] = ghost;
     (g.isObject ? ghosts : handGhosts).push(ghost);
   }
+  // a visual-look hand: its render parts, each posed from its link's collider geom (app/hands.js partOffsets)
+  if (look.kind === 'visual') {
+    partOffsets(look.parts, geoms).forEach(({ geom, offset }, k) => {
+      const geo = look.geometries[look.parts[k].mesh];
+      const mesh = new THREE.Mesh(geo, look.parts[k].kind === 'pad' ? look.pad : look.shell);
+      mesh.matrixAutoUpdate = false;
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.visible = false;
+      scene.add(mesh);
+      parts.push({ geom, offset: new THREE.Matrix4().fromArray(offset), mesh,
+        ghost: ghostMesh(geo, handGhostMaterial, GHOST_ORDER.hand),
+        depth: ghostMesh(geo, ghostDepthMaterial, GHOST_ORDER.handDepth) });
+    });
+  }
   styleColliders();
+}
+
+/** A goal-ghost mesh (ghost pass, placed by setGoal, hidden until a goal exists). */
+function ghostMesh(geometry, material, order) {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.matrixAutoUpdate = false;
+  mesh.layers.set(GHOST);
+  mesh.renderOrder = order;
+  mesh.visible = false;
+  scene.add(mesh);
+  return mesh;
 }
 
 /** The skin's material (flat colour until an albedo map is set): roughness, specular and sheen of the renders. */
@@ -272,7 +456,9 @@ function skinLikeMaterial(m = {}) {
   });
 }
 
-/** The colliders as the hand (no skin): the skin's roughness and specular, no sheen (it whitens the coarse hulls). */
+/** The colliders as the hand (no skin; the public build's angular hulls): the first public demo's material (site
+ *  commit 4c6b6b9, owner 2026-11-22): the skin's roughness and specular, no sheen (it whitens the coarse hulls), the
+ *  scene's environment. */
 function colliderSkinMaterial() {
   return new THREE.MeshPhysicalMaterial({ color: LOOK.colliderSkin, roughness: 0.6, metalness: 0.0,
     specularIntensity: 0.16 });
@@ -285,8 +471,12 @@ function ghostMaterial(color) {
     side: THREE.DoubleSide,
   });
 }
-// the collider goal hand (no skin): one grey ghost material shared by its 16 parts (kept across object switches)
-const handGhostMaterial = ghostMaterial(LOOK.ghostHand);
+// The goal hand without the skin (the collider hand's surfaces, or a visual-look hand's render meshes), shared by its
+// parts (kept across object and hand switches): its depth pre-pass, then one layer of colour (front faces, depth equal
+// to the pre-pass: only the nearest surface).
+const ghostDepthMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, transparent: true, depthWrite: true });
+const handGhostMaterial = new THREE.MeshStandardMaterial({ color: LOOK.ghostColliderHand, roughness: 0.85,
+  metalness: 0.0, transparent: true, opacity: LOOK.ghostHandOpacity, depthWrite: false });
 
 // --------------------------------------------------------------------------------------------- MANO skin
 // depth-tested against the skin and pushed slightly back: blue where a collider lies outside the skin
@@ -296,17 +486,29 @@ const colliderOverlay = new THREE.MeshStandardMaterial({
 });
 let skin = null, skinMesh = null, skinSurface = null, skinKey = null, ghostHand = null, ghostSurface = null;
 
-/** Without the skin the colliders are the hand (opaque); with it they are an optional translucent overlay. The goal
- *  ghosts show while a goal is installed; the collider goal hand only without the skin (which has its own). */
+/** The MANO skin is drawn (local SKIN build, loaded, and the MANO hand: a hand with look "colliders"). */
+const skinShown = () => !!skinMesh && look.kind === 'colliders';
+
+/** Without the skin the colliders are the hand (opaque); with it they are an optional translucent overlay; a
+ *  visual-look hand hides them (its render parts are the hand). The goal ghosts show while a goal is installed; the
+ *  collider goal hand only without the skin (which has its own). */
 function styleColliders() {
+  const skinOn = skinShown(), visual = look.kind === 'visual';
+  if (skinMesh && !skinOn) skinMesh.visible = ghostHand.visible = false; // another hand than MANO
   for (const [mesh, opaque] of handMeshes) {
-    mesh.visible = (!skinMesh || ui.colliders.checked) && posed;
-    mesh.material = skinMesh ? colliderOverlay : opaque;
-    mesh.renderOrder = skinMesh ? 2 : 0;
-    mesh.castShadow = mesh.receiveShadow = !skinMesh;
+    mesh.visible = !visual && (!skinOn || ui.colliders.checked) && posed;
+    mesh.material = skinOn ? colliderOverlay : opaque;
+    mesh.renderOrder = skinOn ? 2 : 0;
+    mesh.castShadow = mesh.receiveShadow = !skinOn;
   }
   for (const ghost of ghosts) ghost.visible = !!goal;
-  for (const ghost of handGhosts) ghost.visible = !!goal && !skinMesh;
+  for (const ghost of handGhosts) {
+    ghost.visible = ghost.userData.depth.visible = !!goal && !skinOn && !visual;
+  }
+  for (const p of parts) {
+    p.mesh.visible = posed;
+    p.ghost.visible = p.depth.visible = !!goal;
+  }
 }
 
 /** A mesh drawing a SkinSurface's render vertices (its arrays are the attribute arrays). */
@@ -374,7 +576,7 @@ ui.colliders.onchange = styleColliders;
 /** The goal hand: skin at the wrist goal H* with the finger target q_B*, inflated (static per goal). */
 function skinGoal() {
   if (!ghostSurface) return;
-  if (!goal) { ghostHand.visible = false; return; }
+  if (!goal || !skinShown()) { ghostHand.visible = false; return; }
   const { positions } = skin.skin(goal.finger, goal.wristP, goal.wristR);
   ghostSurface.update(positions, LOOK.ghostInflate);
   markUpdated(ghostHand);
@@ -400,7 +602,7 @@ function interpolatePose(a, b, t) {
 const finger = new Float64Array(20);
 /** Skin the hand state interpolated like the geoms (position lerp, rotation slerp, finger angles lerp). */
 function applySkin(alpha) {
-  if (!skinMesh || !nextHand) return;
+  if (!skinShown() || !nextHand) return;
   const t = prevHand && alpha < 1 ? alpha : 1;
   if (skinKey && skinKey[0] === nextHand && skinKey[1] === t) return; // unchanged (paused / between frames)
   skinKey = [nextHand, t];
@@ -433,6 +635,7 @@ function applyPoses(alpha) {
     }
     mesh.matrix.compose(tmp.pb, tmp.qb, tmp.s.set(1, 1, 1));
   });
+  for (const p of parts) p.mesh.matrix.multiplyMatrices(meshes[p.geom].matrix, p.offset);
 }
 
 // --------------------------------------------------------------------------------------------- camera
@@ -442,6 +645,7 @@ function applyPoses(alpha) {
 function snapCamera(target, distance, direction = CAMERA_DIRECTION) {
   controls.target.copy(target);
   camera.position.copy(target).addScaledVector(direction, distance);
+  setZoomBounds(distance);
   controls.update();
   aimStudio(controls.target);
   // the videos' axis length: a fraction of the visible extent (longer image side) at the target, capped
@@ -480,10 +684,13 @@ function frameChain(objP, handP) {
 // most FOLLOW.scale[1] px per metre at the target; zoomed out, at least FOLLOW.scale[0] px per metre, unless that would
 // show less than FOLLOW.extent m across the narrower usable side (short views). A cut (load, Reset, an object switch, a
 // fresh start after a failure) snaps without smoothing. The viewer's orbit changes the viewing direction, which the
-// follow camera keeps. A viewer zoom (Ctrl / Cmd + wheel, pinch) suspends the automatic zoom: the distance stays where
-// the viewer left it, the target keeps following, until Reset or an object switch. Clipping of this filter, replayed on
-// Node chains: README "Viewer".
-const FOLLOW = { tau: 0.8, margin: 0.03, scale: [1400, 3200], extent: 0.279 }; // s, m, px/m, m
+// follow camera keeps. A viewer zoom (Ctrl / Cmd + wheel, pinch; within ZOOM.range of the automatic distance) suspends
+// the automatic zoom: the distance stays where the viewer left it, the target keeps following, until Reset or an object
+// switch. Clipping of this filter, replayed on Node chains: README "Viewer".
+// Tuned for twice real time in the page's frames (review r9, 2026-11-22; was tau 0.8 s, margin 0.03 m, 1400 px/m,
+// dead 0.9, chosen at 1x): share of 0.1 s samples with the hand / object / goal box past the view edge, seeds 7, 3,
+// 12, 50 s each (README "Viewer"): 800 x 474 frame 17.5 % -> 4.7 % (hand 169 -> 163 px), 350 x 622 7.2 -> 2.8 %.
+const FOLLOW = { tau: 0.35, margin: 0.045, scale: [1350, 3200], extent: 0.279 }; // s, m, px/m, m
 const CAMERA_MODE = params.get('camera');
 const follow = { target: new THREE.Vector3(), distance: 1, manual: 0, applied: 0, snap: true, reserve: 0,
   anchor: new THREE.Vector3(), anchorDistance: 0, reaim: true };
@@ -492,7 +699,7 @@ const follow = { target: new THREE.Vector3(), distance: 1, manual: 0, applied: 0
 // ghost, plus the margin) would leave FOLLOW.dead of the half view, and zooms out but never in. Replayed on the Node
 // chains this shows 2.5 times more on-screen travel of the object over relocation goals than following the span's
 // centre (median 76 vs 31 px at 1080 x 640, 48 vs 19 px at 390 x 844), with less clipping (README "Viewer").
-FOLLOW.dead = 0.9;
+FOLLOW.dead = 0.85;
 // Paused: the camera finishes its easing with time constant pauseTau and snaps pauseCap s after the pause, so the frame
 // loop stops within about a second on every viewport (it eased with tau before and kept drawing for 2-10 s).
 FOLLOW.pauseTau = 0.15; // s
@@ -524,11 +731,16 @@ function followAim() {
       add(p.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).applyMatrix4(matrix));
     }
   };
-  for (const [mesh] of handMeshes) add(p.setFromMatrixPosition(mesh.matrix));
+  // the hand: its collider centres (MANO), or a visual-look hand's part boxes (Sharpa: its large links' centres lie
+  // far inside the surface; framed by centres the hand or the goal hand crossed the view's edge in 15-31 % of the
+  // samples, README "Hand choice")
+  if (parts.length) for (const q of parts) corners(q.mesh, q.mesh.matrix);
+  else for (const [mesh] of handMeshes) add(p.setFromMatrixPosition(mesh.matrix));
   for (const mesh of objectMeshes) corners(mesh, mesh.matrix);
   if (goal) { // the goal ghost: object box and the goal hand's collider centres (drawn as the skin or the colliders)
     for (const ghost of ghosts) corners(ghost, ghost.matrix);
-    for (const ghost of handGhosts) add(p.setFromMatrixPosition(ghost.matrix));
+    if (parts.length) for (const q of parts) corners(q.ghost, q.ghost.matrix);
+    else for (const ghost of handGhosts) add(p.setFromMatrixPosition(ghost.matrix));
   }
   mean.multiplyScalar(1 / n);
   const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
@@ -536,7 +748,8 @@ function followAim() {
   const fit = Math.max(((y1 - y0) / 2 + FOLLOW.margin) / (t * usable / H),
     ((x1 - x0) / 2 + FOLLOW.margin) / (t * camera.aspect));
   const near = H / (2 * t * FOLLOW.scale[1]);
-  const far = Math.max(H / (2 * t * FOLLOW.scale[0]), (FOLLOW.extent * H) / (2 * t * Math.min(W, usable)));
+  // zoomed out at least FOLLOW.scale[0] px per metre, or the hand's own floor (assets/hands.json minScale: Sharpa 600)
+  const far = Math.max(H / (2 * t * (hand?.minScale ?? FOLLOW.scale[0])), (FOLLOW.extent * H) / (2 * t * Math.min(W, usable)));
   const distance = THREE.MathUtils.clamp(fit, near, far);
   // target: the span's centre on the image plane at the points' mean depth, raised by half the reserve so the span
   // sits centred in the usable part of the view
@@ -589,6 +802,7 @@ function followStep(dt) {
   follow.snap = false;
   follow.target.lerp(fw.raw, k);
   follow.distance += (raw - follow.distance) * k;
+  setZoomBounds(follow.distance); // the viewer's zoom stays within ZOOM.range of the automatic distance
   const direction = fw.p.subVectors(camera.position, controls.target).normalize();
   controls.target.copy(follow.target);
   follow.applied = follow.manual || follow.distance;
@@ -641,7 +855,16 @@ function placeFloor(objP, handP) {
 function setGoal(newGoal, poses) {
   goal = newGoal;
   follow.reaim = true;
-  if (goal) for (const ghost of [...ghosts, ...handGhosts]) matrixOf(poses, ghost.userData.geom, ghost.matrix);
+  if (goal) {
+    for (const ghost of [...ghosts, ...handGhosts]) {
+      matrixOf(poses, ghost.userData.geom, ghost.matrix);
+      ghost.userData.depth?.matrix.copy(ghost.matrix);
+    }
+    for (const p of parts) {
+      p.ghost.matrix.multiplyMatrices(ghostByGeom[p.geom].matrix, p.offset);
+      p.depth.matrix.copy(p.ghost.matrix);
+    }
+  }
   styleColliders();
   skinGoal();
   ghostShown = performance.now();
@@ -650,15 +873,17 @@ function setGoal(newGoal, poses) {
 function ghostFade(now) {
   const f = Math.min(1, (now - ghostShown) / LOOK.ghostFadeMs);
   for (const ghost of ghosts) ghost.material.opacity = LOOK.ghostOpacity * f;
-  handGhostMaterial.opacity = LOOK.ghostOpacity * f;
+  handGhostMaterial.opacity = LOOK.ghostHandOpacity * f;
   if (ghostHand) ghostHand.material.opacity = LOOK.ghostOpacity * f;
   return f;
 }
 
-// window.viewerGhost() (tests): which goal hand is drawn ('skin' | 'colliders' | 'none'), its opacity, and the mean /
-// max distance (mm) between the goal hand's collider centres and the hand's in the latest frame (small at a latch)
+// window.viewerGhost() (tests): which goal hand is drawn ('skin' | 'colliders' | 'visual' | 'none'), its opacity, and
+// the mean / max distance (mm) between the goal hand's collider centres and the hand's in the latest frame (small at a
+// latch)
 window.viewerGhost = () => {
-  const drawn = !goal ? 'none' : ghostHand?.visible ? 'skin' : handGhosts.some((g) => g.visible) ? 'colliders' : 'none';
+  const drawn = !goal ? 'none' : ghostHand?.visible ? 'skin' : parts.some((p) => p.ghost.visible) ? 'visual'
+    : handGhosts.some((g) => g.visible) ? 'colliders' : 'none';
   let sum = 0, max = 0;
   for (const ghost of handGhosts) {
     const o = 12 * ghost.userData.geom, e = ghost.matrix.elements;
@@ -666,7 +891,10 @@ window.viewerGhost = () => {
     sum += d;
     max = Math.max(max, d);
   }
-  return { hand: drawn, parts: handGhosts.filter((g) => g.visible).length, opacity: handGhostMaterial.opacity,
+  // parts: drawn parts of the goal hand (its collider hulls, or a visual-look hand's render meshes)
+  return { hand: drawn, parts: drawn === 'visual' ? parts.filter((p) => p.ghost.visible).length
+    : handGhosts.filter((g) => g.visible).length,
+    opacity: handGhostMaterial.opacity,
     gapMm: (1000 * sum) / Math.max(1, handGhosts.length), maxMm: 1000 * max };
 };
 
@@ -702,10 +930,14 @@ const NOTES = { // wording of the project page's copy review (review_copy_r2.md,
   'no node available': 'No task is available from this grasp: starting from a new initial grasp.',
   restart: 'Starting from a new initial grasp.',
 };
-const FAILED = 'The demo could not start in this browser.'; // details go to the console
-let note = { text: '', flash: false, until: 0 }, noteTimer = 0;
-// the stacked layout of index.html (tall or narrow viewports) uses the compact graph
-const STACKED = matchMedia('(max-width: 819px), (max-aspect-ratio: 1/1)');
+// a reached goal: the note line shows "✓ <task> reached" in the ink colour (bold) for SUCCESS_MS of wall time (the
+// dwell itself lasts 0.25 s at twice real time), while the next goal already runs
+const SUCCESS_MS = 1200;
+// a queued task dropped at a failure: its refusal outline stays at full opacity this long before its 0.6 s fade
+const REFUSED_HOLD_MS = 1200;
+let note = { text: '', kind: '', until: 0 }, noteTimer = 0;
+// the stacked layout of index.html (tall or narrow viewports) uses the compact graph; the same query as its CSS
+const STACKED = matchMedia('(max-width: 779px), (max-aspect-ratio: 1/1)');
 const graph = SCENE === 'chain' ? new TaskGraph(ui.graph, { onSelect: queueTask, compact: STACKED.matches }) : null;
 STACKED.addEventListener('change', () => {
   graph?.setCompact(STACKED.matches);
@@ -713,13 +945,17 @@ STACKED.addEventListener('change', () => {
   resize();
 });
 
-/** Write a text only when it changes (the status is a live region; frames arrive at 20 Hz). */
+/** Write a text only when it changes (frames arrive at 40 Hz). */
 function setText(el, text) {
   if (el.textContent !== text) el.textContent = text;
 }
 
-function flashNote(text, ms = 2600) {
-  note = { text, flash: true, until: performance.now() + ms };
+/** A note for ms of wall time: kind 'fail' (a failed goal, brown), 'error' (a hand that could not be loaded, brown; a
+ *  reached goal's note does not replace it while it shows: in Random chain goals are reached every 1-3 s) or 'done' (a
+ *  reached goal, ink). */
+function flashNote(text, ms = 2600, kind = 'fail') {
+  if (kind === 'done' && note.kind === 'error' && note.until > performance.now()) return;
+  note = { text, kind, until: performance.now() + ms };
   clearTimeout(noteTimer);
   noteTimer = setTimeout(() => { // the note expires (a timer: the frame loop may be stopped)
     note.until = 0;
@@ -727,7 +963,32 @@ function flashNote(text, ms = 2600) {
   }, ms);
 }
 
+// Screen readers: the visible status is not a live region (in Random chain it changes every 1-3 s); one visually
+// hidden status line speaks, at most one message per SAY_MS (messages that arrive in between are joined into the next
+// one; a joined "Goal X" is dropped when "X reached" follows it, so nothing stale is read):
+// - Random chain without the viewer's input: only the start, Reset, a mode or object change, a failure with its fresh
+//   start, the chain's end and every PROGRESS_EVERY-th completed goal (about 2 a minute at twice real time; the goals
+//   are not read one by one, they change every 1-3 s);
+// - Manual: the prompt, the chosen task, its goal and its result.
+const SAY_MS = 3000;
+const PROGRESS_EVERY = 10;
+let sayParts = [], sayLast = -Infinity, sayTimer = 0;
+/** Queue one message; goal / reached: the task it announces (for dropping a stale goal within one batch). */
+function say(text, { goal = null, reached = null } = {}) {
+  if (!ui.announce || sayParts.some((p) => p.text === text)) return;
+  sayParts.push({ text, goal, reached });
+  if (sayTimer) return;
+  sayTimer = setTimeout(() => {
+    sayTimer = 0;
+    sayLast = performance.now();
+    const parts = sayParts.filter((p, i) => !p.goal || !sayParts.slice(i + 1).some((q) => q.reached === p.goal));
+    ui.announce.textContent = parts.slice(-3).map((p) => p.text).join(' ');
+    sayParts = [];
+  }, Math.max(0, sayLast + SAY_MS - performance.now()));
+}
+
 function showChain(c) {
+  const previous = lastChain;
   lastChain = c;
   const manual = c.mode === 'manual';
   const active = c.node && (c.phase === 'reach' || c.phase === 'dwell');
@@ -736,22 +997,32 @@ function showChain(c) {
     setText(ui.words, 'Chain ended. Press Reset to start again.');
   } else if (active) {
     setText(ui.code, c.node);
-    setText(ui.words, taskWords(c.node) + (c.phase === 'dwell' ? ' ✓' : ''));
+    // no check mark here: the note line's "✓ X reached" is the one success signal (review r9 round 3)
+    setText(ui.words, taskWords(c.node));
   } else {
     setText(ui.code, '');
     setText(ui.words, manual ? 'Select the next task on the graph.' : '');
   }
   setText(ui.goals, `${c.goalsDone} goal${c.goalsDone === 1 ? '' : 's'} completed`);
-  const now = performance.now();
-  if (note.until > now) {
+  const now = performance.now(), noted = note.until > now;
+  if (noted) {
     setText(ui.note, note.text);
   } else {
-    setText(ui.note, manual && c.queued ? `Next: ${c.queued}, ${taskWords(c.queued)}` : '');
+    // only while a goal runs: an idle pick starts at the next step, so its "Next:" would flash for a frame or two
+    setText(ui.note, manual && c.queued && active ? `Next: ${c.queued}, ${taskWords(c.queued)}` : '');
   }
-  ui.note.classList.toggle('is-flash', note.until > now && note.flash);
-  graph.set({ current: active ? c.node : null, available: c.available ?? [], queued: c.queued ?? null,
-    selectable: manual && c.phase !== 'ended' });
+  ui.note.classList.toggle('is-flash', noted && (note.kind === 'fail' || note.kind === 'error'));
+  ui.note.classList.toggle('is-done', noted && note.kind === 'done');
+  // available nodes are buttons in both modes: a click in Random chain switches to Manual (queueTask); the queue ring
+  // only in Manual (Random chain draws its own next node, the worker drops a Manual pick on the switch)
+  // while a hand or object switch loads, no node is a button (the new model's runner would drop a pick made now)
+  graph.set({ current: active ? c.node : null, available: c.available ?? [], queued: manual ? (c.queued ?? null) : null,
+    selectable: c.phase !== 'ended' && !switching });
   for (const b of ui.modes) b.setAttribute('aria-pressed', String(b.dataset.mode === c.mode));
+  if (manual && !active && c.phase !== 'ended' && !c.queued && (previous?.node !== c.node || previous?.phase !== c.phase)) {
+    say('Select the next task on the graph.');
+  }
+  if (c.phase === 'ended' && previous?.phase !== 'ended') say('Chain ended. Press Reset to start again.');
   Object.assign(document.body.dataset, { node: c.node ?? '', phase: c.phase, goals: String(c.goalsDone),
     mode: c.mode, goalstep: String(c.stepInGoal ?? 0) });
 }
@@ -768,9 +1039,14 @@ function showMarker(info) {
 }
 
 let pausedAt = 0; // when the simulation last stopped playing
+let toldRunning = null; // the running state last reported to the embedding page
 function showInfo(info) {
   if (lastInfo?.playing && !info.playing) pausedAt = performance.now();
   lastInfo = info;
+  if (info.playing !== toldRunning) { // the page suspends its own clips only while the demo runs (and is in view)
+    toldRunning = info.playing;
+    tellPage('dexgo-demo-running', { running: info.playing });
+  }
   ui.play.textContent = info.playing || (wantPlay && autoPaused) ? 'Pause demo' : 'Play demo';
   ui.play.disabled = !!info.end;
   if (SCENE === 'marker') showMarker(info);
@@ -782,6 +1058,7 @@ function showInfo(info) {
 const worker = new Worker(new URL('./sim.worker.js', import.meta.url), { type: 'module' });
 let wantPlay = SCENE === 'chain'; // the chain starts by itself; the marker scene waits for Play
 let autoPaused = false, inSight = true, ready = false;
+let wantedNext = null; // Manual: the task the viewer clicked, until its goal starts (queueTask)
 const counts = { restarts: 0, drops: 0, timeouts: 0 };
 
 /** Whether the view can be seen: the document is visible and the view intersects the (top-level) viewport. */
@@ -790,13 +1067,19 @@ function shown() {
 }
 
 /** Run the worker iff the viewer wants it and the view is visible (pauses off-screen and in background tabs); the
- *  frame loop follows (kick). */
+ *  frame loop follows (kick). Sent when the wish differs from the worker's last report or from the last request:
+ *  the report lags a request by one worker round trip, so a 'pause' followed within it by the wish to play again
+ *  (the view leaving and re-entering the screen, a tab hidden and shown again) would otherwise send nothing and
+ *  leave the demo paused under "Play demo" (timeout_cmp/NOPLAY.md). */
+let asked = false; // the last request sent: true 'play', false 'pause' (the worker starts paused)
 function syncPlay() {
   kick();
   if (!ready) return;
   const run = wantPlay && shown();
   autoPaused = wantPlay && !shown();
-  if (run !== !!lastInfo?.playing) worker.postMessage({ type: run ? 'play' : 'pause' });
+  if (run === !!lastInfo?.playing && run === asked) return;
+  asked = run;
+  worker.postMessage({ type: run ? 'play' : 'pause' });
 }
 document.addEventListener('visibilitychange', syncPlay);
 new IntersectionObserver((entries) => {
@@ -804,17 +1087,83 @@ new IntersectionObserver((entries) => {
   syncPlay();
 }).observe(ui.view);
 
-let fadeOut = null;
-/** Object switch: dim the view until the new model's first frame fades in. */
+// The view's two canvases fade, not #view itself: the loading line of a slow hand switch (#loading, inside #view)
+// stays at full opacity over the dimmed scene.
+let fadeOut = [];
+const viewLayers = () => [renderer.domElement, ui.axes];
+/** Object or hand switch: dim the view until the new model's first frame fades in. */
 function dimView() {
-  fadeOut?.cancel();
-  fadeOut = ui.view.animate([{ opacity: 1 }, { opacity: 0.2 }], { duration: 220, easing: 'ease-in', fill: 'forwards' });
+  for (const a of fadeOut) a.cancel();
+  fadeOut = viewLayers().map((el) => el.animate([{ opacity: 1 }, { opacity: 0.2 }],
+    { duration: 220, easing: 'ease-in', fill: 'forwards' }));
 }
-function fadeIn() {
-  fadeOut?.cancel();
-  fadeOut = null;
-  ui.view.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 380, easing: 'ease-out' });
+const FADE_IN_MS = 380; // a cut's fade-in of the view (also the delay of a refusal outline shown with a cut)
+/** Fade the view in from opacity `from` (a cut: 0; a failed hand switch: the dim it reached). */
+function fadeIn(from = 0) {
+  for (const a of fadeOut) a.cancel();
+  fadeOut = [];
+  for (const el of viewLayers()) {
+    el.animate([{ opacity: from }, { opacity: 1 }], { duration: FADE_IN_MS, easing: 'ease-out' });
+  }
 }
+
+const SWITCH_LINE_MS = 400; // a switch still loading after this long shows its loading line
+const LINE_MIN_MS = 400; // a shown loading line stays at least this long (it never flashes for a few frames)
+/** Hide the loading line now (and drop a held line's timer). */
+function hideLine() {
+  clearTimeout(lineHold?.timer);
+  lineHold = null;
+  ui.loading.hidden = true;
+}
+/** A hand or object switch starts: the view dims, the Mode tabs and the graph's nodes wait (the hand and object tabs
+ *  are set by the caller); a switch still loading after SWITCH_LINE_MS shows its line ("Loading the Sharpa hand…",
+ *  "Loading the hexagonal object…") over the dimmed view (no line on a fast link). If the last switch's line is still
+ *  held (endSwitch), it goes on at once as this switch's line: it never flashes off and on, never shows the old text. */
+function beginSwitch(line) {
+  clearTimeout(switching?.timer);
+  const held = lineHold;
+  clearTimeout(held?.timer);
+  lineHold = null;
+  const s = { timer: 0, shownAt: held ? held.since : 0 };
+  const show = () => {
+    ui.loading.textContent = line;
+    ui.loading.hidden = false;
+    ui.view.setAttribute('aria-busy', 'true');
+  };
+  if (held) {
+    show();
+  } else {
+    s.timer = setTimeout(() => {
+      s.shownAt = performance.now();
+      show();
+    }, SWITCH_LINE_MS);
+  }
+  switching = s;
+  for (const b of ui.modes) b.setAttribute('aria-disabled', 'true');
+  if (lastChain) showChain(lastChain); // the nodes stop being buttons now, not at the next frame
+  dimView();
+}
+/** The switch's model arrived, or its files failed: the Mode tabs and nodes answer again at once; a loading line that
+ *  was shown goes once it has been up LINE_MIN_MS (the new model fades in under it meanwhile). */
+function endSwitch() {
+  if (!switching) return;
+  clearTimeout(switching.timer);
+  const { shownAt } = switching;
+  switching = null;
+  const left = shownAt ? LINE_MIN_MS - (performance.now() - shownAt) : 0;
+  if (left > 0) lineHold = { since: shownAt, timer: setTimeout(hideLine, left) };
+  else hideLine();
+  ui.view.removeAttribute('aria-busy');
+  for (const b of ui.modes) b.removeAttribute('aria-disabled');
+}
+// during a switch a click, Enter or Space on a node chooses nothing and draws no refusal outline (the arrows still move)
+ui.graph.addEventListener('click', (e) => { if (switching) e.stopPropagation(); }, true);
+ui.graph.addEventListener('keydown', (e) => {
+  if (switching && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
 
 function onFrame(msg) {
   const now = performance.now();
@@ -839,27 +1188,80 @@ function onFrame(msg) {
   }
   if ('goal' in msg) setGoal(msg.goal, msg.ghost);
   const events = msg.events ?? [];
+  for (const e of events) if (e.type === 'goal' && e.node === wantedNext) wantedNext = null; // the clicked task runs
+  // Manual: every goal and result is read; Random chain: only every PROGRESS_EVERY-th completed goal (say)
+  const manual = (msg.chain ?? lastChain)?.mode === 'manual';
+  // a timeout comes before its recovery or fresh start in the same frame: their note names the task ("GL not reached")
+  let timedOut = null;
   for (const e of events) { // a failure and its fresh start come in the same frame (cut 'restart')
     if (e.type === 'drop' || e.type === 'timeout') counts[`${e.type}s`] += 1;
-    if (e.type === 'recover') flashNote(NOTES.recover);
+    if (e.type === 'timeout') timedOut = e.node;
+    if (e.type === 'done') { // held SUCCESS_MS while the next goal already runs
+      flashNote(`✓ ${e.node} reached`, SUCCESS_MS, 'done');
+      const done = msg.chain?.goalsDone ?? 0;
+      if (manual) say(`${e.node} reached.`, { reached: e.node });
+      else if (done > 0 && done % PROGRESS_EVERY === 0) say(`${done} goals completed.`);
+    }
+    if (e.type === 'goal' && manual) say(`Goal ${e.node}: ${taskWords(e.node)}.`, { goal: e.node });
+    if (e.type === 'recover') {
+      const text = timedOut ? `${timedOut} not reached: continuing from the current grasp.` : NOTES.recover;
+      flashNote(text);
+      say(text);
+    }
     if (e.type === 'restart') {
       counts.restarts += 1;
-      flashNote(NOTES[e.reason] ?? NOTES.restart);
+      const text = e.reason === 'timeout' && timedOut ? `${timedOut} not reached: starting from a new initial grasp.`
+        : (NOTES[e.reason] ?? NOTES.restart);
+      flashNote(text);
+      say(text);
     }
   }
-  if (msg.cut) { // 'init' | 'load' (object switch) | 'reset' (Reset) | 'restart' (fresh start after a failure)
+  if (msg.cut) { // 'init' | 'load' (object switch) | 'hand' (hand switch) | 'reset' (Reset) | 'restart' (fresh start)
     const handP = msg.hand.subarray(0, 3), objP = msg.object.subarray(0, 3);
     if (SCENE === 'marker') frameMarker(objP, goal.objectP, handP);
     else if (msg.cut !== 'restart') frameChain(objP, handP); // the fixed camera (also the follow camera's direction)
     follow.snap = true; // the follow camera jumps to the new state, it never pans across a cut
     follow.reaim = true;
     if (msg.cut !== 'restart' && SCENE === 'chain') placeFloor(objP, handP);
-    if (msg.cut !== 'restart') follow.manual = 0; // load, Reset, an object switch: automatic zoom again
-    if (msg.cut !== 'init') fadeIn();
-    ui.loading.hidden = true;
+    if (msg.cut !== 'restart') follow.manual = 0; // load, Reset, an object or hand switch: automatic zoom again
+    // frameChain's snap moved the camera: not a viewer zoom (followStep reads a distance other than the one it applied
+    // as one; before 2026-11-22 every Reset and object switch left the view at the fixed camera's zoom, 1594 instead of
+    // about 3000 px per metre at 1440 x 900)
+    follow.applied = 0;
+    // a fresh start of the old model while a switch loads keeps the view dimmed and the loading line (the switch's own
+    // cut comes after its model, which ended the switch)
+    if (!switching) {
+      if (msg.cut !== 'init') fadeIn();
+      if (!lineHold) ui.loading.hidden = true; // a switch's line that was shown keeps its LINE_MIN_MS (endSwitch)
+    }
+    if (SCENE === 'chain' && msg.cut === 'init') say(`Demo running in ${MODE_NAMES[msg.chain?.mode] ?? 'Random chain'}.`);
+    if (SCENE === 'chain' && msg.cut === 'reset') say(`Reset. ${NOTES.restart}`);
+    if (SCENE === 'chain' && msg.cut === 'load') say(`${labelOf.get(current) ?? 'New'} object loaded. ${NOTES.restart}`);
+    if (SCENE === 'chain' && msg.cut === 'hand') say(`${hand?.label ?? 'New'} hand loaded. ${NOTES.restart}`);
+  }
+  // Manual: a failure (a timeout or drop starts a fresh grasp; a recovery keeps the grasp) clears the runner's queue, or
+  // drops a queued task the grasp no longer offers. The task the viewer clicked is queued again when the grasp offers
+  // it (it starts after the fresh start's hold), else its node shows the refusal outline; either way it is said.
+  const failed = events.some((e) => e.type === 'restart' || e.type === 'recover');
+  if (failed && wantedNext && msg.chain?.mode === 'manual' && !msg.chain.queued && msg.chain.phase !== 'ended') {
+    const node = wantedNext;
+    if (msg.chain.available?.includes(node)) {
+      worker.postMessage({ type: 'queue', node });
+      msg.chain = { ...msg.chain, queued: node }; // shown until the worker's own chain state arrives
+      say(`Next: ${node}, ${taskWords(node)}.`);
+    } else {
+      wantedNext = null;
+      // after the view's fade-in (a fresh start's cut), held 1.2 s: a sighted visitor sees that the pick was dropped
+      graph?.refuse(node, { delay: msg.cut ? FADE_IN_MS : 0, hold: REFUSED_HOLD_MS });
+      say(`${node} is not available from this grasp.`);
+    }
   }
   if (msg.chain) showChain(msg.chain);
   showInfo(msg.info);
+  // The worker resumes by itself after a switch or Reset if it was playing when that began (sim.worker.js: settle,
+  // then startRun(cut, was)); a Pause or the view leaving the screen in the meantime still holds (at most one more
+  // control step runs).
+  if (ready && msg.info.playing && !(wantPlay && shown())) syncPlay();
   Object.assign(document.body.dataset, { restarts: String(counts.restarts), drops: String(counts.drops),
     timeouts: String(counts.timeouts) });
 }
@@ -871,35 +1273,43 @@ worker.onmessage = (e) => {
     stepMs = span = (1000 * policyDt) / msg.speed;
     document.body.dataset.speed = String(msg.speed);
     nStarts = msg.nStarts ?? 1;
+    endSwitch(); // the switch's model is here: its first frame follows
+    if (msg.hand) { // the hand this model belongs to: its look (fetched before the worker was asked for it)
+      tellPage('dexgo-demo-hand', { hand: msg.hand, first: msg.hand === hands[0]?.id });
+      hand = hands.find((h) => h.id === msg.hand) ?? hand;
+      look = looks.get(msg.hand) ?? look;
+      document.body.dataset.hand = msg.hand;
+      for (const b of ui.hands.querySelectorAll('[data-hand]')) {
+        b.setAttribute('aria-pressed', String(b.dataset.hand === msg.hand));
+        b.removeAttribute('aria-disabled');
+      }
+    }
     buildScene(msg.geoms);
     if (msg.object) {
       current = msg.object;
       document.body.dataset.object = slugOf.get(msg.object) ?? '';
       for (const b of ui.objects.querySelectorAll('[data-object]')) {
         b.setAttribute('aria-pressed', String(b.dataset.object === document.body.dataset.object));
-        b.disabled = false;
+        b.removeAttribute('aria-disabled');
       }
     }
   } else if (msg.type === 'frame') {
     onFrame(msg);
-    if (!ready) {
+    if (!ready) { // the controls that need a running chain (the mode tabs too: the worker has no runner before)
       ready = true;
       ui.play.disabled = ui.reset.disabled = false;
+      for (const b of ui.modes) b.disabled = false;
+      if (focusWanted) ui.play.focus({ focusVisible: true });
       syncPlay();
     }
   } else if (msg.type === 'chain') {
     showChain(msg.chain);
   } else if (msg.type === 'error') {
-    ui.loading.hidden = false;
-    ui.loading.textContent = FAILED;
-    console.error(msg.message);
+    if (msg.fatal) fail(msg.message); // init, an object switch or Reset failed: nothing runs
+    else console.error(msg.message);
   }
 };
-worker.onerror = (e) => {
-  ui.loading.hidden = false;
-  ui.loading.textContent = FAILED;
-  console.error(`worker: ${e.message}`);
-};
+worker.onerror = (e) => fail(`worker: ${e.message}`);
 
 // --------------------------------------------------------------------------------------------- controls
 ui.play.onclick = () => {
@@ -914,70 +1324,196 @@ ui.reset.onclick = () => {
   } else {
     counts.restarts = counts.drops = counts.timeouts = 0;
     note.until = 0;
+    wantedNext = null;
     worker.postMessage({ type: 'reset' });
   }
 };
+const MODE_NAMES = { random: 'Random chain', manual: 'Manual' };
 for (const b of ui.modes) {
   b.onclick = () => {
-    if (b.getAttribute('aria-pressed') === 'true') return;
+    if (b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-disabled') === 'true') return; // (a switch)
+    if (b.dataset.mode === 'random') wantedNext = null;
     for (const o of ui.modes) o.setAttribute('aria-pressed', String(o === b));
     worker.postMessage({ type: 'mode', mode: b.dataset.mode });
+    say(`${MODE_NAMES[b.dataset.mode]}.`);
   };
 }
 
-/** Manual mode: queue an available task as the next goal (a click also starts the simulation). */
+/** A click on an available node: queue it as the next goal (it starts once the running goal is done, at once when
+ *  the runner waits); in Random chain the click switches to Manual first. It also starts a paused simulation. The
+ *  choice is kept (wantedNext) until its goal starts, so a failure that clears the runner's queue cannot drop it
+ *  silently (onFrame); Reset, an object switch and Random chain forget it. */
 function queueTask(node) {
+  wantedNext = node;
+  if (lastChain && lastChain.mode !== 'manual') {
+    for (const b of ui.modes) b.setAttribute('aria-pressed', String(b.dataset.mode === 'manual'));
+    worker.postMessage({ type: 'mode', mode: 'manual' });
+    lastChain = { ...lastChain, mode: 'manual' };
+  }
   worker.postMessage({ type: 'queue', node });
+  if (note.kind === 'done') note.until = 0; // the click's own feedback ("Next: ...") replaces a success note
   if (lastChain) showChain({ ...lastChain, queued: node });
+  say(`Next: ${node}, ${taskWords(node)}.`);
   wantPlay = true;
   syncPlay();
 }
 
 function selectObject(id) {
-  if (current === id) return;
+  if (current === id || ui.objects.querySelector('[aria-disabled="true"]')) return; // (a model is still loading)
   for (const b of ui.objects.querySelectorAll('[data-object]')) {
     b.setAttribute('aria-pressed', String(b.dataset.object === slugOf.get(id)));
-    b.disabled = true; // until the model is loaded
+    // until the model is loaded: aria-disabled, not disabled, so a keyboard switch keeps the focus on the pressed tab
+    b.setAttribute('aria-disabled', 'true');
   }
   counts.restarts = counts.drops = counts.timeouts = 0;
   note.until = 0;
-  dimView(); // the new model's first frame fades in
+  wantedNext = null;
+  // dims the view: the new model's first frame fades in ("object", not "rod": the demo and the page say object)
+  beginSwitch(`Loading the ${(labelOf.get(id) ?? 'new').toLowerCase()} object…`);
   worker.postMessage({ type: 'object', object: id });
 }
 
-/** Object list (assets/objects/index.json): [{id, label}] or {objects: [...]}; ?object=<id or slug> picks the first.
- *  The page shows the labels; DOM attributes carry slugs of the labels ("round", "hexagonal"), never the ids. */
+/** The object list of a hand (its objects/index.json: [{id, label}] or {objects: [...]}). */
 let current = null; // id of the loaded object
 const slugOf = new Map(); // object id -> slug of its label
-async function objectList() {
-  const index = await fetchLoader(ASSETS).json('objects/index.json');
-  const list = (Array.isArray(index) ? index : index.objects).map((o) => (typeof o === 'string' ? { id: o } : o));
+const labelOf = new Map(); // object id -> its label (tab text)
+async function objectIndex(entry) {
+  const index = await fetchLoader(entry.rootUrl).json('objects/index.json');
+  return (Array.isArray(index) ? index : index.objects).map((o) => (typeof o === 'string' ? { id: o } : o));
+}
+
+/** The object tabs of a list; wanted (an id or a label slug: ?object=, or the object shown before a hand switch) picks
+ *  the first, else the list's first object; its tab is marked pressed at once (a hand switch keeps the mark). The page
+ *  shows the labels; DOM attributes carry slugs of the labels ("round", "hexagonal"), never the ids. Built only once
+ *  a hand's files are all in, so a failed hand switch leaves the loaded hand's tabs. */
+function objectTabs(list, wanted) {
+  const labelFor = (o) => o.label ?? o.name ?? o.id;
+  const slug = (o) => labelFor(o).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const chosen = (list.find((o) => o.id === wanted || slug(o) === wanted) ?? list[0]).id;
+  ui.objects.replaceChildren();
   for (const o of list) {
-    const label = o.label ?? o.name ?? o.id;
-    slugOf.set(o.id, label.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+    slugOf.set(o.id, slug(o));
+    labelOf.set(o.id, labelFor(o));
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'toggle';
     b.dataset.object = slugOf.get(o.id);
-    b.textContent = label;
-    b.setAttribute('aria-pressed', 'false');
-    b.disabled = true;
-    b.onclick = () => selectObject(o.id);
+    b.textContent = labelFor(o);
+    b.setAttribute('aria-pressed', String(o.id === chosen));
+    b.setAttribute('aria-disabled', 'true'); // until its model is loaded
+    b.onclick = () => { if (b.getAttribute('aria-disabled') !== 'true') selectObject(o.id); };
     ui.objects.appendChild(b);
   }
-  const wanted = params.get('object');
-  return (list.find((o) => o.id === wanted || slugOf.get(o.id) === wanted) ?? list[0]).id;
+  return chosen;
+}
+
+// --------------------------------------------------------------------------------------------- hands
+// assets/hands.json (app/hands.js): one tab per hand beside the object tabs; the first hand is the default (?hand=<id>
+// picks another). A hand's object list and, for look "visual", its render meshes are fetched when it is first chosen;
+// the worker then loads its policy and model (message 'hand'). Its first frame arrives as a cut 'hand', like an
+// object switch: the view fades in from the new start grasp, the camera snaps, the goal counter restarts.
+let hands = [], hand = null; // resolveHands entries; the hand whose model is loaded (or being loaded)
+const looks = new Map(); // hand id -> look (buildScene)
+
+/** The look of a hand: 'colliders' as it is; 'visual' with its render meshes as three.js geometries (creased normals,
+ *  computed in millimetres as the object's) and its two materials. Fetched once per hand. */
+async function lookOf(entry) {
+  if (looks.has(entry.id)) return looks.get(entry.id);
+  let result = { kind: 'colliders' };
+  if (entry.look === 'visual') {
+    const header = await (await fetchOk(entry.visualUrl)).json();
+    const buffer = await (await fetchOk(new URL(header.bin, entry.visualUrl))).arrayBuffer();
+    const visual = decodeVisual(header, buffer);
+    const geometries = visual.meshes.map((m) => {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(m.position), 3));
+      geo.setIndex(new THREE.BufferAttribute(Uint32Array.from(m.index), 1));
+      geo.scale(1000, 1000, 1000);
+      const out = toCreasedNormals(geo, LOOK.visualCrease).scale(1e-3, 1e-3, 1e-3);
+      geo.dispose();
+      out.computeBoundingBox(); // the follow camera frames a visual-look hand by its parts' boxes
+      return out;
+    });
+    // dielectric (metallic 0, as the render's Principled BSDF) with the hand's own environment intensity (LOOK.visual)
+    const material = (m) => new THREE.MeshPhysicalMaterial({ color: m.color, roughness: m.roughness, metalness: 0,
+      specularIntensity: m.specular, envMap: scene.environment, envMapIntensity: m.fill });
+    result = { kind: 'visual', parts: visual.parts, geometries,
+      shell: material(LOOK.visual.shell), pad: material(LOOK.visual.pad) };
+  }
+  looks.set(entry.id, result);
+  return result;
+}
+const fetchOk = async (url) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+  return response;
+};
+
+function handTabs() {
+  for (const h of hands) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'toggle';
+    b.dataset.hand = h.id;
+    b.textContent = h.label;
+    b.setAttribute('aria-pressed', String(h === hand));
+    b.setAttribute('aria-disabled', 'true'); // until the first model is loaded
+    b.onclick = () => { if (b.getAttribute('aria-disabled') !== 'true') selectHand(h.id); };
+    ui.hands.appendChild(b);
+  }
+}
+
+/** A hand tab: fetch the hand's object list and look, then ask the worker for its model (same object shape if the
+ *  hand has one: Round stays Round). The tabs wait (aria-disabled) until its model arrives. If the hand's files cannot
+ *  be fetched, nothing has been sent to the worker: the loaded hand keeps running at full opacity, its tabs answer
+ *  again and the note line says so (not the start-up failure, which would leave the demo dead). */
+async function selectHand(id) {
+  const entry = hands.find((h) => h.id === id);
+  if (!entry || entry === hand || switching || ui.objects.querySelector('[aria-disabled="true"]')) return;
+  const tabs = () => [...ui.hands.querySelectorAll('[data-hand]'), ...ui.objects.querySelectorAll('[data-object]')];
+  const press = (wanted) => {
+    for (const b of ui.hands.querySelectorAll('[data-hand]')) {
+      b.setAttribute('aria-pressed', String(b.dataset.hand === wanted));
+    }
+  };
+  for (const b of tabs()) b.setAttribute('aria-disabled', 'true');
+  press(id);
+  beginSwitch(`Loading the ${entry.label} hand…`); // dims the view: the new model's first frame fades in
+  try {
+    const [list] = await Promise.all([objectIndex(entry), lookOf(entry)]);
+    const object = objectTabs(list, slugOf.get(current));
+    hand = entry;
+    counts.restarts = counts.drops = counts.timeouts = 0;
+    note.until = 0;
+    wantedNext = null;
+    worker.postMessage({ type: 'hand', hand: entry.id, root: entry.root, object });
+  } catch (err) {
+    console.error(`hand ${id}: ${err?.message ?? err}`);
+    const dim = Number(getComputedStyle(renderer.domElement).opacity);
+    endSwitch();
+    for (const b of tabs()) b.removeAttribute('aria-disabled');
+    press(hand.id);
+    fadeIn(Number.isFinite(dim) ? dim : 0.2);
+    const text = `The ${entry.label} hand could not be loaded.`;
+    flashNote(text, 2600, 'error'); // as long as the other notes
+    if (lastChain) showChain(lastChain); // the note now, also while paused (no frames)
+    say(text);
+  }
 }
 
 if (SCENE === 'marker') {
   worker.postMessage({ type: 'init', scene: 'marker', model: MODEL });
 } else {
-  objectList().then((object) => {
-    worker.postMessage({ type: 'init', scene: 'chain', object, mode: 'random', seed: SEED, slowStep: SLOW_STEP });
-  }).catch((err) => {
-    ui.loading.textContent = FAILED;
-    console.error('object list', err);
-  });
+  (async () => {
+    hands = resolveHands(await fetchLoader(ASSETS).json('hands.json'), ASSETS);
+    hand = hands.find((h) => h.id === params.get('hand')?.toLowerCase()) ?? hands[0];
+    handTabs();
+    const [list] = await Promise.all([objectIndex(hand), lookOf(hand)]);
+    const object = objectTabs(list, params.get('object'));
+    look = looks.get(hand.id);
+    worker.postMessage({ type: 'init', scene: 'chain', hand: hand.id, root: hand.root, object, mode: 'random',
+      seed: SEED, opening: OPENING, slowStep: SLOW_STEP });
+  })().catch((err) => fail(`hands / object list: ${err?.message ?? err}`));
 }
 
 // --------------------------------------------------------------------------------------------- frame loop
@@ -996,7 +1532,38 @@ const stats = { n: 0, interval: 0, update: 0, render: 0, overlay: 0, last: 0, ho
 window.viewerStats = stats;
 window.viewerCamera = () => [...camera.position.toArray(), ...controls.target.toArray()];
 const mean = (old, x, n) => old + (x - old) / Math.min(n, 120);
-let rafId = 0, inFrame = false;
+let rafId = 0, inFrame = false, toldReady = false;
+// window.viewerSpan() (tests): the view (CSS px) and the projected boxes [x0, y0, x1, y1] (CSS px, view frame) of the
+// hand (collider centres, grown by a 1.2 cm radius at the target's scale; a visual-look hand: its parts' box corners),
+// the object (its box corners) and the goal (goal object box corners and goal hand collider centres, or its parts' box
+// corners), as the follow camera sees them in the latest frame
+window.viewerSpan = () => {
+  const w = ui.view.clientWidth, h = ui.view.clientHeight, v = new THREE.Vector3();
+  const box = () => [Infinity, Infinity, -Infinity, -Infinity];
+  const put = (b, p, r = 0) => {
+    v.copy(p).project(camera);
+    const x = (v.x + 1) * 0.5 * w, y = (1 - v.y) * 0.5 * h;
+    b[0] = Math.min(b[0], x - r); b[1] = Math.min(b[1], y - r); b[2] = Math.max(b[2], x + r); b[3] = Math.max(b[3], y + r);
+  };
+  const corners = (b, mesh) => {
+    const bb = mesh.geometry.boundingBox;
+    for (let i = 0; i < 8; i++) {
+      put(b, new THREE.Vector3(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z)
+        .applyMatrix4(mesh.matrix));
+    }
+  };
+  const scale = h / (2 * camera.position.distanceTo(controls.target) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  const hand = box(), object = box(), goalBox = box();
+  if (parts.length) for (const p of parts) corners(hand, p.mesh); // a visual-look hand: its parts' boxes
+  else for (const [mesh] of handMeshes) put(hand, new THREE.Vector3().setFromMatrixPosition(mesh.matrix), 0.012 * scale);
+  for (const mesh of objectMeshes) corners(object, mesh);
+  if (goal) {
+    for (const ghost of ghosts) corners(goalBox, ghost);
+    if (parts.length) for (const p of parts) corners(goalBox, p.ghost);
+    else for (const ghost of handGhosts) put(goalBox, new THREE.Vector3().setFromMatrixPosition(ghost.matrix));
+  }
+  return { w, h, reserve: follow.reserve, hand, object, goal: goal ? goalBox : null };
+};
 
 function kick() {
   if (rafId || inFrame || !shown()) return; // inside a frame the frame itself decides whether to go on
@@ -1036,6 +1603,10 @@ function animate(now) {
   stats.update = mean(stats.update, t1 - t0, stats.n);
   stats.render = mean(stats.render, t2 - t1, stats.n);
   stats.overlay = mean(stats.overlay, t3 - t2, stats.n);
+  if (posed && !toldReady) { // the first drawn frame of the scene: the embedding page may now show this frame
+    toldReady = true;
+    tellPage('dexgo-demo-ready');
+  }
   inFrame = false;
   const why = { playing: !!lastInfo?.playing, interpolation: alpha < 1, ghost: goalAlpha < 1, camera: moved > 0,
     controls: damping };

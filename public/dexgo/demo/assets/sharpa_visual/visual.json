@@ -1,0 +1,776 @@
+{
+ "format": "hand-visual-v1",
+ "hand": "sharpa",
+ "source": {
+  "urdf": "workspaces/uniassemble/assets/sharpa/sharpa.urdf (rod worktree)",
+  "sha256": "72117a02fbedc30e43fe0746895fd53117e503cf2a9d4308352140444192f9c1"
+ },
+ "ratio": 0.1,
+ "units": "m, link frame",
+ "bin": "visual.bin",
+ "meshes": [
+  {
+   "name": "right_hand_C_MC_visual",
+   "file": "./meshes/right_hand_C_MC_visual.STL",
+   "vertices": 699,
+   "triangles": 1384,
+   "source_triangles": 13842,
+   "position": 0,
+   "index": 8388
+  },
+  {
+   "name": "right_thumb_CMC_VL_visual",
+   "file": "./meshes/right_thumb_CMC_VL_visual.STL",
+   "vertices": 313,
+   "triangles": 634,
+   "source_triangles": 6358,
+   "position": 16692,
+   "index": 20448
+  },
+  {
+   "name": "right_thumb_MC_visual",
+   "file": "./meshes/right_thumb_MC_visual.STL",
+   "vertices": 931,
+   "triangles": 1250,
+   "source_triangles": 12505,
+   "position": 24252,
+   "index": 35424
+  },
+  {
+   "name": "right_thumb_MCP_VL_visual",
+   "file": "./meshes/right_thumb_MCP_VL_visual.STL",
+   "vertices": 300,
+   "triangles": 600,
+   "source_triangles": 6014,
+   "position": 42924,
+   "index": 46524
+  },
+  {
+   "name": "right_thumb_PP_visual",
+   "file": "./meshes/right_thumb_PP_visual.STL",
+   "vertices": 1047,
+   "triangles": 1438,
+   "source_triangles": 14395,
+   "position": 50124,
+   "index": 62688
+  },
+  {
+   "name": "DP_Visual_HB1_TH",
+   "file": "./meshes/DP_Visual_HB1_TH.STL",
+   "vertices": 338,
+   "triangles": 672,
+   "source_triangles": 6722,
+   "position": 71316,
+   "index": 75372
+  },
+  {
+   "name": "elastomer_HB1_TH",
+   "file": "./meshes/elastomer_HB1_TH.STL",
+   "vertices": 213,
+   "triangles": 422,
+   "source_triangles": 4226,
+   "position": 79404,
+   "index": 81960
+  },
+  {
+   "name": "right_MCP_VL_visual",
+   "file": "./meshes/right_MCP_VL_visual.STL",
+   "vertices": 320,
+   "triangles": 644,
+   "source_triangles": 6450,
+   "position": 84492,
+   "index": 88332
+  },
+  {
+   "name": "right_PP_visual",
+   "file": "./meshes/right_PP_visual.STL",
+   "vertices": 822,
+   "triangles": 1121,
+   "source_triangles": 11213,
+   "position": 92196,
+   "index": 102060
+  },
+  {
+   "name": "right_MP_visual",
+   "file": "./meshes/right_MP_visual.STL",
+   "vertices": 441,
+   "triangles": 738,
+   "source_triangles": 7386,
+   "position": 108788,
+   "index": 114080
+  },
+  {
+   "name": "DP_visual_HB1_4F",
+   "file": "./meshes/DP_visual_HB1_4F.STL",
+   "vertices": 396,
+   "triangles": 796,
+   "source_triangles": 7974,
+   "position": 118508,
+   "index": 123260
+  },
+  {
+   "name": "elastomer_HB1_4F",
+   "file": "./meshes/elastomer_HB1_4F.STL",
+   "vertices": 151,
+   "triangles": 298,
+   "source_triangles": 2996,
+   "position": 128036,
+   "index": 129848
+  },
+  {
+   "name": "right_pinky_MC_visual",
+   "file": "./meshes/right_pinky_MC_visual.STL",
+   "vertices": 226,
+   "triangles": 436,
+   "source_triangles": 4364,
+   "position": 131636,
+   "index": 134348
+  }
+ ],
+ "parts": [
+  {
+   "link": "right_hand_C_MC",
+   "mesh": 0,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_thumb_CMC_VL",
+   "mesh": 1,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_thumb_MC",
+   "mesh": 2,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_thumb_MCP_VL",
+   "mesh": 3,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_thumb_PP",
+   "mesh": 4,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_thumb_DP",
+   "mesh": 5,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_thumb_elastomer",
+   "mesh": 6,
+   "kind": "pad",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_index_MCP_VL",
+   "mesh": 7,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_index_PP",
+   "mesh": 8,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_index_MP",
+   "mesh": 9,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_index_DP",
+   "mesh": 10,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_index_elastomer",
+   "mesh": 11,
+   "kind": "pad",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_middle_MCP_VL",
+   "mesh": 7,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_middle_PP",
+   "mesh": 8,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_middle_MP",
+   "mesh": 9,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_middle_DP",
+   "mesh": 10,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_middle_elastomer",
+   "mesh": 11,
+   "kind": "pad",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_ring_MCP_VL",
+   "mesh": 7,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_ring_PP",
+   "mesh": 8,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_ring_MP",
+   "mesh": 9,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_ring_DP",
+   "mesh": 10,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_ring_elastomer",
+   "mesh": 11,
+   "kind": "pad",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_pinky_MC",
+   "mesh": 12,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_pinky_MCP_VL",
+   "mesh": 7,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_pinky_PP",
+   "mesh": 8,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_pinky_MP",
+   "mesh": 9,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_pinky_DP",
+   "mesh": 10,
+   "kind": "shell",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  },
+  {
+   "link": "right_pinky_elastomer",
+   "mesh": 11,
+   "kind": "pad",
+   "origin": {
+    "p": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "R": [
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ]
+   }
+  }
+ ]
+}

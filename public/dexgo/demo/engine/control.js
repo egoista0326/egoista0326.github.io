@@ -1,7 +1,8 @@
 // Action decode (direct_delta) and the explicit PD law. Port of control/actions.py (decode_action direct_delta
 // branch, executed_action, pd_effort) and geometry/transforms.py (nonlinear_wrist_action_map,
-// direct_delta_wrist_target, source_target_from_world_pose). Joint vectors are source order (26): wrist x, y, z (m,
-// in the root frame), wrist RxRyRz Euler (rad), then 20 finger joints (rad).
+// direct_delta_wrist_target, source_target_from_world_pose). Joint vectors are source order (n = 6 + nF): wrist x, y,
+// z (m, in the root frame), wrist RxRyRz Euler (rad), then the nF finger joints (rad; MANO 20, Sharpa 22). The widths
+// come from the vectors themselves (hand-agnostic, 2026-11-22); gains and limits from task.json / control.json.
 
 import { add3, clamp, matmul, matTmul, mulTVec, mulVec, nearestEulerXyzFromMatrix, so3Exp, sub3 } from './math.js';
 
@@ -14,7 +15,7 @@ export function controlSpec(control) {
     fingerScale: control.finger_scale, // rad per unit action per control step
     power: control.power,
     beta: control.beta,
-    pGain: Float64Array.from(control.p_gain),
+    pGain: Float64Array.from(control.p_gain), // (n) source order
     dGain: Float64Array.from(control.d_gain),
     wristLimit: control.wrist_effort_limit, // N / Nm
     fingerLimit: control.finger_effort_limit, // Nm
@@ -26,9 +27,9 @@ export const wristMap = (a, power, beta) => beta * a + (1 - beta) * Math.sign(a)
 
 /**
  * Source wrist joints (6: x, y, z in m, RxRyRz Euler in rad) of a wrist link world pose
- * (transforms.source_target_from_world_pose): the position in the hand root (sliderBar) frame, and the source Euler
- * branch of rootR^T targetR nearest currentEuler. The wrist chain of scene.xml (three slides, then hinges x, y, z,
- * no body offsets) puts right_wrist_rz exactly at these joints.
+ * (transforms.source_target_from_world_pose): the position in the hand root frame (MANO sliderBar, Sharpa
+ * sharpa_root0), and the source Euler branch of rootR^T targetR nearest currentEuler. The wrist chain of scene.xml
+ * (three slides, then hinges x, y, z, no body offsets) puts the wrist link exactly at these joints.
  * @param {ArrayLike<number>} rootP, rootR hand root pose, world (rotation row-major)
  * @param {ArrayLike<number>} targetP, targetR wrist link pose, world
  * @param {ArrayLike<number>} currentEuler (3) the wrist joints q[3:6] the branch stays near
@@ -41,17 +42,19 @@ export function sourceTargetFromWorldPose(rootP, rootR, targetP, targetR, curren
 }
 
 /**
- * New PD target (26) from the policy action (decode_action, direct_delta): the wrist target is the current wrist
+ * New PD target (n) from the policy action (decode_action, direct_delta): the wrist target is the current wrist
  * pose moved by the mapped action along the current wrist axes, converted to root-frame xyz and the source Euler
  * branch nearest the current wrist joints; fingers add finger_scale * action to the previous finger target; all
  * clipped to the joint limits.
- * @param {ArrayLike<number>} action (26) raw policy output (latent units; clipped to [-1, 1] here)
- * @param {ArrayLike<number>} q (26) current joint positions
- * @param {ArrayLike<number>} previousTarget (26)
- * @param {ArrayLike<number>} rootP, rootR  hand root (sliderBar) pose, world
+ * @param {ArrayLike<number>} action (n) raw policy output (latent units; clipped to [-1, 1] here)
+ * @param {ArrayLike<number>} q (n) current joint positions
+ * @param {ArrayLike<number>} previousTarget (n)
+ * @param {ArrayLike<number>} rootP, rootR  hand root pose, world
  * @param {ArrayLike<number>} wristP, wristR current wrist link pose, world
  */
 export function decodeAction(action, q, previousTarget, rootP, rootR, wristP, wristR, spec, lower, upper) {
+  const n = q.length;
+  if (action.length !== n) throw new Error(`action ${action.length} wide, hand ${n} joints`);
   const a = Float64Array.from(action, (x) => clamp(x, -1, 1)); // executed_action
   const m = new Float64Array(6);
   for (let i = 0; i < 6; i++) m[i] = wristMap(a[i], spec.power, spec.beta);
@@ -59,10 +62,10 @@ export function decodeAction(action, q, previousTarget, rootP, rootR, wristP, wr
   const dr = [spec.rotationScale * m[3], spec.rotationScale * m[4], spec.rotationScale * m[5]];
   const targetP = add3(wristP, mulVec(wristR, dp));
   const targetR = matmul(wristR, so3Exp(dr));
-  const target = new Float64Array(26);
+  const target = new Float64Array(n);
   sourceTargetFromWorldPose(rootP, rootR, targetP, targetR, [q[3], q[4], q[5]], target.subarray(0, 6));
-  for (let i = 6; i < 26; i++) target[i] = previousTarget[i] + spec.fingerScale * a[i];
-  for (let i = 0; i < 26; i++) target[i] = clamp(target[i], lower[i], upper[i]);
+  for (let i = 6; i < n; i++) target[i] = previousTarget[i] + spec.fingerScale * a[i];
+  for (let i = 0; i < n; i++) target[i] = clamp(target[i], lower[i], upper[i]);
   return target;
 }
 
@@ -70,8 +73,8 @@ export function decodeAction(action, q, previousTarget, rootP, rootR, wristP, wr
  * Explicit PD effort of one physics step (actions.pd_effort): p (target - q) - d qd_fd, wrist clipped to
  * +-wristLimit, fingers to +-fingerLimit. qdFd is the caller's physics-dt finite difference (q - q_prev) / dt.
  */
-export function pdEffort(target, q, qdFd, spec, out = new Float64Array(26)) {
-  for (let i = 0; i < 26; i++) {
+export function pdEffort(target, q, qdFd, spec, out = new Float64Array(target.length)) {
+  for (let i = 0; i < target.length; i++) {
     const e = spec.pGain[i] * (target[i] - q[i]) - spec.dGain[i] * qdFd[i];
     const lim = i < 6 ? spec.wristLimit : spec.fingerLimit;
     out[i] = clamp(e, -lim, lim);
@@ -87,6 +90,6 @@ export function pdEffort(target, q, qdFd, spec, out = new Float64Array(26)) {
 export function startTarget(q, v, e, spec, dt) {
   const target = Float64Array.from(q);
   const p = spec.pGain[6], d = spec.dGain[6];
-  for (let i = 6; i < 26; i++) target[i] = q[i] - v[i] * dt + (e[i] + d * v[i]) / p;
+  for (let i = 6; i < q.length; i++) target[i] = q[i] - v[i] * dt + (e[i] + d * v[i]) / p;
   return target;
 }
