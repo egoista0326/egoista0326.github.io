@@ -1,8 +1,10 @@
 .DS_Store
 node_modules/
-dist/
+/dist/
 .astro/
 .env
 .env.*
 source_photos/
 source_photos alias
+__pycache__/
+*.pyc
