@@ -319,6 +319,7 @@
     "variant_dir": "public/assets/photography/variants",
     "variant_widths": [
       640,
+      960,
       1200
     ],
     "variant_quality": 82

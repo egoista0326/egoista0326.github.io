@@ -2,7 +2,8 @@
 import SiteLayout from '../../../layouts/SiteLayout.astro';
 import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
 import { photographyProfile } from '../../../data/photography';
-import { getPhotoLibrary, getProjectPhotoHref, type ProjectGallery } from '../../../lib/photography';
+import { getPhotoLibrary, getPhotoShareImage, getProjectPhotoHref, type ProjectGallery } from '../../../lib/photography';
+import { formatYearMonthEn } from '../../../lib/dates';
 
 type Props = ProjectGallery;
 
@@ -17,9 +18,11 @@ export async function getStaticPaths() {
 
 const { project, photos } = Astro.props;
 const { landingCopy } = photographyProfile;
+// Shared as the project's first photo, the one its page opens with.
+const shareImage = photos[0] ? getPhotoShareImage(photos[0]) : undefined;
 ---
 
-<SiteLayout title={`${project.title} | Photography`} description={project.summary}>
+<SiteLayout title={`${project.title} | Photography`} description={project.summary} shareImage={shareImage}>
   <section class="photography-section gallery-heading" aria-labelledby="project-title">
     <p>
       <a class="photo-back-link" data-gallery-back href="/photography/#photography-projects-title">
@@ -41,7 +44,10 @@ const { landingCopy } = photographyProfile;
           <span data-lang-inline="en">{landingCopy.en.copy.projectStart}</span>
           <span data-lang-inline="zh">{landingCopy.zh.copy.projectStart}</span>
         </dt>
-        <dd>{project.startDate}</dd>
+        <dd>
+          <span data-lang-inline="en">{formatYearMonthEn(project.startDate)}</span>
+          <span data-lang-inline="zh">{project.startDate}</span>
+        </dd>
       </div>
     </dl>
     <p class="section-copy project-description">

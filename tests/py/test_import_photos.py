@@ -167,7 +167,7 @@ class AddModeTests(LibraryTestCase):
             self.assertTrue(source.getexif().get_ifd(ExifTags.IFD.GPSInfo))
         self.write_manifest(self.entry("gps.jpg", "gps"))
         self.assertEqual(self.cli("--add", path, "--manifest", self.manifest), 0)
-        for output in (self.works / "gps.webp", self.variants / "gps-640.webp", self.variants / "gps-1200.webp"):
+        for output in (self.works / "gps.webp", *(self.variants / f"gps-{width}.webp" for width in (640, 960, 1200))):
             with self.subTest(output=output.name), Image.open(output) as image:
                 self.assertEqual(len(image.getexif()), 0)
                 self.assertNotIn("exif", image.info)
@@ -187,12 +187,14 @@ class AddModeTests(LibraryTestCase):
             sizes,
             {
                 "narrow-640.webp": ("WEBP", (640, 512)),
+                "narrow-960.webp": ("WEBP", (960, 768)),
                 "wide-1200.webp": ("WEBP", (1200, 900)),
                 "wide-640.webp": ("WEBP", (640, 480)),
+                "wide-960.webp": ("WEBP", (960, 720)),
             },
         )
         report = json.loads(self.report.read_text(encoding="utf-8"))
-        self.assertEqual(report["settings"]["variant_widths"], [640, 1200])
+        self.assertEqual(report["settings"]["variant_widths"], [640, 960, 1200])
         self.assertEqual(report["settings"]["variant_dir"], "public/assets/photography/variants")
         wide_entry = next(item for item in report["included"] if item["slug"] == "wide")
         self.assertEqual(wide_entry["source"], "source_photos/average/wide.jpg")
@@ -222,7 +224,8 @@ class AddModeTests(LibraryTestCase):
 
     def test_variant_height_rounds_half_up(self) -> None:
         self.assertEqual(importer.variant_size(2400, 1937, 1200), (1200, 969))
-        self.assertEqual(importer.variant_widths_for(1156), [640])
+        self.assertEqual(importer.variant_widths_for(1156), [640, 960])
+        self.assertEqual(importer.variant_widths_for(960), [640])
         self.assertEqual(importer.variant_widths_for(640), [])
 
 
@@ -285,7 +288,7 @@ class BatchModeTests(LibraryTestCase):
         self.assertEqual(sorted(path.name for path in self.photos.iterdir()), ["p1.md"])
         self.assertEqual(
             sorted(path.name for path in self.variants.iterdir()),
-            ["hero-1200.webp", "hero-640.webp", "p1-1200.webp", "p1-640.webp"],
+            ["hero-1200.webp", "hero-640.webp", "hero-960.webp", "p1-1200.webp", "p1-640.webp", "p1-960.webp"],
         )
         report = json.loads(self.report.read_text(encoding="utf-8"))
         self.assertEqual(report["source"], "source_photos/average")
@@ -311,24 +314,47 @@ class BackfillTests(LibraryTestCase):
         originals = {path.name: path.read_bytes() for path in (self.works / "a.webp", hero)}
 
         self.assertEqual(self.cli("--backfill-variants", "--report", self.report), 0)
-        self.assertEqual(sorted(path.name for path in self.variants.iterdir()), ["a-640.webp"])
+        self.assertEqual(sorted(path.name for path in self.variants.iterdir()), ["a-640.webp", "a-960.webp"])
         self.assertEqual(self.cli("--backfill-variants", hero, "--report", self.report), 0)
         sizes = {}
         for path in sorted(self.variants.iterdir()):
             with Image.open(path) as image:
                 sizes[path.name] = image.size
-        self.assertEqual(sizes, {"a-640.webp": (640, 448), "hero-1200.webp": (1200, 738), "hero-640.webp": (640, 394)})
+        self.assertEqual(
+            sizes,
+            {
+                "a-640.webp": (640, 448),
+                "a-960.webp": (960, 672),
+                "hero-1200.webp": (1200, 738),
+                "hero-640.webp": (640, 394),
+                "hero-960.webp": (960, 591),
+            },
+        )
         self.assertEqual(originals, {path.name: path.read_bytes() for path in (self.works / "a.webp", hero)})
 
         report = json.loads(self.report.read_text(encoding="utf-8"))
         self.assertEqual(report["included"], [{"slug": "a"}])
         self.assertEqual(report["settings"]["quality"], 88)
-        self.assertEqual(report["settings"]["variant_widths"], [640, 1200])
+        self.assertEqual(report["settings"]["variant_widths"], [640, 960, 1200])
         self.assertEqual(report["settings"]["variant_quality"], 82)
 
         before = self.snapshot()
         self.assertEqual(self.cli("--backfill-variants"), 0)
         self.assertEqual(self.snapshot(), before)
+        self.assert_no_staging_left()
+
+    def test_backfill_adds_a_new_width_and_keeps_existing_variants(self) -> None:
+        Image.new("RGB", (2000, 1500), (90, 60, 30)).save(self.works / "a.webp", quality=88)
+        with mock.patch.object(importer, "VARIANT_WIDTHS", (640, 1200)):
+            self.assertEqual(self.cli("--backfill-variants"), 0)
+        existing = {path.name: path.read_bytes() for path in self.variants.iterdir()}
+        self.assertEqual(sorted(existing), ["a-1200.webp", "a-640.webp"])
+
+        self.assertEqual(self.cli("--backfill-variants"), 0)
+        self.assertEqual(sorted(path.name for path in self.variants.iterdir()), ["a-1200.webp", "a-640.webp", "a-960.webp"])
+        self.assertEqual({name: (self.variants / name).read_bytes() for name in existing}, existing)
+        with Image.open(self.variants / "a-960.webp") as image:
+            self.assertEqual((image.format, image.size), ("WEBP", (960, 720)))
         self.assert_no_staging_left()
 
     def test_backfill_rejects_images_outside_photography(self) -> None:

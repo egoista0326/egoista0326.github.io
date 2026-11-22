@@ -78,7 +78,7 @@ slug: "dsc-0046"
 category: "street"
 categories: []
 image: "/assets/photography/works/dsc-0046.webp"
-alt: "Raindrops on a window blur warm city lights at night."
+alt: "Raindrops on a window blur warm city lights at blue hour."
 width: 1800
 height: 2400
 orientation: "portrait"
@@ -170,7 +170,7 @@ python3 scripts/import_photos.py --source source_photos/average --replace --mani
 ## Image Sizes
 
 - `works/<slug>.webp` is the largest image of each photo: long edge at most 2400 px, WebP quality 88.
-- `public/assets/photography/variants/<stem>-<width>.webp` holds smaller copies for `srcset`: one per width of `VARIANT_WIDTHS` in `scripts/import_photos.py` (now 640 and 1200) that is smaller than the image's own width. The height is proportional (rounded); WebP quality 82, the same ICC profile, no EXIF or XMP. A width at or above the image's width is skipped: `nursing-home-chair` (1156 px wide) and `rednote-card.jpg` (879 px) have only a 640 variant.
+- `public/assets/photography/variants/<stem>-<width>.webp` holds smaller copies for `srcset`: one per width of `VARIANT_WIDTHS` in `scripts/import_photos.py` (now 640, 960 and 1200) that is smaller than the image's own width. The height is proportional (rounded); WebP quality 82, the same ICC profile, no EXIF or XMP. A width at or above the image's width is skipped: `nursing-home-chair` (1156 px wide) has the 640 and 960 variants, `rednote-card.jpg` (879 px) only the 640 one.
 - The importer writes the variants with every photo and records the widths in the report (`settings.variant_widths`, `variant_dir`, `variant_quality`); `verify_photo_import.mjs` checks the files against those widths.
 - The two non-photo images directly in `public/assets/photography/` (the hero `profile-shadow-2649.webp` and `rednote-card.jpg`) get variants the same way; verify expects variants for every image in that folder.
 - Backfill writes missing or wrongly sized variants from the existing files and never rewrites them:

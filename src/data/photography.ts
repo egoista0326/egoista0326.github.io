@@ -12,8 +12,12 @@ export const photographyProfile = {
   landingCopy: {
     en: {
       title: 'Jiaxin Li Photography',
+      /** `/photography/` description and og:description (at most 155 characters, so search snippets keep it whole):
+          the first intro paragraph without its photography start date. */
+      metaDescription:
+        'I am Jiaxin Li, a master’s student in Robotics, Systems and Control at ETH Zurich, Switzerland. I am especially drawn to street photography.',
       introParagraphs: [
-        'I am Jiaxin Li, a master\'s student in Robotics, Systems and Control at ETHz, Switzerland. I started learning photography in June 2025, and I am especially drawn to street photography.',
+        'I am Jiaxin Li, a master’s student in Robotics, Systems and Control at ETH Zurich, Switzerland. I started learning photography in June 2025, and I am especially drawn to street photography.',
         'Photography has made me slow down and notice small moments I used to walk past: a gesture, a patch of light, or a reflection on glass. Before, I might have missed them completely. Now I pause, press the shutter, and keep that instant as a memory I can return to.'
       ],
       controls: {
@@ -28,7 +32,7 @@ export const photographyProfile = {
       contact: {
         ariaLabel: 'Photography contact',
         instagram: 'Open Instagram',
-        rednote: 'Show Rednote Card'
+        rednote: 'Show Rednote card'
       },
       sections: {
         news: 'News',
@@ -38,18 +42,17 @@ export const photographyProfile = {
         selectedWorks: 'Selected Works'
       },
       copy: {
-        tags: 'Browse by location, camera, lens, and shooting conditions.',
+        tags: 'Browse by location, camera, lens and shooting conditions.',
         tagLink: 'Photography Tags',
         categories: '',
-        selectedEmpty:
-          'A small development set is being used to shape the browsing experience; the full selected import comes next.',
+        selectedEmpty: 'No photographs are selected yet.',
         projectStart: 'Start date'
       }
     },
     zh: {
       title: 'Jiaxin Li 摄影',
       introParagraphs: [
-        '我是 Jiaxin Li，目前在瑞士 ETHz 攻读 Robotics, Systems and Control 硕士。我从 2025 年 6 月开始学习摄影，现在尤其喜欢街头摄影。',
+        '我是 Jiaxin Li，目前在瑞士 ETH Zurich 攻读 Robotics, Systems and Control 硕士。我从 2025 年 6 月开始学习摄影，现在尤其喜欢街头摄影。',
         '摄影让我慢下来，开始注意那些以前会擦肩而过的小瞬间：一个手势、一束光，或者玻璃上的一处反射。过去我可能根本不会留意它们。现在我会停下来，按下快门，把那一瞬间定格成一段以后还能反复回看、慢慢想起的记忆。'
       ],
       controls: {
@@ -77,18 +80,18 @@ export const photographyProfile = {
         tags: '按地点、相机、镜头和拍摄条件浏览照片。',
         tagLink: '浏览摄影标签',
         categories: '',
-        selectedEmpty: '当前使用一组小规模作品来打磨浏览体验；完整精选导入会在后续继续完善。',
+        selectedEmpty: '目前还没有精选照片。',
         projectStart: '开始时间'
       }
     }
   },
   email: 'ljx2986519980@gmail.com',
   instagram: {
-    url: 'https://www.instagram.com/egoista_li2003?igsh=MWVkeXh5anZmZzluOQ%3D%3D&utm_source=qr'
+    url: 'https://www.instagram.com/egoista_li2003/'
   },
   rednote: {
-    closeLabel: 'Close Rednote Card',
-    title: 'Rednote Card',
+    closeLabel: 'Close Rednote card',
+    title: 'Rednote card',
     displayName: 'egoista',
     id: '2989511395',
     cardImage: '/assets/photography/rednote-card.jpg',
@@ -96,10 +99,11 @@ export const photographyProfile = {
   }
 };
 
+/** `date` is "YYYY.M": shown so in Chinese and as "Jun 2025" in English (src/lib/dates.ts). */
 export const photographyNews = [
   {
     date: '2025.6',
-    text: 'bought my first camera, a Nikon Zf.',
+    text: 'Bought my first camera, a Nikon Zf.',
     textZh: '买下第一台相机：Nikon Zf。'
   }
 ] as const;

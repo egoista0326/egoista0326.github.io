@@ -2,17 +2,19 @@
 /**
  * One photo page, shared by every photo route (standalone, selected, category, project, tag): the
  * layout with a unique tab title, the standalone page as canonical URL, the per-photo layout rule
- * (landscape: where the metadata moves to the right; getPhotoPageLayoutCss) and the photo view.
+ * (landscape: where the metadata moves to the right; getPhotoPageLayoutCss), the photo as the share
+ * image (its 1200 px variant) and the photo view.
  */
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import PhotoDetailView from './PhotoDetailView.astro';
-import { getPhotoAlt, getPhotoHref, getPhotoPageLayoutCss } from '../../lib/photography';
+import { getPhotoAlt, getPhotoHref, getPhotoPageLayoutCss, getPhotoShareImage } from '../../lib/photography';
 import type { PhotoPageProps } from '../../lib/photographyPages';
 
 type Props = PhotoPageProps;
 
 const { photo, context, tagContext } = Astro.props;
 const layoutCss = getPhotoPageLayoutCss(photo);
+const shareImage = getPhotoShareImage(photo);
 ---
 
 <SiteLayout
@@ -20,6 +22,7 @@ const layoutCss = getPhotoPageLayoutCss(photo);
   description={getPhotoAlt(photo)}
   canonicalPath={getPhotoHref(photo)}
   bodyClass="page-photo"
+  shareImage={shareImage}
 >
   {layoutCss ? <Fragment slot="head"><style is:inline set:html={layoutCss} /></Fragment> : null}
   <PhotoDetailView photo={photo} context={context} tagContext={tagContext} />

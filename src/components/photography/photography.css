@@ -6,8 +6,9 @@
  */
 
 /* Theme and language: set on <html> before the first paint by the inline script of SiteLayout
-   (earlyPreferenceScript in src/lib/photographyPrefs.ts). Pages outside /photography/ never get
-   these attributes. */
+   (earlyPreferenceScript / earlyThemeScript in src/lib/photographyPrefs.ts). The theme applies on every
+   SiteLayout page (this file is in their shared bundle); the language only on /photography/ pages.
+   The standalone project page (/dexgo/) never gets these attributes. */
 html[data-photography-theme="dark"] {
   --color-bg: #11100e;
   --color-text: #f2eee7;
@@ -161,9 +162,10 @@ html[data-photography-lang="zh"] .photography-intro-body [data-lang-panel="en"] 
   opacity: 0.8;
 }
 
-/* Theme and language switches, in the site header of every photography page (SiteLayout passes
-   PhotographyPreferences into SiteHeader). Phones: right of the site name, the nav below; wider:
-   after the nav. The pressed state follows the <html> attributes, so it is right before any script. */
+/* Theme switch (every page) and language switch (photography pages), in the site header (SiteLayout passes
+   PhotographyPreferences into SiteHeader). Phones: right of the site name, the nav below; wider: before the
+   nav, which stays at the header's right edge, so the nav links sit at the same place on every page. The
+   pressed state follows the <html> attributes, so it is right before any script. */
 .site-header .photography-preferences {
   display: flex;
   flex-wrap: nowrap;
@@ -266,12 +268,12 @@ html[data-photography-lang="zh"] [data-photography-lang-option="zh"] {
 }
 
 @media (min-width: 768px) {
-  .site-header:has(.photography-preferences) .site-nav {
-    margin-left: auto;
+  .site-header .photography-preferences {
+    order: 1;
   }
 
-  .site-header .photography-preferences {
-    margin-left: 0;
+  .site-header:has(.photography-preferences) .site-nav {
+    order: 2;
   }
 }
 
@@ -311,6 +313,31 @@ html[data-photography-lang="zh"] [data-photography-lang-option="zh"] {
 
 .rednote-trigger {
   padding: 0 var(--space-md);
+  transition:
+    border-color 150ms ease-out,
+    background-color 150ms ease-out;
+}
+
+/* Hover feedback in the site's 150 ms pattern (global.css, "Hover feedback"): text links carry a 45 % underline at
+   rest that turns solid; the bordered Rednote button and category cards take an accent border. */
+.photography-contact a,
+.text-link {
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  transition: text-decoration-color 150ms ease-out;
+}
+
+.photography-contact a:hover,
+.text-link:hover {
+  text-decoration-color: currentColor;
+}
+
+.rednote-trigger:hover {
+  border-color: var(--color-accent);
+}
+
+.photography-intro.has-intro-image .rednote-trigger:hover {
+  border-color: rgb(248 247 242 / 0.7);
+  background: rgb(248 247 242 / 0.16);
 }
 
 .rednote-trigger:focus-visible,
@@ -393,14 +420,15 @@ html[data-photography-lang="zh"] [data-photography-lang-option="zh"] {
   align-items: baseline;
 }
 
-.photography-project-heading span:first-child {
+/* Direct children only: the title (bold) and its start date (muted), each holding an English and a Chinese span. */
+.photography-project-heading > span:first-child {
   color: var(--color-text);
   font-size: 16px;
   font-weight: 600;
   line-height: 1.45;
 }
 
-.photography-project-heading span:last-child,
+.photography-project-heading > span:last-child,
 .photography-project-summary {
   color: var(--color-muted);
   font-size: 14px;
@@ -453,6 +481,11 @@ html[data-photography-lang="zh"] .photography-project-summary > [data-lang-inlin
   background: var(--color-surface);
   color: var(--color-text);
   text-decoration: none;
+  transition: border-color 150ms ease-out;
+}
+
+.category-entry:hover {
+  border-color: var(--color-accent);
 }
 
 .category-entry-image-frame {
@@ -526,11 +559,45 @@ html[data-photography-lang="zh"] .photography-project-summary > [data-lang-inlin
   text-decoration: none;
 }
 
+/* A quiet tile colour (about 1.1:1 against the page, light and dark: the tokens flip with the theme) marks a lazy
+   tile while its photo loads; the opaque photo covers it once loaded. */
 .photo-grid-image {
   display: block;
   width: 100%;
   height: auto;
   border-radius: 3px;
+  background: color-mix(in srgb, var(--color-text) 6%, var(--color-bg));
+  transition: opacity 150ms ease-out;
+}
+
+/* Pointing at a tile (or at a project entry) dims the photo a little and sets the first line of its text (the
+   title, else the type) as a link: accent colour, underlined. */
+.photo-grid-caption > :first-child,
+.photography-project-heading > span:first-child {
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition:
+    color 150ms ease-out,
+    text-decoration-color 150ms ease-out;
+}
+
+@media (hover: hover) {
+  .photo-grid-link:hover,
+  .photography-project-entry:hover {
+    color: var(--color-accent);
+  }
+
+  .photo-grid-link:hover .photo-grid-image {
+    opacity: 0.9;
+  }
+
+  .photo-grid-link:hover .photo-grid-caption > :first-child,
+  .photography-project-entry:hover .photography-project-heading > span:first-child {
+    color: var(--color-accent);
+    text-decoration-color: currentColor;
+  }
 }
 
 .photo-grid-empty {
@@ -740,10 +807,12 @@ html[data-photography-lang="zh"] .photography-project-summary > [data-lang-inlin
   padding-top: 12px;
 }
 
+/* The header keeps the 840 px box of every other page (centred in the wider frame), so the name and the nav
+   sit at the same place; only the space under it is smaller. */
 .page-photo .site-header {
+  max-width: 840px;
+  margin-inline: auto;
   margin-bottom: var(--space-sm);
-  padding-bottom: var(--space-sm);
-  row-gap: var(--space-xs);
 }
 
 @media (min-width: 768px) {
@@ -795,6 +864,17 @@ html[data-photography-lang="zh"] .photography-project-summary > [data-lang-inlin
 .photo-back-link > [data-lang-inline] {
   text-decoration: underline;
   text-underline-offset: 4px;
+}
+
+.photo-back-link > [data-lang-inline],
+.photo-back-label {
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  transition: text-decoration-color 150ms ease-out;
+}
+
+.photo-back-link:hover > [data-lang-inline],
+.photo-back-link:hover .photo-back-label {
+  text-decoration-color: currentColor;
 }
 
 /* Photo page back link: one line, shortened with an ellipsis rather than wrapping the bar. */

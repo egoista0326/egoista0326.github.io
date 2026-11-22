@@ -143,7 +143,8 @@ const initTagFilterPage = (form: HTMLFormElement) => {
   // bottom edge); it is hidden once they are in view or scrolled past.
   if (showResultsLink && resultsSection && 'IntersectionObserver' in window) {
     new IntersectionObserver(
-      ([entry]) => {
+      (entries) => {
+        const entry = entries[entries.length - 1]; // the newest change wins when several arrive at once
         showResultsLink.hidden = entry.isIntersecting || entry.boundingClientRect.top < 0;
       },
       { rootMargin: '0px 0px -120px 0px' }

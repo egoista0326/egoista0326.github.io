@@ -1,16 +1,22 @@
 ---
 import SiteLayout from '../../../layouts/SiteLayout.astro';
 import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
-import { getPhotoLibrary } from '../../../lib/photography';
+import { getPhotoLibrary, getPhotoShareImage } from '../../../lib/photography';
 import '../../../components/photography/tag-filter.css';
 
 // All photos are rendered once; src/scripts/photography/tagFilterPage.ts hides those that do not
 // match the checked options. Without JavaScript the form is a plain GET form and every photo shows.
 const { photos, tagGroups } = await getPhotoLibrary();
 const photographsEn = (count: number) => (count === 1 ? 'photograph' : 'photographs');
+// Shared as the first photo of the results.
+const shareImage = photos[0] ? getPhotoShareImage(photos[0]) : undefined;
 ---
 
-<SiteLayout title="Photography Tags" description="Browse photographs by controlled metadata tags.">
+<SiteLayout
+  title="Photography Tags"
+  description="Browse photographs by location, camera, lens and shooting conditions."
+  shareImage={shareImage}
+>
   <section class="photography-section gallery-heading" aria-labelledby="tags-title">
     <p>
       <a class="photo-back-link" data-gallery-back href="/photography/#tag-entry-title">
@@ -23,7 +29,7 @@ const photographsEn = (count: number) => (count === 1 ? 'photograph' : 'photogra
       <span data-lang-inline="zh">摄影标签</span>
     </h1>
     <p class="section-copy">
-      <span data-lang-inline="en">Browse by location, camera, lens, and shooting conditions.</span>
+      <span data-lang-inline="en">Browse by location, camera, lens and shooting conditions.</span>
       <span data-lang-inline="zh">按地点、相机、镜头和拍摄条件组合筛选照片。</span>
     </p>
   </section>
@@ -60,7 +66,9 @@ const photographsEn = (count: number) => (count === 1 ? 'photograph' : 'photogra
                 {group.tags.map((tag) => (
                   <label class="tag-filter-option">
                     <input type="checkbox" name={group.slug} value={tag.slug} />
-                    <span class="tag-filter-option-label">{tag.label}</span>
+                    <span class="tag-filter-option-label">
+                      {tag.labelZh ? <><span data-lang-inline="en">{tag.label}</span><span data-lang-inline="zh">{tag.labelZh}</span></> : tag.label}
+                    </span>
                     <span class="tag-filter-option-count">
                       <span data-tag-option-count>{tag.count}</span>
                       <span class="visually-hidden">

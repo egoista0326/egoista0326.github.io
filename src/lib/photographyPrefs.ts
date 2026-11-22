@@ -1,14 +1,17 @@
 /**
- * Photography display preferences (theme and language): the only owner of their storage keys, the
- * attributes they set on `<html>` and the change event. Client-safe (no Node imports).
+ * Display preferences (theme and language): the only owner of their storage keys, the attributes they set on
+ * `<html>` and the change event. Client-safe (no Node imports). The names say "photography" because the
+ * switches started there; the theme is site-wide (every SiteLayout page), the language only applies to the
+ * photography pages (the other pages are English only).
  *
  * - `earlyPreferenceScript` is inlined into `<head>` of every photography page (SiteLayout) and runs
  *   before the stylesheet and the first paint: it sets `<html data-photography-theme
  *   data-photography-lang lang>` from localStorage, so a stored dark theme or Chinese never flashes.
- * - The CSS reads only those `<html>` attributes (photography.css), including the pressed state of
- *   the switches; the switch script (PhotographyPreferences) persists clicks with `setTheme` /
- *   `setLanguage` and keeps `aria-pressed` in sync.
- * Pages outside /photography/ never get the attributes and stay in the default light theme.
+ *   `earlyThemeScript` does the same for the theme alone on the other SiteLayout pages (homepage, 404).
+ * - The CSS reads only those `<html>` attributes (photography.css, which every SiteLayout page loads),
+ *   including the pressed state of the switches; the switch script (PhotographyPreferences) persists clicks
+ *   with `setTheme` / `setLanguage` and keeps `aria-pressed` in sync.
+ * The standalone project page (/dexgo/, ProjectLayout) never gets the attributes and stays white.
  */
 
 export type PhotographyTheme = 'light' | 'dark';
@@ -32,6 +35,9 @@ export const languageChangeEvent = 'photography-language-change';
  * storage errors (private mode, blocked site data) fall back to the defaults.
  */
 export const earlyPreferenceScript = `(function(){var d=document.documentElement;function read(k,v){try{var x=window.localStorage.getItem(k);return v.indexOf(x)>=0?x:v[0]}catch(e){return v[0]}}d.setAttribute('data-photography-theme',read(${JSON.stringify(themeStorageKey)},${JSON.stringify(photographyThemes)}));var l=read(${JSON.stringify(languageStorageKey)},${JSON.stringify(photographyLanguages)});d.setAttribute('data-photography-lang',l);d.lang=${JSON.stringify(htmlLangOf)}[l]})();`;
+
+/** Inline `<head>` script for pages without the language switch: the stored theme only. */
+export const earlyThemeScript = `(function(){var d=document.documentElement;try{var x=window.localStorage.getItem(${JSON.stringify(themeStorageKey)})}catch(e){}d.setAttribute('data-photography-theme',${JSON.stringify(photographyThemes)}.indexOf(x)>=0?x:${JSON.stringify(photographyThemes[0])})})();`;
 
 const root = () => document.documentElement;
 

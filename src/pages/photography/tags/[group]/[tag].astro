@@ -1,7 +1,7 @@
 ---
 import SiteLayout from '../../../../layouts/SiteLayout.astro';
 import PhotoGrid from '../../../../components/photography/PhotoGrid.astro';
-import { getPhotoLibrary, getTagPhotoHref, tagFilterHref, type TagGallery } from '../../../../lib/photography';
+import { getPhotoLibrary, getPhotoShareImage, getTagPhotoHref, tagFilterHref, type TagGallery } from '../../../../lib/photography';
 
 type Props = TagGallery;
 
@@ -18,9 +18,11 @@ export async function getStaticPaths() {
 const { group, tag, photos } = Astro.props;
 // Back to the filter page with this tag already ticked (the filter page reads its query).
 const filterHref = `${tagFilterHref}?${new URLSearchParams({ [group.slug]: tag.slug })}`;
+// Shared as the tag's first photo.
+const shareImage = photos[0] ? getPhotoShareImage(photos[0]) : undefined;
 ---
 
-<SiteLayout title={`${tag.label} Photography`} description={`Photographs tagged ${tag.label}.`}>
+<SiteLayout title={`${group.label}: ${tag.label} | Photography`} description={`Photographs tagged ${tag.label}.`} shareImage={shareImage}>
   <section class="photography-section gallery-heading" aria-labelledby="tag-title">
     <p>
       <a class="photo-back-link" data-gallery-back href={filterHref}>
@@ -32,7 +34,16 @@ const filterHref = `${tagFilterHref}?${new URLSearchParams({ [group.slug]: tag.s
       <span data-lang-inline="en">{group.label}</span>
       <span data-lang-inline="zh">{group.labelZh}</span>
     </p>
-    <h1 id="tag-title">{tag.label}</h1>
+    <h1 id="tag-title">
+      {tag.labelZh ? (
+        <>
+          <span data-lang-inline="en">{tag.label}</span>
+          <span data-lang-inline="zh">{tag.labelZh}</span>
+        </>
+      ) : (
+        tag.label
+      )}
+    </h1>
     <p class="section-copy">
       <span data-lang-inline="en">{photos.length} photograph{photos.length === 1 ? '' : 's'} with this tag.</span>
       <span data-lang-inline="zh">此标签下共有 {photos.length} 张照片。</span>

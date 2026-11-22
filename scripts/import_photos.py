@@ -75,8 +75,9 @@ LEGACY_CONDITIONS = {
 MAX_LONG_EDGE = 2400
 WEBP_QUALITY = 88
 # Responsive width variants (pixels). The site's srcset reads the same widths from the report
-# (settings.variant_widths); scripts/verify_photo_import.mjs checks the files against it.
-VARIANT_WIDTHS = (640, 1200)
+# (settings.variant_widths); scripts/verify_photo_import.mjs checks the files against it. 960 serves
+# phones at DPR 2 (a 390 px screen shows a photo about 350 px wide, 700 device px) without the 1200 file.
+VARIANT_WIDTHS = (640, 960, 1200)
 VARIANT_QUALITY = 82
 # Same rule as the content schema (src/content.config.ts).
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")

@@ -2,6 +2,7 @@
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import { photographyNews, photographyProfile } from '../../data/photography';
 import CategoryEntry from '../../components/photography/CategoryEntry.astro';
+import { formatYearMonthEn } from '../../lib/dates';
 import PhotoGrid from '../../components/photography/PhotoGrid.astro';
 import {
   getCategoryHref,
@@ -9,6 +10,7 @@ import {
   getPhotoLibrary,
   getProjectHref,
   getSelectedPhotoHref,
+  getShareImage,
   tagFilterHref
 } from '../../lib/photography';
 
@@ -19,9 +21,11 @@ const hasCategoriesCopy = Boolean(landingCopy.en.copy.categories || landingCopy.
 // The hero covers the full content width (about 840px) at every size (object-fit: cover).
 const heroSize = { width: 1920, height: 1280 };
 const rednoteCardSize = { width: 879, height: 1200 };
+// Share image: the hero's 1200 px variant.
+const shareImage = getShareImage(profile.introImage.src, heroSize.width, heroSize.height, profile.introImage.alt);
 ---
 
-<SiteLayout title="Photography" description={landingCopy.en.introParagraphs[0]}>
+<SiteLayout title="Photography" description={landingCopy.en.metaDescription} shareImage={shareImage}>
   <div class="photography-page">
     <section class:list={['photography-intro', profile.introImage.src ? 'has-intro-image' : '']} aria-labelledby="page-title">
       {
@@ -103,7 +107,10 @@ const rednoteCardSize = { width: 879, height: 1200 };
         {
           photographyNews.map((item) => (
             <li>
-              <span class="news-year">{item.date}</span>
+              <span class="news-year">
+                <span data-lang-inline="en">{formatYearMonthEn(item.date)}</span>
+                <span data-lang-inline="zh">{item.date}</span>
+              </span>
               <span>
                 <span data-lang-inline="en">{item.text}</span>
                 <span data-lang-inline="zh">{item.textZh}</span>
@@ -132,7 +139,8 @@ const rednoteCardSize = { width: 879, height: 1200 };
                   <span data-lang-inline="en">{landingCopy.en.copy.projectStart}</span>
                   <span data-lang-inline="zh">{landingCopy.zh.copy.projectStart}</span>
                   {' '}
-                  {project.startDate}
+                  <span data-lang-inline="en">{formatYearMonthEn(project.startDate)}</span>
+                  <span data-lang-inline="zh">{project.startDate}</span>
                 </span>
               </span>
               <span class="photography-project-summary">
@@ -196,7 +204,7 @@ const rednoteCardSize = { width: 879, height: 1200 };
         <span data-lang-inline="en">{profile.rednote.title}</span>
         <span data-lang-inline="zh">小红书名片</span>
       </h2>
-      <p class="muted">{profile.rednote.displayName} | Rednote ID {profile.rednote.id}</p>
+      <p class="muted">{profile.rednote.displayName} | <span data-lang-inline="en">Rednote ID</span><span data-lang-inline="zh">小红书号</span> {profile.rednote.id}</p>
       <img
         class="rednote-card"
         src={profile.rednote.cardImage}

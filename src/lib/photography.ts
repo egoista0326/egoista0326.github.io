@@ -150,11 +150,20 @@ const getPhotoBaseLabel = (photo: PhotoEntry) => {
   return [category, location].filter(Boolean).join(', ');
 };
 
-/** Stable id from the slug for telling apart photos with the same base label: `dsc-0155` -> `DSC-0155`. */
+/**
+ * Stable id from the slug for telling apart photos with the same base label: a camera file name `dsc-0155` ->
+ * `DSC-0155`; any other slug is title-cased without the words of its location, which the base label already
+ * names: `zurich-yellow-facade` (location `zurich`) -> `Yellow Facade`.
+ */
 const getPhotoFileLabel = (photo: PhotoEntry) => {
   const slug = getPhotoSlug(photo);
+  if (/^dsc-\d+$/.test(slug)) return slug.toUpperCase();
 
-  return /^dsc-\d+$/.test(slug) ? slug.toUpperCase() : slug;
+  const locationWords = new Set(String(photo.data.location ?? '').toLowerCase().split('-'));
+  const words = slug.split('-').filter((word) => word !== '');
+  const kept = words.filter((word) => !locationWords.has(word));
+
+  return (kept.length > 0 ? kept : words).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
 
 /**
@@ -217,6 +226,33 @@ export const getImageSrcset = (src: string, width: number) => {
 
   return [...variants, `${src} ${width}w`].join(', ');
 };
+
+/** Widest share image (og:image): share cards show at most about 1200 px. */
+const shareImageMaxWidth = 1200;
+
+/**
+ * og:image of a published image (`width` x `height` px): its widest `srcset` candidate at most 1200 px wide (the
+ * 1200 variant, or the file itself when it is no wider), with that file's pixel size (a variant's height is rounded
+ * half up, as `variant_size` in scripts/import_photos.py writes it) and the photo's alt text.
+ */
+export const getShareImage = (src: string, width: number, height: number, alt: string) => {
+  const stem = basename(src).replace(/\.[^.]+$/, '');
+  const variant = getVariantWidths(stem)
+    .filter((variantWidth) => variantWidth < width && variantWidth <= shareImageMaxWidth)
+    .pop();
+
+  if (width <= shareImageMaxWidth || variant === undefined) return { src, width, height, alt };
+  return {
+    src: `/${variantsDir}/${stem}-${variant}.webp`,
+    width: variant,
+    height: Math.floor((2 * variant * height + width) / (2 * width)),
+    alt
+  };
+};
+
+/** The share image of a photo: getShareImage of its file, with its alt text. */
+export const getPhotoShareImage = (photo: PhotoEntry) =>
+  getShareImage(photo.data.image, photo.data.width, photo.data.height, getPhotoAlt(photo));
 
 /** Display order: `order` ascending, then newer `date` first (undated last), then slug. */
 export const sortPhotosForDisplay = (photos: readonly PhotoEntry[]) =>
@@ -301,19 +337,28 @@ export const getPhotoPageImage = (photo: PhotoEntry) => {
 // Tags: location, camera, lens and condition, each a group of controlled values.
 // ---------------------------------------------------------------------------------------------
 
-/** `label` heads a filter group; `rowLabel` heads the metadata row of a photo page. */
+/** `label` heads a filter group and a tag page (and starts its title); `rowLabel` heads the metadata row of a photo
+    page. */
 const tagGroupDefinitions = [
   { slug: 'location', label: 'Locations', rowLabel: 'Location', labelZh: '地点', entries: photographyLocations },
-  { slug: 'camera', label: 'Camera', rowLabel: 'Camera', labelZh: '相机', entries: photographyCameras },
-  { slug: 'lens', label: 'Lens', rowLabel: 'Lens', labelZh: '镜头', entries: photographyLenses },
+  { slug: 'camera', label: 'Cameras', rowLabel: 'Camera', labelZh: '相机', entries: photographyCameras },
+  { slug: 'lens', label: 'Lenses', rowLabel: 'Lens', labelZh: '镜头', entries: photographyLenses },
   { slug: 'condition', label: 'Conditions', rowLabel: 'Conditions', labelZh: '拍摄条件', entries: photographyConditions }
 ] as const;
 
 export type TagGroupSlug = (typeof tagGroupDefinitions)[number]['slug'];
 
+/** Chinese label of a tag value: the vocabulary's `labelZh` (lenses, shooting conditions), else the label as written. */
+const getTagLabelZh = (entries: readonly { slug: string; label: string; labelZh?: string }[], slug: string) => {
+  const entry = entries.find((item) => item.slug === slug);
+  return entry?.labelZh ?? entry?.label ?? '';
+};
+
 export type UsedTag = {
   slug: string;
   label: string;
+  /** Chinese label where the vocabulary has one (lenses, shooting conditions); otherwise the label is shown in both. */
+  labelZh?: string;
   href: string;
   /** Number of photos with this tag. */
   count: number;
@@ -344,12 +389,12 @@ export type PhotoMetadataValue = { label: BilingualText; href: string };
 /** One row of the metadata panel; each value links to its category or tag gallery. */
 export type PhotoMetadataRow = { key: string; label: BilingualText; values: PhotoMetadataValue[] };
 
-/** Type (categories), then location, camera, lens and conditions; rows without a value are left out. */
+/** Categories, then location, camera, lens and conditions; rows without a value are left out. */
 export const getPhotoMetadataRows = (photo: PhotoEntry): PhotoMetadataRow[] =>
   [
     {
       key: 'type',
-      label: { en: 'Type', zh: '类型' },
+      label: { en: 'Categories', zh: '分类' },
       values: getPhotoCategories(photo).map((slug) => {
         const entry = getCategoryEntry(slug);
 
@@ -363,7 +408,7 @@ export const getPhotoMetadataRows = (photo: PhotoEntry): PhotoMetadataRow[] =>
         const label = getVocabularyLabel<string>(group.entries, slug);
 
         // Every tag a photo uses has a tag gallery (getUsedTagGroups keeps tags used at least once).
-        return { label: { en: label, zh: label }, href: getTagHref(group.slug, slug) };
+        return { label: { en: label, zh: getTagLabelZh(group.entries, slug) }, href: getTagHref(group.slug, slug) };
       })
     }))
   ].filter((row) => row.values.length > 0);
@@ -382,6 +427,7 @@ const getUsedTagGroups = (photos: readonly PhotoEntry[]): UsedTagGroup[] =>
         .map((entry) => ({
           slug: entry.slug,
           label: entry.label,
+          labelZh: 'labelZh' in entry ? entry.labelZh : undefined,
           href: getTagHref(group.slug, entry.slug),
           count: getPhotosByTag(photos, group.slug, entry.slug).length
         }))
@@ -700,12 +746,12 @@ export const getProjectContext = ({ labelOf }: PhotoLibrary, { project, photos }
   labelOf
 });
 
-/** `/photography/tags/<group>/<tag>/<slug>/`: tag order; tag values have one label in both languages. */
+/** `/photography/tags/<group>/<tag>/<slug>/`: tag order; the Chinese name is the tag's `labelZh` where it has one. */
 export const getTagContext = ({ labelOf }: PhotoLibrary, { group, tag, photos }: TagGallery): PhotoContext => ({
   photos,
   hrefFor: (photo) => getTagPhotoHref(group.slug, tag.slug, photo),
   galleryHref: tag.href,
-  name: { en: tag.label, zh: tag.label },
+  name: { en: tag.label, zh: tag.labelZh ?? tag.label },
   labelOf
 });
 

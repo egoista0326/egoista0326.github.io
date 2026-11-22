@@ -1,26 +1,33 @@
 ---
 import SiteLayout from '../../../layouts/SiteLayout.astro';
 import PhotoGrid from '../../../components/photography/PhotoGrid.astro';
-import { getCategoryPhotoHref, getPhotoLibrary, type CategoryGallery } from '../../../lib/photography';
+import { getCategoryPhotoHref, getPhotoLibrary, getShareImage, type CategoryGallery } from '../../../lib/photography';
 
 interface Props {
   category: CategoryGallery['category'];
+  cover: CategoryGallery['cover'];
   photos: CategoryGallery['photos'];
 }
 
 export async function getStaticPaths() {
   const { categories } = await getPhotoLibrary();
 
-  return categories.map(({ category, photos }) => ({
+  return categories.map(({ category, cover, photos }) => ({
     params: { category: category.slug },
-    props: { category, photos }
+    props: { category, cover, photos }
   }));
 }
 
-const { category, photos } = Astro.props;
+const { category, cover, photos } = Astro.props;
+// Shared as the category's cover, as on its card on /photography/.
+const shareImage = getShareImage(cover.image, cover.width, cover.height, cover.alt);
 ---
 
-<SiteLayout title={`${category.label} Photography`} description={`Selected ${category.label.toLowerCase()} photographs.`}>
+<SiteLayout
+  title={`${category.label} Photography`}
+  description={`Selected ${category.label.toLowerCase()} photographs.`}
+  shareImage={shareImage}
+>
   <section class="photography-section gallery-heading" aria-labelledby="category-title">
     <p>
       <a class="photo-back-link" data-gallery-back href="/photography/#categories-title">

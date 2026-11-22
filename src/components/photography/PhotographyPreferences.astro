@@ -1,13 +1,20 @@
 ---
 /**
- * Theme and language switches of the photography pages, rendered inside the site header. The stored
- * values are applied to <html> before the first paint by Head.astro (earlyPreferenceScript); CSS
- * draws the pressed state from those attributes, and the script below only saves clicks and keeps
- * `aria-pressed` in sync. Storage keys and attributes: src/lib/photographyPrefs.ts.
+ * Theme switch (every SiteLayout page) and language switch (photography pages), rendered inside the site
+ * header. The stored values are applied to <html> before the first paint by Head.astro
+ * (earlyPreferenceScript / earlyThemeScript); CSS draws the pressed state from those attributes, and the
+ * script below only saves clicks and keeps `aria-pressed` in sync. Storage keys and attributes:
+ * src/lib/photographyPrefs.ts.
  */
 import { photographyProfile } from '../../data/photography';
 import './photography.css';
 
+interface Props {
+  /** Show the language switch (photography pages only). */
+  languages?: boolean;
+}
+
+const { languages = true } = Astro.props;
 const { en, zh } = photographyProfile.landingCopy;
 ---
 
@@ -33,6 +40,7 @@ const { en, zh } = photographyProfile.landingCopy;
     </span>
   </div>
 
+  {languages ? (
   <div class="photography-preference-group" role="group" aria-labelledby="photography-language-label">
     <span id="photography-language-label" class="visually-hidden">
       <span data-lang-inline="en">{en.controls.language}</span>
@@ -47,6 +55,7 @@ const { en, zh } = photographyProfile.landingCopy;
       </button>
     </span>
   </div>
+  ) : null}
 </div>
 
 <script>

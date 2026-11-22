@@ -1,8 +1,10 @@
 ---
 /**
  * Masonry grid of photo tiles (1 / 2 / 3 columns). Images carry a srcset of width variants with
- * `sizes` matching the grid columns; the first row loads eagerly and, unless `priority` is false, the
- * first tile with high fetch priority (it is usually the largest image of a gallery page).
+ * `sizes` matching the grid columns. Unless `priority` is false, the first row loads eagerly and the
+ * first tile with high fetch priority (it is usually the largest image of a gallery page); with
+ * `priority` false (the landing page, whose hero is the main image) every tile loads lazily, so on
+ * phones the tiles below the screen do not share the link with the hero.
  * Behaviour (Masonry, marking the photo just viewed on return): src/scripts/photography/photoGrid.ts.
  */
 import PhotoGridItem from './PhotoGridItem.astro';
@@ -16,7 +18,7 @@ interface Props {
   hrefFor?: PhotoHref;
   /** Adds `data-<group>` tag attributes to each tile for the client-side filter on /photography/tags/. */
   withTagData?: boolean;
-  /** False when another image is the page's main image (the landing page hero). */
+  /** False when another image is the page's main image (the landing page hero): no tile is eager or high priority. */
   priority?: boolean;
 }
 
@@ -36,7 +38,7 @@ const firstRow = 3;
           href={hrefFor(photo)}
           withTagData={withTagData}
           sizes={tileSizes}
-          loading={index < firstRow ? 'eager' : 'lazy'}
+          loading={priority && index < firstRow ? 'eager' : 'lazy'}
           fetchpriority={priority && index === 0 ? 'high' : undefined}
         />
       ))}

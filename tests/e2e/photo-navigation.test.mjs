@@ -2,12 +2,15 @@
 // Run: npm run test:e2e   (BASE_URL defaults to http://127.0.0.1:4321, CHROME_PATH to /usr/bin/google-chrome)
 // Each case opens its own browser context, so storage and history never leak between cases.
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 import { after, before, test } from 'node:test';
 import { chromium } from 'playwright';
 
 const base = (process.env.BASE_URL ?? 'http://127.0.0.1:4321').replace(/\/$/, '');
 const desktop = { viewport: { width: 1440, height: 1000 } };
 const phone = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
+/** Photo records (src/content/photos/*.md): a standalone photo page counts through all of them. */
+const photoCount = readdirSync(new URL('../../src/content/photos/', import.meta.url)).filter((file) => file.endsWith('.md')).length;
 
 let browser;
 before(async () => {
@@ -76,28 +79,31 @@ test('single-tag gallery: Next/arrows replace the entry, the back link goes back
     const gallery = `${base}/photography/tags/location/zurich/`;
     await page.goto(gallery);
     const tiles = page.locator('.photo-grid-link');
+    // The gallery's own size, so the test follows the photo records.
+    const total = await tiles.count();
+    assert.ok(total >= 4, `the Zurich gallery has several photos (${total})`);
     const secondHref = await tiles.nth(1).getAttribute('href');
     assert.match(secondHref ?? '', /^\/photography\/tags\/location\/zurich\/[^/]+\/$/, 'tiles link to tag-context photo pages');
 
     await navigate(page, () => tiles.nth(1).click());
     assert.equal(new URL(page.url()).pathname, secondHref);
-    assert.equal(await text(page.locator('[data-photo-position-short]')), '2 / 11');
+    assert.equal(await text(page.locator('[data-photo-position-short]')), `2 / ${total}`);
     assert.equal(await text(page.locator('[data-photo-back]')), '← Back to Zurich');
     const length = await historyLength(page);
 
     await navigate(page, () => page.locator('[data-photo-pager="next"]').click());
     const third = slugOf(page.url());
     assert.ok(page.url().startsWith(gallery), `Next stays in the gallery (${page.url()})`);
-    assert.equal(await text(page.locator('[data-photo-position-short]')), '3 / 11');
+    assert.equal(await text(page.locator('[data-photo-position-short]')), `3 / ${total}`);
     assert.equal(await historyLength(page), length, 'Next replaces the history entry');
 
     await navigate(page, () => page.keyboard.press('ArrowRight'));
-    assert.equal(await text(page.locator('[data-photo-position-short]')), '4 / 11', 'ArrowRight goes forward');
+    assert.equal(await text(page.locator('[data-photo-position-short]')), `4 / ${total}`, 'ArrowRight goes forward');
     assert.equal(await historyLength(page), length, 'ArrowRight replaces the history entry');
 
     await navigate(page, () => page.keyboard.press('ArrowLeft'));
     assert.equal(slugOf(page.url()), third, 'ArrowLeft goes back');
-    assert.equal(await text(page.locator('[data-photo-position-short]')), '3 / 11');
+    assert.equal(await text(page.locator('[data-photo-position-short]')), `3 / ${total}`);
     assert.equal(await historyLength(page), length, 'ArrowLeft replaces the history entry');
 
     await navigate(page, () => page.locator('[data-photo-back]').click());
@@ -321,7 +327,7 @@ test('photo layout: landscape metadata goes below when the side column costs ove
     await page.keyboard.press('Escape');
     assert.equal(await isQuiet(), false, 'Escape closes it');
     await navigate(page, () => page.keyboard.press('ArrowRight'));
-    assert.equal(await text(page.locator('[data-photo-position-short]')), '2 / 29', 'ArrowRight opens the next photo');
+    assert.equal(await text(page.locator('[data-photo-position-short]')), `2 / ${photoCount}`, 'ArrowRight opens the next photo');
   });
 });
 
@@ -364,7 +370,7 @@ test('phone: one-row bar, photo near the top, no horizontal overflow, labelled p
   });
 });
 
-test('stored theme and language apply before the first frame, on photography pages only', async () => {
+test('stored theme applies before the first frame on every site page, the language on photography pages only', async () => {
   await inContext(desktop, async (page, context) => {
     await context.addInitScript(() => {
       try {
@@ -392,9 +398,12 @@ test('stored theme and language apply before the first frame, on photography pag
     for (const path of ['/photography/', '/photography/selected/dsc-0046/', '/photography/category/street/no-such-photo/']) {
       assert.deepEqual(await firstFrame(path), { theme: 'dark', language: 'zh', lang: 'zh-CN' }, `${path} in its first frame`);
     }
-    for (const path of ['/', '/dexgo/', '/no-such-page']) {
-      assert.deepEqual(await firstFrame(path), { theme: null, language: null, lang: 'en' }, `${path} keeps the default presentation`);
+    // The academic pages share the theme (one switch for the site) but stay English.
+    for (const path of ['/', '/no-such-page']) {
+      assert.deepEqual(await firstFrame(path), { theme: 'dark', language: null, lang: 'en' }, `${path}: stored theme, English`);
     }
+    // The standalone project page keeps its own white presentation.
+    assert.deepEqual(await firstFrame('/dexgo/'), { theme: null, language: null, lang: 'en' }, '/dexgo/ keeps the default presentation');
   });
 });
 
@@ -420,14 +429,93 @@ test('a missing URL answers 404 with the site header and links home', async () =
   });
 });
 
-test('Chinese: no English-only text shows on the landing page, a project page or a photography 404', async () => {
+test('a missing URL under /dexgo/ shows the standalone 404 from the first frame: no personal header, footer or icon', async () => {
+  await inContext(desktop, async (page, context) => {
+    await context.addInitScript(() => {
+      try {
+        localStorage.setItem('photography-theme', 'dark');
+      } catch {
+        // about:blank has no storage.
+      }
+      requestAnimationFrame(() => {
+        const header = document.querySelector('.site-header');
+        window.__firstFrame = {
+          notFound: document.documentElement.getAttribute('data-not-found'),
+          theme: document.documentElement.getAttribute('data-photography-theme'),
+          header: header ? getComputedStyle(header).display : null,
+          background: getComputedStyle(document.body).backgroundColor
+        };
+      });
+    });
+    for (const path of ['/dexgo/no-such-page/', '/DexGO/video/']) {
+      const response = await page.goto(`${base}${path}`);
+      assert.equal(response?.status(), 404, `${path} answers 404`);
+      await page.waitForFunction(() => window.__firstFrame !== undefined);
+      assert.deepEqual(await page.evaluate(() => window.__firstFrame), { notFound: 'dexgo', theme: 'light', header: 'none', background: 'rgb(255, 255, 255)' }, `${path} in its first frame`);
+      assert.equal(await page.locator('.site-footer').isVisible(), false, `${path}: no personal footer`);
+      const links = await page.locator('main a').evaluateAll((anchors) => anchors.filter((a) => a.checkVisibility()).map((a) => a.getAttribute('href')));
+      assert.deepEqual(links, ['/dexgo/'], `${path}: the one link leads to the project page`);
+      const icons = await page.evaluate(() => [...document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]')].map((link) => link.getAttribute('href')));
+      assert.deepEqual(icons, ['/dexgo/favicon.ico', '/dexgo/favicon.svg', '/dexgo/apple-touch-icon.png'], `${path}: the DexGO icons only`);
+      assert.equal(await page.title(), 'Page not found | DexGO', `${path}: no personal site name in the title`);
+      // Centred like the project page's column: heading, sentence and link share the viewport's axis.
+      const centres = await page.evaluate(() =>
+        ['h1', '.not-found > p.muted', '.not-found-dexgo a'].map((selector) => {
+          const range = document.createRange();
+          range.selectNodeContents(document.querySelector(selector));
+          const box = range.getBoundingClientRect();
+          return box.left + box.width / 2 - innerWidth / 2;
+        })
+      );
+      assert.ok(centres.every((offset) => Math.abs(offset) <= 1), `${path}: centred (offsets ${centres.map((c) => c.toFixed(1)).join(', ')})`);
+      const underline = await page.locator('.not-found-dexgo a').evaluate((link) => getComputedStyle(link).textDecorationColor);
+      assert.equal(underline, 'rgba(0, 0, 0, 0)', `${path}: the link is not underlined at rest`);
+    }
+    // Elsewhere the 404 keeps the personal site's header and links.
+    await page.goto(`${base}/no-such-page/`);
+    assert.equal(await page.evaluate(() => document.documentElement.getAttribute('data-not-found')), null);
+    assert.ok(await page.locator('.site-header').isVisible(), 'the site header is shown outside /dexgo/');
+    assert.equal(await page.locator('main a[href="/dexgo/"]').isVisible(), false, 'no DexGO link outside /dexgo/');
+  });
+});
+
+test('a case variant of a DexGO page is replaced by the lower-case page, so Back skips the 404', async () => {
+  await inContext(desktop, async (page, context) => {
+    for (const [path, target] of [
+      ['/DexGO/', '/dexgo/'],
+      ['/DEXGO/demo/', '/dexgo/demo/'],
+      ['/DexGO/figure/', '/dexgo/figure/'],
+      ['/DexGO', '/dexgo/'],
+      ['/DexGO/figure/index.html?from=test#top', '/dexgo/figure/?from=test#top']
+    ]) {
+      // A fresh tab per path: Chrome turns a same-URL navigation into a replacement, which would blur the count.
+      const tab = await context.newPage();
+      await tab.goto(`${base}/`);
+      const entries = await historyLength(tab);
+      await tab.goto(`${base}${path}`, { waitUntil: 'commit' });
+      await tab.waitForURL((url) => url.pathname === new URL(target, base).pathname, { waitUntil: 'load' });
+      const url = new URL(tab.url());
+      assert.equal(url.pathname + url.search + url.hash, target, `${path} ends on ${target}`);
+      assert.equal(await historyLength(tab), entries + 1, `${path}: the 404 entry was replaced, not added`);
+      await tab.goBack();
+      assert.equal(new URL(tab.url()).pathname, '/', `${path}: Back returns to the page before`);
+      await tab.close();
+    }
+    // A path that is not one of the project's pages keeps the 404.
+    const response = await page.goto(`${base}/DexGO/video/`);
+    assert.equal(response?.status(), 404);
+    assert.equal(new URL(page.url()).pathname, '/DexGO/video/');
+  });
+});
+
+test('Chinese: no English-only text shows on the landing page, a project page, the tag pages or a photography 404', async () => {
   await inContext(desktop, async (page) => {
     await page.goto(`${base}/photography/`);
     await page.evaluate(() => localStorage.setItem('photography-language', 'zh'));
-    for (const path of ['/photography/', '/photography/projects/moments-in-the-room/', '/photography/no-such-page/']) {
+    for (const path of ['/photography/', '/photography/projects/moments-in-the-room/', '/photography/tags/', '/photography/tags/condition/clear/', '/photography/no-such-page/']) {
       await page.goto(`${base}${path}`);
       const shown = await page.evaluate(() =>
-        [...document.querySelectorAll('main [data-lang-inline="en"], main [data-lang-panel="en"]')]
+        [...document.querySelectorAll('header [data-lang-inline="en"], main [data-lang-inline="en"], main [data-lang-panel="en"]')]
           .filter((element) => element.getClientRects().length > 0 && !element.closest('.visually-hidden'))
           .map((element) => element.textContent.trim().slice(0, 40))
       );
@@ -435,6 +523,28 @@ test('Chinese: no English-only text shows on the landing page, a project page or
       const zh = await page.locator('main [data-lang-inline="zh"]:visible').count();
       assert.ok(zh > 0, `${path}: Chinese text is shown`);
     }
+    // The header nav reads in Chinese on photography pages, a photo page included; the English-only homepage keeps
+    // its English nav with the same stored language.
+    const navLabels = () => page.locator('.site-nav .nav-link').evaluateAll((links) => links.map((link) => link.innerText.trim()));
+    for (const path of ['/photography/', '/photography/selected/dsc-0046/']) {
+      await page.goto(`${base}${path}`);
+      assert.deepEqual(await navLabels(), ['学术', '摄影'], `${path}: nav in Chinese`);
+    }
+    await page.goto(`${base}/`);
+    assert.deepEqual(await navLabels(), ['Academic', 'Photography'], '/: nav stays English');
+    // Shooting conditions and lens descriptions have Chinese labels (place and camera names stay as written).
+    await page.goto(`${base}/photography/tags/condition/clear/`);
+    assert.equal((await page.locator('h1').innerText()).trim(), '晴天');
+    await page.goto(`${base}/photography/tags/`);
+    const conditions = await page.locator('[data-filter-group="condition"] .tag-filter-option-label').evaluateAll((labels) => labels.map((label) => label.innerText.trim()));
+    assert.ok(conditions.length > 0 && conditions.every((label) => /^[\u4e00-\u9fff]+$/.test(label)), `condition filters read in Chinese: ${conditions.join(', ')}`);
+    const lenses = await page.locator('[data-filter-group="lens"] .tag-filter-option-label').evaluateAll((labels) => labels.map((label) => label.innerText.trim()));
+    assert.ok(lenses.length > 0 && lenses.every((label) => /^\d+(-\d+)?mm (定焦|变焦)$/.test(label)), `lens filters read in Chinese: ${lenses.join(', ')}`);
+    // The Rednote card dialog names the ID in Chinese too.
+    await page.goto(`${base}/photography/`);
+    await page.locator('[data-rednote-open]').click();
+    const rednoteLine = await page.locator('[data-rednote-dialog] p.muted').innerText();
+    assert.match(rednoteLine, /\| 小红书号 \d+$/, `Rednote line in Chinese: ${rednoteLine}`);
     // Landmark and group names follow the language too.
     await page.goto(`${base}/photography/`);
     assert.equal(await page.getByRole('group', { name: '摄影联系方式', exact: true }).count(), 1, 'contact group named in Chinese');
@@ -450,9 +560,12 @@ test('quiet view: the photo fills the screen with a sharp candidate, and focus s
     await next.focus();
     await page.keyboard.press('f');
     const photo = page.locator('.photo-detail-image');
+    // The quiet view swaps in larger `sizes`; wait until the loaded candidate is at least as wide as the photo shown.
     await page.waitForFunction(() => {
       const image = document.querySelector('.photo-detail-image');
-      return image.complete && image.currentSrc.includes('-1200.');
+      const candidate = image.srcset.split(',').map((entry) => entry.trim().split(/\s+/))
+        .find(([url]) => new URL(url, location.href).href === image.currentSrc);
+      return image.complete && Number.parseInt(candidate?.[1] ?? '0', 10) >= image.getBoundingClientRect().width;
     }, undefined, { timeout: 5000 }).catch(() => undefined);
     const fit = await photo.evaluate((image) => {
       const box = image.getBoundingClientRect();
