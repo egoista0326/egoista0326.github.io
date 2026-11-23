@@ -10,7 +10,7 @@ interface Props {
    * `false` for a page without a URL of its own (404), which then has no canonical or og:url.
    */
   canonicalPath?: string | false;
-  /** False when the page writes its own Open Graph / Twitter tags in the layout's head slot (e.g. /dexgo/). */
+  /** False when the page writes its own Open Graph / Twitter tags in the layout's head slot. */
   shareTags?: boolean;
   /** Photography pages: apply the stored theme and language to <html> before the stylesheet and first paint
       (other pages: the stored theme only). */

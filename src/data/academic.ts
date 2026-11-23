@@ -1,5 +1,5 @@
 import type { LinkChip } from '../components/LinkChips.astro';
-import { dexgoPage } from './dexgo';
+import { dexgoCard } from './dexgoCard';
 import { newsItems, projectPlaceholder, site } from './site';
 
 // Strings that start with "TODO" are placeholders. In `astro dev` they render with a visible dashed highlight
@@ -61,9 +61,9 @@ export interface ProjectEntry {
   links: ProjectLink[];
 }
 
-/** The DexGO page's link with this label, if it has a target yet (dexgo.ts owns the paper and code links). */
+/** The DexGO card's link with this label, if it has a target yet (dexgoCard.ts owns the paper and code links). */
 const dexgoLink = (label: string): string | undefined =>
-  dexgoPage.links.find((link) => link.label === label)?.href || undefined;
+  dexgoCard.links.find((link) => link.label === label)?.href || undefined;
 
 export const academicProjects: {
   heading: string;
@@ -73,10 +73,10 @@ export const academicProjects: {
   heading: 'Projects',
   entries: [
     {
-      title: `${dexgoPage.title}: ${dexgoPage.subtitle}`,
-      href: '/dexgo/',
-      authors: dexgoPage.authors,
-      equalNote: dexgoPage.equalNote,
+      title: `${dexgoCard.title}: ${dexgoCard.subtitle}`,
+      href: dexgoCard.href,
+      authors: dexgoCard.authors,
+      equalNote: dexgoCard.equalNote,
       // Card cut of the DexGO teaser (from teaser_1080p.mp4): one fixed 1280x720 window, the same in every frame, that
       // holds the hand's whole path, the screw base and the rack (no zoom or pan), scaled to 640x360; the loop starts in
       // the pinch (poster = frame 0).
@@ -88,7 +88,7 @@ export const academicProjects: {
       },
       links: [
         { label: 'Paper', icon: 'paper', href: dexgoLink('Paper') },
-        { label: 'Project Page', icon: 'globe', href: '/dexgo/' },
+        { label: 'Project Page', icon: 'globe', href: dexgoCard.href },
         { label: 'Code', icon: 'code', href: dexgoLink('Code') }
       ]
     }

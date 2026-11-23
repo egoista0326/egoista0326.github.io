@@ -8,7 +8,7 @@
 /* Theme and language: set on <html> before the first paint by the inline script of SiteLayout
    (earlyPreferenceScript / earlyThemeScript in src/lib/photographyPrefs.ts). The theme applies on every
    SiteLayout page (this file is in their shared bundle); the language only on /photography/ pages.
-   The standalone project page (/dexgo/) never gets these attributes. */
+   The DexGO project page (/dexgo/, its own repository) never gets these attributes. */
 html[data-photography-theme="dark"] {
   --color-bg: #11100e;
   --color-text: #f2eee7;

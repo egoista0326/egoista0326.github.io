@@ -402,8 +402,6 @@ test('stored theme applies before the first frame on every site page, the langua
     for (const path of ['/', '/no-such-page']) {
       assert.deepEqual(await firstFrame(path), { theme: 'dark', language: null, lang: 'en' }, `${path}: stored theme, English`);
     }
-    // The standalone project page keeps its own white presentation.
-    assert.deepEqual(await firstFrame('/dexgo/'), { theme: null, language: null, lang: 'en' }, '/dexgo/ keeps the default presentation');
   });
 });
 
@@ -426,85 +424,6 @@ test('a missing URL answers 404 with the site header and links home', async () =
     for (const href of ['/', '/photography/']) {
       assert.ok((await page.locator(`main a[href="${href}"]`).count()) > 0, `the page links to ${href}`);
     }
-  });
-});
-
-test('a missing URL under /dexgo/ shows the standalone 404 from the first frame: no personal header, footer or icon', async () => {
-  await inContext(desktop, async (page, context) => {
-    await context.addInitScript(() => {
-      try {
-        localStorage.setItem('photography-theme', 'dark');
-      } catch {
-        // about:blank has no storage.
-      }
-      requestAnimationFrame(() => {
-        const header = document.querySelector('.site-header');
-        window.__firstFrame = {
-          notFound: document.documentElement.getAttribute('data-not-found'),
-          theme: document.documentElement.getAttribute('data-photography-theme'),
-          header: header ? getComputedStyle(header).display : null,
-          background: getComputedStyle(document.body).backgroundColor
-        };
-      });
-    });
-    for (const path of ['/dexgo/no-such-page/', '/DexGO/video/']) {
-      const response = await page.goto(`${base}${path}`);
-      assert.equal(response?.status(), 404, `${path} answers 404`);
-      await page.waitForFunction(() => window.__firstFrame !== undefined);
-      assert.deepEqual(await page.evaluate(() => window.__firstFrame), { notFound: 'dexgo', theme: 'light', header: 'none', background: 'rgb(255, 255, 255)' }, `${path} in its first frame`);
-      assert.equal(await page.locator('.site-footer').isVisible(), false, `${path}: no personal footer`);
-      const links = await page.locator('main a').evaluateAll((anchors) => anchors.filter((a) => a.checkVisibility()).map((a) => a.getAttribute('href')));
-      assert.deepEqual(links, ['/dexgo/'], `${path}: the one link leads to the project page`);
-      const icons = await page.evaluate(() => [...document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]')].map((link) => link.getAttribute('href')));
-      assert.deepEqual(icons, ['/dexgo/favicon.ico', '/dexgo/favicon.svg', '/dexgo/apple-touch-icon.png'], `${path}: the DexGO icons only`);
-      assert.equal(await page.title(), 'Page not found | DexGO', `${path}: no personal site name in the title`);
-      // Centred like the project page's column: heading, sentence and link share the viewport's axis.
-      const centres = await page.evaluate(() =>
-        ['h1', '.not-found > p.muted', '.not-found-dexgo a'].map((selector) => {
-          const range = document.createRange();
-          range.selectNodeContents(document.querySelector(selector));
-          const box = range.getBoundingClientRect();
-          return box.left + box.width / 2 - innerWidth / 2;
-        })
-      );
-      assert.ok(centres.every((offset) => Math.abs(offset) <= 1), `${path}: centred (offsets ${centres.map((c) => c.toFixed(1)).join(', ')})`);
-      const underline = await page.locator('.not-found-dexgo a').evaluate((link) => getComputedStyle(link).textDecorationColor);
-      assert.equal(underline, 'rgba(0, 0, 0, 0)', `${path}: the link is not underlined at rest`);
-    }
-    // Elsewhere the 404 keeps the personal site's header and links.
-    await page.goto(`${base}/no-such-page/`);
-    assert.equal(await page.evaluate(() => document.documentElement.getAttribute('data-not-found')), null);
-    assert.ok(await page.locator('.site-header').isVisible(), 'the site header is shown outside /dexgo/');
-    assert.equal(await page.locator('main a[href="/dexgo/"]').isVisible(), false, 'no DexGO link outside /dexgo/');
-  });
-});
-
-test('a case variant of a DexGO page is replaced by the lower-case page, so Back skips the 404', async () => {
-  await inContext(desktop, async (page, context) => {
-    for (const [path, target] of [
-      ['/DexGO/', '/dexgo/'],
-      ['/DEXGO/demo/', '/dexgo/demo/'],
-      ['/DexGO/figure/', '/dexgo/figure/'],
-      ['/DexGO', '/dexgo/'],
-      ['/DexGO/figure/index.html?from=test#top', '/dexgo/figure/?from=test#top']
-    ]) {
-      // A fresh tab per path: Chrome turns a same-URL navigation into a replacement, which would blur the count.
-      const tab = await context.newPage();
-      await tab.goto(`${base}/`);
-      const entries = await historyLength(tab);
-      await tab.goto(`${base}${path}`, { waitUntil: 'commit' });
-      await tab.waitForURL((url) => url.pathname === new URL(target, base).pathname, { waitUntil: 'load' });
-      const url = new URL(tab.url());
-      assert.equal(url.pathname + url.search + url.hash, target, `${path} ends on ${target}`);
-      assert.equal(await historyLength(tab), entries + 1, `${path}: the 404 entry was replaced, not added`);
-      await tab.goBack();
-      assert.equal(new URL(tab.url()).pathname, '/', `${path}: Back returns to the page before`);
-      await tab.close();
-    }
-    // A path that is not one of the project's pages keeps the 404.
-    const response = await page.goto(`${base}/DexGO/video/`);
-    assert.equal(response?.status(), 404);
-    assert.equal(new URL(page.url()).pathname, '/DexGO/video/');
   });
 });
 

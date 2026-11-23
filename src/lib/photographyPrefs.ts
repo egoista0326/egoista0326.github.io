@@ -11,7 +11,7 @@
  * - The CSS reads only those `<html>` attributes (photography.css, which every SiteLayout page loads),
  *   including the pressed state of the switches; the switch script (PhotographyPreferences) persists clicks
  *   with `setTheme` / `setLanguage` and keeps `aria-pressed` in sync.
- * The standalone project page (/dexgo/, ProjectLayout) never gets the attributes and stays white.
+ * The DexGO project page (/dexgo/) is its own repository and never gets the attributes; it stays white.
  */
 
 export type PhotographyTheme = 'light' | 'dark';

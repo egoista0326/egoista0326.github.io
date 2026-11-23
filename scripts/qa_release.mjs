@@ -12,7 +12,6 @@ const viewports = [
 ];
 const routes = [
   '/',
-  '/dexgo/',
   '/photography/',
   '/photography/category/still-life/',
   '/photography/category/landscape/',

@@ -1,7 +1,8 @@
 ---
-// A row of small outlined link chips with icons (homepage project card, DexGO title block): one look on both
-// pages, coloured by the page's tokens (global.css, "Link chips"). A link without a target yet is shown as muted
-// text marked "soon": a <span>, so it is neither a link nor focusable, and it reads "Paper · soon".
+// A row of small outlined link chips with icons (the homepage project card; the DexGO project page, its own
+// repository, keeps a copy with the same look), coloured by the page's tokens (global.css, "Link chips"). A link
+// without a target yet is shown as muted text marked "soon": a <span>, so it is neither a link nor focusable, and it
+// reads "Paper · soon".
 export type LinkChipIcon = 'paper' | 'globe' | 'code' | 'video';
 
 export interface LinkChip {
@@ -34,8 +35,6 @@ const icons: Record<LinkChipIcon, string[]> = {
 ---
 
 <ul class:list={['project-card-links', className]} aria-label={label}>
-  {/* An optional first item (slot "lead"), e.g. /dexgo/'s filled "Interactive demo" pill. */}
-  {Astro.slots.has('lead') ? <li><slot name="lead" /></li> : null}
   {
     links.map((link) => {
       const icon = (

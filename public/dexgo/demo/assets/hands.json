@@ -1,8 +1,0 @@
-{
- "format": "hands-v1",
- "note": "Hands of the demo in tab order, the first is the default (app/hands.js). root: the hand's asset root relative to assets/ (layout of assets/); moving a hand's assets changes only its root. minScale: the follow camera's zoom-out floor in px per metre (default app/main.js FOLLOW.scale[0], 1350, tuned on MANO). editorWristYDeg: the Set goal editor's wrist y-joint bound in deg (MANO 75, its turn about the vertical; absent = none, Sharpa, owner 2026-11-23). editorEndMarginMm: the Set goal Position slider's trim in mm at an enclosure's thumb-side rod end (Sharpa 10, owner 2026-11-23: the thumb-side pinch is always offered, the hand keeps about 1 cm from that end; absent = 0, MANO).",
- "hands": [
-  {"id": "mano", "label": "MANO", "root": "./", "look": "colliders", "editorWristYDeg": 75},
-  {"id": "sharpa", "label": "Sharpa", "root": "sharpa_local/", "look": "visual", "visual": "sharpa_visual/visual.json", "minScale": 600, "editorEndMarginMm": 10}
- ]
-}

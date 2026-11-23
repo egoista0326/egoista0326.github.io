@@ -5,7 +5,6 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { brotliDecompressSync } from 'node:zlib';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const dist = join(root, 'dist');
@@ -118,6 +117,10 @@ const srcsetUrls = (srcset) =>
     .map((candidate) => candidate.trim().split(/\s+/)[0])
     .filter(Boolean);
 
+/** Paths on this domain that other repositories' GitHub Pages serve (project sites), not this build: the DexGO
+    project page (egoista0326/dexgo). Links to them are checked there. */
+const otherSites = ['/dexgo/'];
+
 /**
  * The dist file an internal URL reaches (query and hash stripped), or null for external and
  * non-file URLs. URLs on the site's own origin count as internal.
@@ -131,6 +134,7 @@ const resolveInternal = (url, fromFile) => {
     return { path: url, file: null };
   }
   if (parsed.origin !== new URL(siteUrl).origin) return null;
+  if (otherSites.some((prefix) => `${parsed.pathname}/`.startsWith(prefix))) return null;
   const absolute = /^[a-z][a-z0-9+.-]*:|^\/\//i.test(url);
   let path;
   try {
@@ -404,7 +408,7 @@ test('homepage intro: the bio follows the name (no role line) and reads as site.
   assert.equal(attributeOf(tagsNamed(markup, 'meta').find((tag) => attributeOf(tag, 'name') === 'description'), 'content'), description);
 });
 
-test('homepage project card: a looping clip, the author line of dexgo.ts, links without a target marked "soon"', () => {
+test('homepage project card: a looping clip, the author line of dexgoCard.ts, links without a target marked "soon"', () => {
   const card = /<article class="project-card"[^>]*>([\s\S]*?)<\/article>/.exec(markupOf(join(dist, 'index.html')))?.[1];
   assert.ok(card, 'dist/index.html has a project card');
 
@@ -418,7 +422,7 @@ test('homepage project card: a looping clip, the author line of dexgo.ts, links 
 
   // Authors as on the DexGO page, in order, `*` after the co-first authors; the site owner bold and not a link.
   const authors = Array.from(
-    read('src/data/dexgo.ts').matchAll(/\{\s*name:\s*'([^']+)',\s*href:\s*'[^']*',\s*equal:\s*(true|false)\s*\}/g),
+    read('src/data/dexgoCard.ts').matchAll(/\{\s*name:\s*'([^']+)',\s*href:\s*'[^']*',\s*equal:\s*(true|false)\s*\}/g),
     ([, name, equal]) => `${name}${equal === 'true' ? '*' : ''}`
   );
   const owner = /name:\s*'([^']+)'/.exec(read('src/data/site.ts'))?.[1];
@@ -426,7 +430,7 @@ test('homepage project card: a looping clip, the author line of dexgo.ts, links 
   const visible = decodeEntities(line.replace(/<span class="visually-hidden">[^<]*<\/span>/g, '').replace(/<[^>]+>/g, ''))
     .replace(/\s+/g, ' ')
     .trim();
-  assert.ok(authors.length > 0 && owner, 'authors in src/data/dexgo.ts and the owner in src/data/site.ts');
+  assert.ok(authors.length > 0 && owner, 'authors in src/data/dexgoCard.ts and the owner in src/data/site.ts');
   assert.equal(visible, authors.join(', '));
   assert.ok(line.includes(`<strong>${owner}</strong>`), `${owner} is bold`);
   assert.ok(!tagsNamed(line, 'a').some((tag) => line.includes(`${tag}${owner}</a>`)), `${owner} is not a link`);
@@ -454,144 +458,6 @@ function chipsOf(markup) {
     body
   }));
 }
-
-test('/dexgo/ title block: the link chips of dexgo.ts, a link without a target marked soon or left out', () => {
-  const markup = markupOf(join(dist, 'dexgo', 'index.html'));
-  const title = /<header class="dx-title">([\s\S]*?)<\/header>/.exec(markup)?.[1];
-  assert.ok(title, 'dist/dexgo/index.html has a title block');
-  const shown = chipsOf(title).map(({ element, body }) => `${element}:${decodeEntities(body.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim()}`);
-  const links = Array.from(
-    read('src/data/dexgo.ts').matchAll(/\{\s*label:\s*'([^']+)',\s*icon:\s*'[^']+',\s*href:\s*'([^']*)',\s*soon:\s*(true|false)\s*\}/g),
-    ([, label, href, soon]) => ({ label, href, soon: soon === 'true' })
-  );
-  assert.ok(links.length > 0, 'links found in src/data/dexgo.ts');
-  const expected = links.flatMap(({ label, href, soon }) => (href ? [`a:${label}`] : soon ? [`span:${label} · soon`] : []));
-  assert.deepEqual(shown, expected);
-});
-
-/** Seconds of a WebVTT timestamp (hh:mm:ss.mmm or mm:ss.mmm). */
-const vttSeconds = (stamp) => stamp.split(':').reduce((total, part) => total * 60 + Number(part), 0);
-
-/** Top-level MP4 boxes of `buf`: [type, offset, size]. */
-const mp4Boxes = (buf) => {
-  const boxes = [];
-  for (let offset = 0; offset + 8 <= buf.length; ) {
-    let size = buf.readUInt32BE(offset);
-    const type = buf.toString('latin1', offset + 4, offset + 8);
-    if (size === 1) size = Number(buf.readBigUInt64BE(offset + 8));
-    else if (size === 0) size = buf.length - offset;
-    if (size < 8) break;
-    boxes.push([type, offset, size]);
-    offset += size;
-  }
-  return boxes;
-};
-
-test('/dexgo/ hero: the teaser (2:1, and 4:3 on phones) as muted looping clips with posters; no project video', () => {
-  const markup = markupOf(join(dist, 'dexgo', 'index.html'));
-  const hero = /<div class="dx-media dx-hero">([\s\S]*?)<\/div>\s*<section/.exec(markup)?.[1] ?? '';
-  const videos = tagsNamed(hero, 'video');
-  assert.equal(videos.length, 2, 'the wide and the phone cut');
-  const sources = tagsNamed(hero, 'source').map((tag) => attributeOf(tag, 'src'));
-  assert.deepEqual(sources, ['/assets/dexgo/clips/teaser_1080p_crop.mp4', '/assets/dexgo/clips/teaser_phone.mp4']);
-  for (const video of videos) {
-    assert.notEqual(attributeOf(video, 'muted'), undefined);
-    assert.notEqual(attributeOf(video, 'loop'), undefined);
-    assert.notEqual(attributeOf(video, 'playsinline'), undefined);
-    assert.equal(attributeOf(video, 'controls'), undefined);
-    assert.ok(existsSync(join(dist, attributeOf(video, 'data-poster'))), attributeOf(video, 'data-poster'));
-  }
-  assert.doesNotMatch(markup, /data-player|data-sound-on|dexgo_video|assets\/dexgo\/video/);
-  for (const file of ['dexgo_video.mp4', 'dexgo_video_poster.webp', 'dexgo_video.en.vtt']) {
-    assert.equal(existsSync(join(dist, 'assets', 'dexgo', 'video', file)), false, `${file} is gone`);
-  }
-});
-
-test('/dexgo/ structure: sticky nav with the three parts and one pause button; Method, Live demo, Results as parts with an eyebrow and an h2', () => {
-  const markup = markupOf(join(dist, 'dexgo', 'index.html'));
-  const nav = /<nav class="dx-localnav"[\s\S]*?<\/nav>/.exec(markup)?.[0] ?? '';
-  assert.deepEqual(tagsNamed(nav, 'a').map((tag) => attributeOf(tag, 'href')), ['#main', '#method', '#live-demo', '#results']);
-  assert.equal(tagsNamed(markup, 'button').filter((tag) => attributeOf(tag, 'data-video-toggle') !== undefined).length, 1);
-  const parts = [...markup.matchAll(/<section id="(method|live-demo|results)" class="dx-part[^"]*"[^>]*>\s*<header class="dx-part-head"[^>]*>\s*<p class="dx-eyebrow">([^<]+)<\/p>\s*<h2\b/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(parts, [['method', 'Method'], ['live-demo', 'Live demo'], ['results', 'Results']]);
-  const demo = /<section id="live-demo"[\s\S]*?<\/section>/.exec(markup)?.[0] ?? '';
-  assert.deepEqual(tagsNamed(demo, 'source').map((tag) => attributeOf(tag, 'src')), ['/assets/dexgo/clips/chain_ticker.mp4', '/assets/dexgo/clips/chain_ticker_phone.mp4']);
-  assert.match(demo, /data-demo-start[^>]*>[\s\S]*?Start the live demo/);
-  assert.match(markup, /<a slot="lead"|class="dx-pill dx-pill-primary" href="#live-demo" data-demo-jump/);
-});
-
-test('/dexgo/figure/: the overview figure at 1000 px on a standalone page, linked from the /dexgo/ figure on phones', () => {
-  const dexgo = markupOf(join(dist, 'dexgo', 'index.html'));
-  const opens = [...tagsNamed(dexgo, 'a').filter((tag) => /class="[^"]*\bdx-method-(open|zoom)\b/.test(tag))];
-  assert.equal(opens.length, 2, 'the phone link and the image link of the method figure');
-  for (const tag of opens) assert.equal(attributeOf(tag, 'href'), '/dexgo/figure/');
-
-  const file = join(dist, 'dexgo', 'figure', 'index.html');
-  assert.ok(existsSync(file), 'dist/dexgo/figure/index.html exists');
-  const markup = markupOf(file);
-  assert.ok(tagsNamed(markup, 'meta').some((tag) => attributeOf(tag, 'name') === 'viewport' && /width=device-width/.test(attributeOf(tag, 'content') ?? '')));
-  assert.ok(tagsNamed(markup, 'meta').some((tag) => attributeOf(tag, 'name') === 'robots' && attributeOf(tag, 'content') === 'noindex'));
-  // Standalone like /dexgo/: no personal header, nav or footer; only the project's own icon.
-  assert.deepEqual([/<header\b/i, /<nav\b/i, /<footer\b/i].filter((pattern) => pattern.test(markup)).map(String), []);
-  const icons = tagsNamed(markup, 'link').filter((tag) => /\bicon\b/.test(attributeOf(tag, 'rel') ?? ''));
-  assert.ok(icons.length > 0 && icons.every((tag) => (attributeOf(tag, 'href') ?? '').startsWith('/dexgo/')), 'DexGO icons only');
-  const image = tagsNamed(markup, 'img').find((tag) => attributeOf(tag, 'src') === '/assets/dexgo/method_overview_web.svg');
-  assert.ok(image, 'the figure image');
-  assert.equal(attributeOf(image, 'width'), '1000');
-  assert.ok(tagsNamed(markup, 'a').some((tag) => attributeOf(tag, 'href') === '/dexgo/#method'), 'a link back to the Method part (with the figure) on /dexgo/');
-  // One name for the figure: the tab title is the figure's accessible name. The scroll buttons start hidden (the page
-  // script shows the one on a side with more figure) and are labelled.
-  const label = /<figure class="dx-method-figure" aria-label="([^"]+)"/.exec(dexgo)?.[1];
-  assert.equal(/<title>([^<]*)<\/title>/.exec(markup)?.[1], label);
-  const buttons = tagsNamed(markup, 'button').filter((tag) => attributeOf(tag, 'data-figure-more') !== undefined);
-  assert.deepEqual(buttons.map((tag) => [attributeOf(tag, 'aria-label'), attributeOf(tag, 'hidden') !== undefined]), [
-    ['Scroll the figure left', true],
-    ['Scroll the figure right', true]
-  ]);
-});
-
-test('/dexgo/ prerequisite graph: one Tab stop, on the selected task', () => {
-  const nodes = tagsNamed(markupOf(join(dist, 'dexgo', 'index.html')), 'button').filter((tag) => /class="dx-node"/.test(tag));
-  assert.equal(nodes.length, 15);
-  const stops = nodes.filter((tag) => attributeOf(tag, 'tabindex') === '0');
-  assert.equal(stops.length, 1);
-  assert.equal(attributeOf(stops[0], 'aria-pressed'), 'true');
-  assert.ok(nodes.every((tag) => tag === stops[0] || attributeOf(tag, 'tabindex') === '-1'));
-});
-
-test('/dexgo/ prerequisite graph: every node is described by the arrow-key sentence', () => {
-  const markup = markupOf(join(dist, 'dexgo', 'index.html'));
-  const nodes = tagsNamed(markup, 'button').filter((tag) => /class="dx-node"/.test(tag));
-  const ids = new Set(nodes.map((tag) => attributeOf(tag, 'aria-describedby')));
-  assert.equal(ids.size, 1);
-  const [id] = ids;
-  assert.match(markup, new RegExp(`<span id="${id}" class="visually-hidden">Arrow keys move between tasks\\.</span>`));
-});
-
-test('/dexgo/ fonts: self-hosted, no third-party font host, preloaded files that exist', () => {
-  for (const page of [['dexgo', 'index.html'], ['dexgo', 'figure', 'index.html']]) {
-    assert.doesNotMatch(html.get(join(dist, ...page)), /fonts\.(googleapis|gstatic)\.com/, page.join('/'));
-  }
-  const markup = markupOf(join(dist, 'dexgo', 'index.html'));
-  const preloads = tagsNamed(markup, 'link').filter((tag) => attributeOf(tag, 'rel') === 'preload' && attributeOf(tag, 'as') === 'font');
-  // One family for all text (owner 2026-11-23): Source Sans 3 only.
-  assert.deepEqual(preloads.map((tag) => attributeOf(tag, 'href')).sort(), ['/fonts/source-sans-3/source-sans-3-latin-var.woff2']);
-  for (const tag of preloads) {
-    assert.equal(attributeOf(tag, 'type'), 'font/woff2');
-    assert.notEqual(attributeOf(tag, 'crossorigin'), undefined, 'a font preload needs crossorigin to be used');
-    assert.ok(existsSync(join(dist, attributeOf(tag, 'href'))), attributeOf(tag, 'href'));
-  }
-  const css = readdirSync(join(dist, '_astro')).filter((file) => file.endsWith('.css')).map((file) => readFileSync(join(dist, '_astro', file), 'utf8')).join('');
-  const declared = css + html.get(join(dist, 'dexgo', 'index.html'));
-  for (const tag of preloads) assert.ok(declared.includes(`url("${attributeOf(tag, 'href')}")`) || declared.includes(`url(${attributeOf(tag, 'href')})`), `a @font-face uses ${attributeOf(tag, 'href')}`);
-});
-
-test('/dexgo/ fonts: one family, no serif face declared or loaded, the <em> phrase set in it', () => {
-  const page = html.get(join(dist, 'dexgo', 'index.html'));
-  const css = readdirSync(join(dist, '_astro')).filter((file) => file.endsWith('.css')).map((file) => readFileSync(join(dist, '_astro', file), 'utf8')).join('');
-  assert.doesNotMatch(page + css, /Source Serif|source-serif/);
-  assert.ok(/<em>[^<]+<\/em>/.test(markupOf(join(dist, 'dexgo', 'index.html'))), 'the abstract keeps its emphasis');
-});
 
 test('photography conditions and lenses: the Chinese label is set beside the English one on their tag pages and filters', () => {
   for (const group of ['condition', 'lens']) {
@@ -642,94 +508,6 @@ test('photo pages: the first metadata row is named as the landing section ("Cate
     assert.match(row, /href="\/photography\/category\/[^"/]+\/"/, urlPathOf(file));
   }
 });
-
-test('/dexgo/ problem definition: between the abstract and Method, three goal parts as buttons, no capability letters', () => {
-  const markup = markupOf(join(dist, 'dexgo', 'index.html'));
-  const at = (re) => markup.search(re);
-  assert.ok(at(/class="dx-section dx-abstract"/) < at(/<section id="problem"/), 'after the abstract');
-  assert.ok(at(/<section id="problem"/) < at(/<section id="method"/), 'before the Method part');
-  const section = /<section id="problem"[\s\S]*?<\/section>/.exec(markup)?.[0] ?? '';
-  assert.match(section, /<p class="dx-eyebrow">Problem definition<\/p>\s*<h2\b/);
-  const buttons = tagsNamed(section, 'button').filter((tag) => attributeOf(tag, 'data-part-key') !== undefined);
-  assert.deepEqual(buttons.map((tag) => attributeOf(tag, 'data-part-key')), ['rel', 'fingers', 'world']);
-  for (const tag of buttons) {
-    assert.equal(attributeOf(tag, 'aria-pressed'), 'false');
-    assert.match(section, new RegExp(`id="${attributeOf(tag, 'aria-describedby')}"`));
-  }
-  const text = section.replace(/<[^>]+>/g, ' ');
-  assert.doesNotMatch(text, /\b(R|T|G|L|RT|RG|RL|TG|TL|GL|RTG|RTL|RGL|TGL|RTGL)\b/, 'no capability letters');
-  for (const name of ['pd_start', 'pd_rel', 'pd_fingers', 'pd_world', 'ov_rel', 'ov_fingers', 'ov_world']) {
-    assert.ok(existsSync(join(dist, 'assets', 'dexgo', 'problem', `${name}.webp`)), `${name}.webp`);
-  }
-  assert.ok(existsSync(join(dist, 'assets', 'dexgo', 'problem', 'pd_motion.mp4')));
-});
-
-test('/dexgo/ abstract: the problem name emphasised as in the paper', () => {
-  const abstract = /<section class="dx-section dx-abstract"[\s\S]*?<\/section>/.exec(markupOf(join(dist, 'dexgo', 'index.html')))?.[0] ?? '';
-  assert.match(abstract, /<em>grasp transition with object relocation<\/em>/);
-  assert.doesNotMatch(abstract, /\\emph/);
-});
-
-/** Code points that have a glyph in a WOFF2 font file (its cmap, formats 4 and 12; Unicode subtables). */
-function woff2CodePoints(file) {
-  const buf = readFileSync(file);
-  assert.equal(buf.toString('latin1', 0, 4), 'wOF2', `${file} is WOFF2`);
-  let pos = 48; // after the header; the table directory follows
-  const base128 = () => {
-    let value = 0;
-    for (let i = 0; i < 5; i += 1) {
-      const byte = buf[pos++];
-      value = value * 128 + (byte & 0x7f);
-      if (!(byte & 0x80)) return value;
-    }
-    throw new Error('bad UIntBase128');
-  };
-  // Tables follow each other in the decompressed stream in directory order; glyf (10) and loca (11) are stored
-  // transformed with version 0, hmtx (3) with version 1. Known tag 0 is cmap.
-  const tables = Array.from({ length: buf.readUInt16BE(12) }, () => {
-    const flags = buf[pos++];
-    const known = flags & 0x3f;
-    if (known === 0x3f) pos += 4;
-    const version = flags >> 6;
-    const length = base128();
-    const transformed = known === 10 || known === 11 ? version === 0 : version !== 0;
-    return { known, length: transformed ? base128() : length };
-  });
-  const data = brotliDecompressSync(buf.subarray(pos, pos + buf.readUInt32BE(20)));
-  const index = tables.findIndex((table) => table.known === 0);
-  const offset = tables.slice(0, index).reduce((sum, table) => sum + table.length, 0);
-  const cmap = data.subarray(offset, offset + tables[index].length);
-  const points = new Set();
-  for (let r = 0; r < cmap.readUInt16BE(2); r += 1) {
-    const platform = cmap.readUInt16BE(4 + 8 * r);
-    const encoding = cmap.readUInt16BE(6 + 8 * r);
-    const at = cmap.readUInt32BE(8 + 8 * r);
-    if (!(platform === 0 || (platform === 3 && (encoding === 1 || encoding === 10)))) continue;
-    const format = cmap.readUInt16BE(at);
-    if (format === 4) {
-      const segments = cmap.readUInt16BE(at + 6) / 2;
-      const ends = at + 14;
-      const starts = ends + 2 * segments + 2;
-      const deltas = starts + 2 * segments;
-      const ranges = deltas + 2 * segments;
-      for (let s = 0; s < segments; s += 1) {
-        const start = cmap.readUInt16BE(starts + 2 * s);
-        const delta = cmap.readInt16BE(deltas + 2 * s);
-        const range = cmap.readUInt16BE(ranges + 2 * s);
-        for (let c = start; c <= cmap.readUInt16BE(ends + 2 * s) && c !== 0xffff; c += 1) {
-          let glyph = range === 0 ? c : cmap.readUInt16BE(ranges + 2 * s + range + 2 * (c - start));
-          if (range === 0 || glyph !== 0) glyph = (glyph + delta) & 0xffff;
-          if (glyph !== 0) points.add(c);
-        }
-      }
-    } else if (format === 12) {
-      for (let g = 0; g < cmap.readUInt32BE(at + 12); g += 1) {
-        for (let c = cmap.readUInt32BE(at + 16 + 12 * g); c <= cmap.readUInt32BE(at + 20 + 12 * g); c += 1) points.add(c);
-      }
-    }
-  }
-  return points;
-}
 
 /** Pixel size [w, h] of a WebP or JPEG file (header only). */
 function imageSize(file) {
