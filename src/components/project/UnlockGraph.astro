@@ -2,7 +2,7 @@
 // The prerequisite graph: the video's unlock animation (its file is cut to the graph, from the moment the graph
 // has settled) plays once and rests on its last frame, where every task is learned. The nodes of that frame are
 // buttons; the selected task's clip plays in its own column (under the graph below 864 px, where a selection
-// scrolls it and its caption into view) with its unlock rule, and the task's prerequisites are ringed on the graph. Under reduced motion, or while the page's videos
+// scrolls it and its caption into view) with its unlock rule, and the task's prerequisites are ringed on the graph. While the page's videos
 // are paused, the graph rests on its learned frame from the start, so the nodes are usable at once.
 import type { Clip, GraphTask } from '../../data/dexgo';
 
@@ -301,14 +301,14 @@ const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
     const initial = nodes.find((node) => node.getAttribute('aria-pressed') === 'true');
     if (initial) markPrerequisites(initial);
 
-    // Without autoplay (reduced motion, or the page's videos paused), the graph rests on its learned frame so
+    // Without autoplay (the page's videos paused), the graph rests on its learned frame so
     // the nodes can be used right away; pausing during the unlocking jumps there too (a replay asked for by
     // the user still plays).
     const toEnd = () => {
       showEnd();
       setState('explore');
     };
-    if (reducedMotion || isPaused()) toEnd();
+    if (isPaused()) toEnd();
     else setState('anim');
     document.addEventListener('clips:paused', (event) => {
       const { paused } = (event as CustomEvent<{ paused: boolean }>).detail;

@@ -8,25 +8,30 @@
 // begun after the N loops (a replay) plays to its end, so the unit rests on its last frame again.
 // A unit with `data-play-hold` is skipped until the attribute is removed. A unit with
 // `data-play-force` was asked for by the user (a selected task, a replay): it plays while visible even
-// when videos are paused or reduced motion is on; the page-level button clears every such request.
+// when videos are paused; the page-level button clears every such request.
 // A looping row whose clips wrap into one column (phones) plays clip by clip.
 //
-// A unit plays while enough of it is visible (half of it, or half the viewport for tall units). At
-// most MAX_PLAYING videos play at once (MAX_PLAYING_SMALL on phones); units are ranked by how much of them is
-// visible, and a unit that is already playing keeps a small advantage so playback does not flicker. A visible
+// A looping unit plays while any part of it is on screen: a clip the reader can see moves, also a hero cut by the
+// bottom of a short screen (a 1280 x 585 laptop window, an iPhone SE). "Enough" of a unit is half of it, or half the
+// viewport for tall units: a `once` unit starts only then (the reader sees it from its start), and a loop of a
+// `data-play-loops` unit counts only when it ends with enough of it on screen (the N loops are loops the reader saw). At
+// most MAX_PLAYING videos play at once (MAX_PLAYING_SMALL on phones); units with enough on screen come first, then
+// units are ranked by how much of them is visible, and a unit that is already playing keeps a small advantage so
+// playback does not flicker. A unit with only a part on screen starts only while no unit with enough on screen plays
+// (a hero cut by the bottom of a short screen; a carousel's cued next clip waits): on a slow link, clips loading at
+// the screen's edges would take the connection from the clips the reader looks at. One already playing goes on. A visible
 // looping unit left out by that limit goes back to its first frame instead of resting mid-clip.
 //
 // One page-level button (`data-video-toggle`, labelled with what it will do) pauses and resumes every
-// clip; its choice is kept for the tab's session (sessionStorage), so a reload keeps the clips paused. With
-// prefers-reduced-motion nothing autoplays and the button starts as "Play videos"; pages without that button
-// give videos native controls instead (or only their poster with `data-reduced-motion="poster"`).
+// clip; its choice is kept for the tab's session (sessionStorage), so a reload keeps the clips paused. The clips are
+// page content, not decoration (owner 2026-11-23): prefers-reduced-motion does not stop them; only a refused autoplay
+// (below), that button and a hidden tab do.
 //
 // Nothing plays while the tab is hidden.
 //
 // Loading. Clips are `preload="none"` in the markup, so nothing loads that the reader never comes near. Posters given
 // as `data-poster` load when the video comes within LAZY_MARGIN of the viewport (three screens: small files, and on a
-// slow link a reader's flick outruns a shorter lead; under reduced motion a video with `data-poster-still` takes
-// that one). The clips of units within PREFETCH_MARGIN (one screen above and below) are
+// slow link a reader's flick outruns a shorter lead). The clips of units within PREFETCH_MARGIN (one screen above and below) are
 // then asked to load (`preload="auto"`), nearest first and PREFETCH_AT_ONCE at a time, and only while every clip that
 // should be playing already has data: the clips in view get the connection first, and a reader who stops on a clip
 // usually finds it loaded.
@@ -35,9 +40,11 @@
 // the page did not ask for, are retried on the clip's own `loadeddata` / `canplay` and by a watchdog (every WATCH_MS,
 // running only while such a clip exists); a clip whose loading died (an error, no source, or the network idle without
 // enough data for STALL_MS) is loaded again, from where it was, at most MAX_RELOADS times.
-// Autoplay refused (play() rejected with NotAllowedError, e.g. iOS Low Power Mode): the poster stays, the unit gets
-// `data-play-refused` (global.css draws a play mark on project clips), and the next tap or click anywhere on the page
-// plays every refused clip that should be playing (a play() inside a user gesture is allowed).
+// Autoplay refused (play() rejected with NotAllowedError, e.g. iOS Low Power Mode, Safari "Never Auto-Play", Firefox
+// "Block Audio and Video", some in-app browsers): the poster stays, the unit gets `data-play-refused` (global.css draws
+// a play mark on project clips), and the next gesture anywhere on the page (GESTURES: a press, a tap, a key, a scroll;
+// a play() inside a user activation is allowed, a scroll is only a retry) plays every clip that should be playing; the
+// mark goes only once a play() succeeds. WeChat's in-app browser allows play() inside its `WeixinJSBridgeReady`.
 //
 // Other scripts dispatch `clips:refresh` on document after changing a unit (hold, force, src, time). This
 // script dispatches `clips:paused` (detail: { paused }) when the page-level button changes state; `isPaused()`
@@ -55,6 +62,13 @@ const WATCH_MS = 1000;
 const STALL_MS = 4000;
 const MAX_RELOADS = 3;
 const FORCED_BONUS = 1e6;
+const FULL_BONUS = 1e5;
+// Events that retry the clips that should be playing (see Recovery). The activating ones (HTML user activation:
+// keydown, mousedown/pointerdown of a mouse, pointerup/touchend of a touch, click) run their play() inside the
+// gesture; touchstart, scroll and wheel are retries only, at most one per RETRY_MS.
+const GESTURES = ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'keydown', 'scroll', 'wheel'] as const;
+const PASSIVE_GESTURES = new Set<string>(['touchstart', 'scroll', 'wheel']);
+const RETRY_MS = 250;
 
 type Mode = 'loop' | 'once';
 
@@ -62,7 +76,10 @@ interface Unit {
   el: HTMLElement;
   videos: HTMLVideoElement[];
   mode: Mode;
+  /** On screen enough to play: any part (looping units) or `full` (`once` units). */
   visible: boolean;
+  /** Half of it, or half the viewport, is on screen ("enough", see the visibility rule). */
+  full: boolean;
   visibleHeight: number;
   playing: boolean;
   /** For one clip of a looping row: that row (whose attributes apply). */
@@ -82,7 +99,6 @@ interface Health {
   refused: boolean;
 }
 
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const smallScreen = window.matchMedia(SMALL_SCREEN);
 const toggle = document.querySelector<HTMLButtonElement>('[data-video-toggle]');
 const PAUSED_KEY = 'clips:paused';
@@ -94,8 +110,8 @@ const storedPaused = (() => {
     return null;
   }
 })();
-// Reduced motion always starts paused; otherwise a page with the button starts as it was left.
-let paused = reducedMotion || (toggle !== null && storedPaused === '1');
+// A page with the button starts as it was left in this tab; every other page plays.
+let paused = toggle !== null && storedPaused === '1';
 // Set while something heavier (the interactive demo) runs in view; separate from the user's toggle.
 let suspended = false;
 
@@ -105,6 +121,7 @@ const newUnit = (el: HTMLElement, videos: HTMLVideoElement[], mode: Mode, row?: 
   videos,
   mode,
   visible: false,
+  full: false,
   visibleHeight: 0,
   playing: false,
   row,
@@ -123,14 +140,6 @@ for (const el of document.querySelectorAll<HTMLElement>('[data-play-unit]')) {
   for (const video of unit.videos) units.set(video, newUnit(video, [video], 'loop', unit));
 }
 
-if (reducedMotion && !toggle) {
-  for (const unit of units.values()) {
-    for (const video of unit.videos) {
-      if (video.dataset.reducedMotion !== 'poster') video.controls = true;
-    }
-  }
-}
-
 const owner = (unit: Unit) => unit.row ?? unit;
 const held = (unit: Unit) => owner(unit).el.hasAttribute('data-play-hold');
 const forced = (unit: Unit) => owner(unit).el.hasAttribute('data-play-force');
@@ -142,7 +151,7 @@ const wanted = (unit: Unit) =>
   !finished(unit) &&
   !suspended &&
   document.visibilityState === 'visible' &&
-  (forced(unit) || (!paused && (toggle !== null || !reducedMotion)));
+  (forced(unit) || !paused);
 
 // A row is stacked when its second clip starts below its first (hidden rows have no size).
 const stacked = (row: Unit) => {
@@ -256,7 +265,7 @@ const reconcile = () => {
   const active = (unit: Unit) => (unit.row ? split.has(unit.row) : !split.has(unit));
   const ordered = [...units.values()].filter((unit) => active(unit) && wanted(unit));
   const score = (unit: Unit) =>
-    (forced(unit) ? FORCED_BONUS : 0) + unit.visibleHeight * (unit.playing ? 1.25 : 1);
+    (forced(unit) ? FORCED_BONUS : 0) + (unit.full ? FULL_BONUS : 0) + unit.visibleHeight * (unit.playing ? 1.25 : 1);
   ordered.sort((a, b) => score(b) - score(a));
   let budget = maxPlaying();
   const chosen = new Set<Unit>();
@@ -264,6 +273,11 @@ const reconcile = () => {
     if (unit.videos.length > budget) continue;
     chosen.add(unit);
     budget -= unit.videos.length;
+  }
+  // Units with only a part on screen start only while no unit with enough on screen is chosen (see above).
+  const primary = (unit: Unit) => unit.full || forced(unit);
+  if ([...chosen].some(primary)) {
+    for (const unit of [...chosen]) if (!primary(unit) && !unit.playing) chosen.delete(unit);
   }
   // Stop before starting: a row and its own clips share videos.
   const skipped = new Set(ordered.filter((unit) => !chosen.has(unit) && unit.mode !== 'once'));
@@ -311,7 +325,7 @@ const setPaused = (value: boolean) => {
   if (changed) document.dispatchEvent(new CustomEvent('clips:paused', { detail: { paused } }));
 };
 
-/** True while the page's clips are paused (the page-level button, or reduced motion before any click). */
+/** True while the page's clips are paused (the page-level button, or its choice kept for this tab). */
 export const isPaused = (): boolean => paused;
 
 // Loop-limited units: each loop end counts; the clip restarts until its loops are used up (or while forced).
@@ -320,7 +334,8 @@ for (const unit of units.values()) {
   for (const video of unit.videos) {
     video.loop = false;
     video.addEventListener('ended', () => {
-      unit.loopsLeft -= 1;
+      // A loop counts only when the reader could see it (see the visibility rule above).
+      if (unit.full || forced(unit)) unit.loopsLeft -= 1;
       unit.replaying = false;
       if (wanted(unit)) {
         if (unit.loopsLeft <= 0) unit.replaying = true;
@@ -390,17 +405,33 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-replay]
     reconcile();
   });
 }
-// Autoplay refused: a tap or click anywhere is a user gesture, inside which every refused clip may start.
-const unlock = () => {
+// Autoplay refused: a gesture anywhere retries every clip that should be playing and does not (see Recovery); an
+// activating one is a user activation, inside which play() is allowed. The play mark stays until a play() succeeds.
+let lastRetry = -Infinity;
+let retryTimer = 0;
+const retry = () => {
+  lastRetry = performance.now();
   for (const [video, unit] of chosenVideos) {
     const state = health.get(video);
-    if (!state?.refused || restsAtEnd(video, unit)) continue;
+    if (!state || !video.paused || restsAtEnd(video, unit)) continue;
     state.refused = false;
     playVideo(video);
   }
 };
-document.addEventListener('click', unlock, true);
-document.addEventListener('touchend', unlock, true);
+const unlock = (event: Event) => {
+  // A passive gesture within RETRY_MS of the last retry is folded into one retry at its end (the last of a scroll counts).
+  const wait = PASSIVE_GESTURES.has(event.type) ? lastRetry + RETRY_MS - performance.now() : 0;
+  if (wait <= 0) return retry();
+  if (!retryTimer) {
+    retryTimer = window.setTimeout(() => {
+      retryTimer = 0;
+      retry();
+    }, wait);
+  }
+};
+for (const type of GESTURES) document.addEventListener(type, unlock, { capture: true, passive: true });
+// WeChat's in-app browser lets a play() inside this event start a muted clip that would otherwise be refused.
+document.addEventListener('WeixinJSBridgeReady', unlock);
 document.addEventListener('clips:suspend', () => {
   suspended = true;
   reconcile();
@@ -463,9 +494,10 @@ if (units.size > 0) {
         if (!unit) continue;
         const viewport = entry.rootBounds?.height ?? window.innerHeight;
         unit.visibleHeight = entry.isIntersecting ? entry.intersectionRect.height : 0;
-        unit.visible =
+        unit.full =
           entry.isIntersecting &&
           (entry.intersectionRatio >= VISIBLE_RATIO || entry.intersectionRect.height >= viewport * VISIBLE_RATIO);
+        unit.visible = unit.mode === 'once' ? unit.full : unit.visibleHeight > 0;
       }
       reconcile();
     },
@@ -475,22 +507,20 @@ if (units.size > 0) {
   for (const el of units.keys()) observer.observe(el);
   document.addEventListener('clips:refresh', reconcile);
 
-  // Only whole units (not the clips of a row) are prefetched, and not under reduced motion, where nothing autoplays.
-  if (!reducedMotion) {
-    const nearObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const unit = units.get(entry.target);
-          if (!unit) continue;
-          if (entry.isIntersecting) near.add(unit);
-          else near.delete(unit);
-        }
-        pump();
-      },
-      { rootMargin: PREFETCH_MARGIN }
-    );
-    for (const [el, unit] of units) if (!unit.row) nearObserver.observe(el);
-  }
+  // Only whole units (not the clips of a row) are prefetched.
+  const nearObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        const unit = units.get(entry.target);
+        if (!unit) continue;
+        if (entry.isIntersecting) near.add(unit);
+        else near.delete(unit);
+      }
+      pump();
+    },
+    { rootMargin: PREFETCH_MARGIN }
+  );
+  for (const [el, unit] of units) if (!unit.row) nearObserver.observe(el);
 }
 
 // Lazy posters: hidden panels (e.g. the second hand) never come near the viewport until shown. Each poster is set at
@@ -517,7 +547,7 @@ if (lazy.length > 0) {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
         const video = entry.target as HTMLVideoElement;
-        const poster = (reducedMotion && video.dataset.posterStill) || video.dataset.poster;
+        const poster = video.dataset.poster;
         if (poster) loadPoster(video, poster);
         posterObserver.unobserve(video);
       }

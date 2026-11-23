@@ -496,6 +496,7 @@ p {
 
 /* The clip on white (the renders' own background); its box keeps the file's aspect (inline style). */
 .project-card-media {
+  position: relative;
   display: block;
   overflow: hidden;
   border-radius: 4px;
@@ -1084,10 +1085,11 @@ body.page-dexgo:not(.page-dexgo-figure) .site-shell {
   background: #ffffff;
 }
 
-/* Autoplay refused (clipPlayback.ts; e.g. iOS Low Power Mode): the poster stays, with a play mark over it, and a tap
-   anywhere on the page plays the clips in view. */
+/* Autoplay refused (clipPlayback.ts; e.g. iOS Low Power Mode): the poster stays, with a play mark over it, and the
+   next tap, click, key or scroll anywhere on the page retries the clips in view (the homepage card too). */
 .dx-clip[data-play-refused]::after,
-[data-play-refused] .dx-clip::after {
+[data-play-refused] .dx-clip::after,
+.project-card-media[data-play-refused]::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -2424,12 +2426,17 @@ html:has(> body.page-dexgo .dx-localnav) {
 .dx-problem-head {
   text-align: center;
 }
-.page-dexgo .dx-problem-head .dx-heading {
-  font: 700 34px/1.15 var(--dx-sans);
-  letter-spacing: -0.012em;
+/* One headline size for every section headline on the page (problem, parts, sections inside a part); the part
+   boundary is carried by the hairline, the 56 px padding and the eyebrow. */
+.page-dexgo .dx-heading {
+  max-width: 760px;
+  margin-bottom: var(--dx-head-gap);
+  font: 700 40px/1.1 var(--dx-sans);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 
-/* Parts: a hairline across the column, 56 px, the eyebrow, 10 px, the 52 px headline. */
+/* Parts: a hairline across the column, 56 px, the eyebrow, 10 px, the headline. */
 .dx-part {
   margin-top: var(--dx-part-gap);
 }
@@ -2442,13 +2449,6 @@ html:has(> body.page-dexgo .dx-localnav) {
   margin: 0 0 10px;
   color: var(--dx-ink);
   font: 600 17px/1.3 var(--dx-sans);
-}
-.page-dexgo .dx-part-title {
-  max-width: 760px;
-  margin-bottom: 24px;
-  font: 700 52px/1.08 var(--dx-sans);
-  letter-spacing: -0.02em;
-  text-wrap: balance;
 }
 .dx-part-head + .dx-text,
 .dx-part-head + .dx-part-body,
@@ -2463,11 +2463,6 @@ html:has(> body.page-dexgo .dx-localnav) {
   margin-top: var(--dx-gap);
 }
 
-/* Sections inside a part: 34 px headings. */
-.page-dexgo .dx-screen > .dx-heading {
-  font: 700 34px/1.15 var(--dx-sans);
-  letter-spacing: -0.012em;
-}
 .page-dexgo .dx-text + .dx-media {
   margin-top: var(--dx-text-media);
 }
@@ -3067,12 +3062,8 @@ html:has(> body.page-dexgo .dx-localnav) {
   .page-dexgo .dx-label {
     font-size: 15px;
   }
-  .page-dexgo .dx-part-title {
-    font-size: 34px;
-  }
-  .page-dexgo .dx-screen > .dx-heading,
-  .page-dexgo .dx-problem-head .dx-heading {
-    font-size: 26px;
+  .page-dexgo .dx-heading {
+    font-size: 28px;
   }
   .page-dexgo .dx-page .dx-note {
     font-size: 14px;

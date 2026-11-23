@@ -1,9 +1,9 @@
 // The /dexgo/ "Problem definition" figure in a real browser: the owner's two behaviours (2026-11-23).
 // (a) No click: part 1, part 2, part 3 highlighted one after another, then the motion, and the whole sequence repeats.
 // (b) After a click on a label: that part highlighted, then the motion, which loops with the part still highlighted and
-//     never returns to (a). Plus: the nav's pause holds it, reduced motion shows the still goal with a play / stop
-//     button, refused autoplay (iOS Low Power Mode) keeps the sequence going and plays after a tap, and a stalled clip
-//     does not stop the sequence.
+//     never returns to (a). Plus: the nav's pause holds it, reduced motion changes nothing of (a) and (b), refused
+//     autoplay (iOS Low Power Mode) keeps the sequence going and plays after a tap, and a stalled clip does not stop
+//     the sequence.
 // Run: npm run test:e2e   (BASE_URL defaults to http://127.0.0.1:4321, CHROME_PATH to /usr/bin/google-chrome).
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
@@ -135,32 +135,23 @@ test('problem definition: the nav pause holds the sequence; off screen it holds 
   });
 });
 
-test('problem definition, reduced motion and phone: the still goal with all three parts and a play button', async () => {
+test('problem definition, reduced motion and phone: the same sequence as without it, the motion plays, no play button', async () => {
+  // Owner 2026-11-23: the figure is page content; prefers-reduced-motion keeps only its fades off.
   await onFigure({ ...phone, reducedMotion: 'reduce' }, async (page) => {
-    await page.waitForTimeout(3000);
-    const now = await state(page);
-    assert.equal(now.view, 'all');
-    assert.equal(now.playing, false);
-    assert.deepEqual(now.lit, ['rel', 'fingers', 'world'], 'all three parts shown on the still goal');
-    const play = page.getByRole('button', { name: 'Play the motion' });
-    assert.ok(await play.isVisible());
-    // labels are reachable by keyboard and say what they highlight
+    await waitView(page, 'rel', 5000);
+    const seen = await viewsDuring(page, 8000);
+    assert.deepEqual(seen.slice(0, 4), ['rel', 'fingers', 'world', 'motion']);
+    await page.waitForFunction(() => document.querySelector('[data-problem] video').currentTime > 0.3, null, { timeout: 10000 });
+    assert.ok((await state(page)).playing, 'the motion plays by itself');
+    assert.equal(await page.getByRole('button', { name: 'Play the motion' }).isVisible(), false, 'no play button');
+    // labels are reachable by keyboard and say what they highlight; (b) as without reduced motion
     const label = page.getByRole('button', { name: 'Relative object pose' });
     await label.focus();
     await page.keyboard.press('Enter');
     assert.equal((await state(page)).view, 'rel');
     assert.match((await label.getAttribute('aria-describedby')) ?? '', /^pd-desc-rel$/);
-    await play.click();
-    await page.waitForTimeout(800);
-    assert.equal((await state(page)).view, 'motion');
-    // while it plays, the same button stops it (back to the still, the chosen part lit)
-    const stop = page.getByRole('button', { name: 'Stop the motion' });
-    assert.ok(await stop.isVisible(), 'a stop button while the motion plays');
-    await stop.click();
-    const stopped = await state(page);
-    assert.equal(stopped.view, 'rel');
-    assert.equal(stopped.playing, false);
-    assert.ok(await play.isVisible(), 'play again after the stop');
+    await waitView(page, 'motion', 5000);
+    assert.deepEqual((await state(page)).lit, ['rel']);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 390);
   });
 });
@@ -202,9 +193,10 @@ test('problem definition, autoplay refused (a): the parts go on, the play button
       const seen = await viewsDuring(page, 8000);
       assert.ok(!seen.includes('motion'), `no motion while refused (${seen.join(' ')})`);
       for (const part of ['rel', 'fingers', 'world']) assert.ok(seen.includes(part), `${part} shown (${seen.join(' ')})`);
-      // a tap anywhere (here the section heading) unlocks the clip; the motion then plays at its turn
+      // a tap anywhere (here the section heading) unlocks the clip (the mark goes once its play() is no longer
+      // refused); the motion then plays at its turn
       await page.locator('#problem .dx-prose').tap();
-      assert.equal(await refusedMark(page), false);
+      await page.waitForFunction(() => !document.querySelector('[data-problem]').hasAttribute('data-play-refused'), null, { timeout: 3000 });
       assert.equal(await play.isVisible(), false);
       await waitView(page, 'motion', 12000);
       await page.waitForTimeout(600);

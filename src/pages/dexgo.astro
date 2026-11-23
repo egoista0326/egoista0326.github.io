@@ -133,7 +133,7 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
     <section id="method" class="dx-part" aria-labelledby="method-overview" data-part>
       <header class="dx-part-head" data-reveal>
         <p class="dx-eyebrow">{method.eyebrow}</p>
-        <KeyHeading id="method-overview" level={2} text={method.heading} class="dx-part-title" />
+        <KeyHeading id="method-overview" level={2} text={method.heading} />
       </header>
       <div class="dx-text" data-reveal>
         <p class="dx-prose" set:html={texInline(method.intro)} />
@@ -190,7 +190,7 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
     <section id="live-demo" class="dx-part dx-part-band" aria-labelledby="results-demo" data-part>
       <header class="dx-part-head" data-reveal>
         <p class="dx-eyebrow">{demo.eyebrow}</p>
-        <KeyHeading id="results-demo" level={2} text={demo.heading} class="dx-part-title" />
+        <KeyHeading id="results-demo" level={2} text={demo.heading} />
       </header>
       <div class="dx-media" data-reveal="media">
         <LazyDemo

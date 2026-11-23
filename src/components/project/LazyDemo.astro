@@ -30,7 +30,7 @@
 // the first 10 goals of Random chain, then re-seeds from crypto.getRandomValues); "Open in a new tab" stays unseeded.
 // The nav's "Pause all motion" / "Play all motion" ('clips:paused', clipPlayback.ts) reaches a started demo as
 // 'dexgo-pause' {paused}: a pause stops it, a play resumes it only if that pause stopped it (its app/main.js). Nothing
-// is sent at Start, so a Start under reduced motion (the page's clips start paused) still runs the demo.
+// is sent at Start, so a Start while the page's clips rest (a pause kept for this tab) still runs the demo.
 import ClipVideo from './ClipVideo.astro';
 import type { Clip } from '../../data/dexgo';
 
@@ -212,7 +212,7 @@ const newTabHref = src.replace(/index\.html$/, '');
       };
 
       // The nav's pause / play reaches the demo (it ignores a play after a pause of its own). Only on changes, never at
-      // Start: under reduced motion the page's clips start paused, and a Start must still run the demo. A change made
+      // Start: the page's clips may start paused (a pause kept for this tab), and a Start must still run the demo. A change made
       // while the demo still loads is sent again once it shows (its listener may not have existed yet).
       let navPaused: boolean | null = null;
       const tellPause = () => {

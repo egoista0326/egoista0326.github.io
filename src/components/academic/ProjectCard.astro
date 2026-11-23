@@ -2,7 +2,7 @@
 // One project as in a publication list: a looping clip beside the title from 640 px (above it on phones), the author
 // line and a row of quiet link chips (LinkChips.astro; a link without a target yet is a muted chip marked "soon"). The clip
 // plays while in view (clipPlayback.ts) for at most PLAY_LOOPS loops, then rests on its last frame; pointing at the
-// card or focusing one of its links plays it again (WCAG 2.2.2). Under reduced motion it shows its poster.
+// card or focusing one of its links plays it again (WCAG 2.2.2), also under reduced motion (a content clip, owner 2026-11-23).
 import LinkChips from '../LinkChips.astro';
 import type { ProjectEntry } from '../../data/academic';
 import { site } from '../../data/site';
@@ -37,7 +37,6 @@ const hasEqual = project.authors.some((author) => author.equal);
       loop
       playsinline
       preload="none"
-      data-reduced-motion="poster"
     ></video>
   </a>
   <div class="project-card-body">
@@ -69,18 +68,16 @@ const hasEqual = project.authors.some((author) => author.equal);
   import '../../scripts/clipPlayback';
 
   // Pointing at a card, or focusing one of its links, plays its clip again after its loops are used up.
-  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    for (const card of document.querySelectorAll<HTMLElement>('[data-project-card]')) {
-      const unit = card.querySelector<HTMLElement>('[data-play-unit]');
-      if (!unit) continue;
-      const set = (on: boolean) => {
-        unit.toggleAttribute('data-play-force', on);
-        document.dispatchEvent(new CustomEvent('clips:refresh'));
-      };
-      card.addEventListener('pointerenter', () => set(true));
-      card.addEventListener('pointerleave', () => set(card.contains(document.activeElement)));
-      card.addEventListener('focusin', () => set(true));
-      card.addEventListener('focusout', (event) => set(card.contains(event.relatedTarget as Node | null) || card.matches(':hover')));
-    }
+  for (const card of document.querySelectorAll<HTMLElement>('[data-project-card]')) {
+    const unit = card.querySelector<HTMLElement>('[data-play-unit]');
+    if (!unit) continue;
+    const set = (on: boolean) => {
+      unit.toggleAttribute('data-play-force', on);
+      document.dispatchEvent(new CustomEvent('clips:refresh'));
+    };
+    card.addEventListener('pointerenter', () => set(true));
+    card.addEventListener('pointerleave', () => set(card.contains(document.activeElement)));
+    card.addEventListener('focusin', () => set(true));
+    card.addEventListener('focusout', (event) => set(card.contains(event.relatedTarget as Node | null) || card.matches(':hover')));
   }
 </script>

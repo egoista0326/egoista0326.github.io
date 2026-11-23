@@ -17,8 +17,6 @@ export interface Clip {
   height: number;
   /** Accessible name of the clip (not shown). */
   label: string;
-  /** Poster used instead under reduced motion (nothing plays there), e.g. an animation's end frame. */
-  stillPoster?: string;
 }
 
 const clipDir = '/assets/dexgo/clips';
@@ -173,8 +171,8 @@ const task = (id: string, rect: GraphTask['rect']): GraphTask => {
           : joinNames(letters.map((l) => capabilityWords[l])),
     rule:
       id.length === 1
-        ? 'Trained from the start.'
-        : `Unlocked once ${joinNames(prerequisites)} ${prerequisites.length > 1 ? 'are' : 'is'} learned.`,
+        ? 'Trained from the start'
+        : `Prerequisites: ${prerequisites.join(', ')}`,
     prerequisites: id.length === 1 ? [] : prerequisites,
     rect,
     row: 4 - id.length,
@@ -234,8 +232,8 @@ export const dexgoPage = {
   problem: {
     id: 'problem',
     eyebrow: 'Problem definition',
-    heading: 'A goal specifies a *target grasp* and an object world pose.',
-    text: 'Starting from an initial grasp, the policy must reach the target grasp, given by the object pose relative to the hand and the finger configuration, while moving the object to its desired world pose. Only this final goal is given, with no reference trajectory or contact sequence.',
+    heading: 'Goal: *target grasp* + object world pose',
+    text: 'From its initial grasp, the hand must reach the target grasp while moving the object to the desired world pose. Only this final goal is given, with no reference trajectory or contact sequence.',
     figure: {
       dir: '/assets/dexgo/problem',
       width: 1600,
@@ -246,10 +244,9 @@ export const dexgoPage = {
       initLabel: 'Initial grasp',
       goalLabel: 'Goal',
       alt: 'A hand holds a hexagonal bar in an enveloping grasp on the left; the goal on the right is the same bar held in a pinch, about 40 cm to the right and turned.',
-      hint: 'Select a part to see it on the goal.',
+      hint: 'Select a part to highlight it',
       motionLabel: 'The motion to the goal',
       playLabel: 'Play the motion',
-      stopLabel: 'Stop the motion',
       groups: [
         { label: 'Target grasp', parts: ['rel', 'fingers'] },
         { label: 'Desired object pose', parts: ['world'] }
@@ -276,8 +273,8 @@ export const dexgoPage = {
   method: {
     eyebrow: 'Method',
     intro:
-      'DexGO trains a single policy with reinforcement learning on tasks that group goals by the capabilities they require: in-hand reorientation (R), in-hand translation (T), grasp type change (G) and object relocation (L).',
-    heading: 'Complex motions *combine* basic capabilities.',
+      'DexGO trains a single policy with reinforcement learning. Its tasks group goals by the capabilities they require: in-hand reorientation (R), in-hand translation (T), grasp type change (G) and object relocation (L).',
+    heading: 'Complex motions *combine* basic capabilities',
     figure: {
       /** Web cut of the paper's figure (method_overview.svg): every label about 11 viewBox units (12 px at the 800 px
           column), the observation boxes and capability chips re-spaced to fit them, the state legend and the
@@ -312,12 +309,12 @@ export const dexgoPage = {
     },
     graph: {
       id: 'prerequisite-graph',
-      heading: 'Simple tasks *unlock* their combinations.',
-      text: 'The prerequisite graph orders the 15 tasks. Training starts with the four single-capability tasks, and a combination task is unlocked once all its subsets with one fewer capability have been learned.',
+      heading: 'Simple tasks *unlock* their combinations',
+      text: 'A prerequisite graph orders the 15 tasks. Training starts with the four single-capability tasks, and a combination is unlocked once all its prerequisites, the tasks with one capability fewer, are learned.',
       // The video's unlock animation cut to its graph (frame x 0-1100 of the 1790 px frame) from 6.6 s, where the
       // graph has settled in its place; poster = first frame, endPoster = last frame (every task learned).
       animation: { ...clip('method_graph', 'Animation of the prerequisite graph: starting from the four single-capability tasks, each task is unlocked once its prerequisites are learned, up to RTGL.'), endPoster: `${clipDir}/method_graph_end.jpg` },
-      hint: 'Select a task to watch an example.',
+      hint: 'Select a task to watch an example',
       /** No line under the graph (owner 2026-11-22: the axes legend and the clip-speed sentence were removed). */
       legend: '',
       defaultTask: 'RTGL',
@@ -362,18 +359,15 @@ export const dexgoPage = {
     kernel: {
       id: 'annealed-kernel-reward',
       // No-break spaces keep "guidance first," and "precision later." whole where the heading takes two lines.
-      heading: 'Reward: *guidance*\u00a0first, *precision*\u00a0later.',
+      heading: 'Reward: *guidance*\u00a0first, *precision*\u00a0later',
       /** Paragraph with inline TeX between $...$ (rendered by KaTeX at build time). */
-      text: 'The reward includes a kernel on the goal distance. A wide kernel guides the policy from far away; annealing narrows it as the policy improves, moving from coarse guidance to precise goal reaching. The annealing is task-wise: each task has its own kernel width, which narrows at its own pace.',
+      text: 'The reward uses a kernel on the goal distance: wide at first to guide the policy from far away, then annealed narrower for precise reaching. Each task anneals its own kernel width at its own pace.',
       // The curve-only cut, starting once the wide kernel is drawn: its first frame is the poster, so playback starts
-      // without a jump; under reduced motion (nothing plays) the poster is its last frame, the narrowed kernel.
-      animation: {
-        ...clip(
-          'method_kernel_curve',
-          'Animation of the annealed kernel reward: as the policy improves, the kernel narrows step by step until it passes the learned width (dashed) and turns teal.'
-        ),
-        stillPoster: `${clipDir}/method_kernel_curve_end.jpg`
-      },
+      // without a jump.
+      animation: clip(
+        'method_kernel_curve',
+        'Animation of the annealed kernel reward: as the policy improves, the kernel narrows step by step until it passes the learned width (dashed) and turns teal.'
+      ),
       /** What the last frame draws besides the kernel (video source make_full.py: the dashed curve is the kernel at
           the width below which a task counts as learned, paper Sec. 3.4 / 4.1; the kernel turns teal on the step that
           takes it below). Shown under the clip, beside its replay button. */
@@ -381,11 +375,11 @@ export const dexgoPage = {
     },
     encoding: {
       id: 'observation-encoding',
-      heading: 'A nonlinear encoding *magnifies small deviations*.',
-      lead: 'Each position error, rotation vector and local geometry vector the policy observes is expressed in the current wrist frame $h$ as ${}_{h}\\mathbf{x}$ and encoded as',
+      heading: 'A nonlinear encoding *magnifies small deviations*',
+      lead: 'The policy observes position errors, rotation vectors and local geometry vectors ${}_{h}\\mathbf{x}$ in the current wrist frame $h$, each encoded as',
       formula:
         'f({}_{h}\\mathbf{x}) = \\frac{{}_{h}\\mathbf{x}}{\\|{}_{h}\\mathbf{x}\\|}\\,\\frac{\\log\\bigl(1 + \\min(\\|{}_{h}\\mathbf{x}\\|, d_{\\max}) / d_0\\bigr)}{\\log(1 + d_{\\max} / d_0)}.',
-      text: 'It keeps the direction while magnifying small deviations and compressing large ones, with the scales $d_0$ and $d_{\\max}$ setting its sensitivity and saturation.',
+      text: 'It keeps the direction, magnifies small deviations and compresses large ones. The scales $d_0$ and $d_{\\max}$ set its sensitivity and saturation.',
       /** The figure after the text (EncodingFigure.astro), redrawn from the talk deck's encoding page and the video's
           shot "A nonlinear encoding magnifies small deviations": the encoded value of one error magnitude for the
           supplementary's object-position scales, against linear scaling, with a 2 cm interval near the goal and one
@@ -410,7 +404,7 @@ export const dexgoPage = {
     demo: {
       // A hyphenated word never splits at its hyphen (KeyHeading keeps it on one line).
       eyebrow: 'Live demo',
-      heading: '*Long-horizon* manipulation, live in your browser.',
+      heading: '*Long-horizon* manipulation in your browser',
       // No caption under the demo (owner 2026-11-22); the line keeps only "Open in a new tab".
       caption: '',
       src: '/dexgo/demo/index.html',
@@ -429,7 +423,7 @@ export const dexgoPage = {
     },
     targets: {
       eyebrow: 'Results',
-      heading: 'Different target grasps, *distinct motions*.',
+      heading: 'Different target grasps, *distinct motions*',
       // One composite per pair, its two rows stacked in the file; screwdriver left, hammer right, as in the video.
       pair: [
         clip('control_screwdriver_pair_crop', 'Screwdriver: top, relocation only; bottom, grasp type change and relocation.'),
@@ -437,12 +431,12 @@ export const dexgoPage = {
       ],
       /** Label above each pair, in the order of `pair`. */
       names: ['Screwdriver', 'Hammer'],
-      // No-break spaces keep each row's label with its value ("Top: L, relocation only." whole, "Bottom: GL").
+      // No-break spaces keep each row's label with its value ("Top: L", "Bottom: GL"). Copy v2 (owner 2026-11-23).
       caption:
-        'In each clip, both rows start from the same grasp (left) and bring the object to the same world pose; only the target grasp (faint, right) differs. Top: L, relocation only. Bottom: GL for the screwdriver, RTL for the hammer.'
+        'Both rows start from the same initial grasp (left) and move the object to the same world pose; only the target grasp differs. Top: L. Bottom: GL (screwdriver), RTL (hammer).'
     },
     objects: {
-      heading: '*Unseen* everyday objects.',
+      heading: '*Unseen* everyday objects',
       /** One swipeable row per hand; a hand without clips is left out (and with it the toggle). */
       hands: [
         {
@@ -456,14 +450,14 @@ export const dexgoPage = {
           id: 'sharpa',
           label: 'Sharpa Wave hand',
           // Paper wording (Sec. 4.4).
-          note: 'The same framework, without hand-specific tuning, also trains a policy for the Sharpa Wave hand.',
+          note: 'The same framework also trains a policy for the Sharpa Wave hand, without hand-specific tuning.',
           items: objectItems('sharpa', 'Sharpa Wave')
         }
       ].filter((hand) => hand.items.length > 0)
     },
     sizes: {
       // Owner (2026-11-22): titled as examples.
-      heading: 'Examples *outside* the training range.',
+      heading: 'Examples *outside* the training range',
       // Labels are the owner-approved video labels.
       clips: [
         { ...sizeClip('thin', 'A 2 cm thin object', { handY: 133, top: 12, left: 22, right: 255, bottom: 268 }), name: 'Thin: 2\u00a0cm' },
@@ -479,7 +473,7 @@ export const dexgoPage = {
       ],
       // Training range as stated in Sec. 4.1 of the paper (no clip-speed statement: owner 2026-11-22). A
       // word joiner (U+2060) after each en dash keeps a range on one line.
-      caption: 'Training objects have a long axis of 10–\u206032\u00a0cm and two short axes of 3–\u20605\u00a0cm.'
+      caption: 'Training range: long axis 10–\u206032\u00a0cm, short axes 3–\u20605\u00a0cm'
     }
   },
   bibtex: 'TODO: BibTeX entry'

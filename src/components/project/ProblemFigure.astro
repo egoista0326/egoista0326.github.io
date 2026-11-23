@@ -7,10 +7,11 @@
  *
  * Timing (owner): (a) no click: part 1, part 2, part 3, the motion, repeated; (b) after a click on a label: that part,
  * then the motion, which then loops with the part still highlighted (never back to (a)). Everything holds off screen,
- * in a hidden tab and while the nav's "Pause all motion" is on (clips:paused). Reduced motion: the goal with all three
- * parts, still, and a button that plays the motion once and stops it.
+ * in a hidden tab and while the nav's "Pause all motion" is on (clips:paused). Reduced motion does not change the
+ * timing: the motion is page content (owner 2026-11-23); only the fades between pictures follow it.
  * Autoplay refused (play() rejected with NotAllowedError, e.g. iOS Low Power Mode): (a) goes on through the parts, the
- * figure gets `data-play-refused` and shows the play button, and the next tap anywhere lets the motion play.
+ * figure gets `data-play-refused` and shows the play button, and the next gesture anywhere (press, tap, key, scroll)
+ * lets the motion play once its play() is no longer refused.
  */
 interface Part {
   key: string;
@@ -29,19 +30,18 @@ interface Props {
   hint: string;
   motionLabel: string;
   playLabel: string;
-  stopLabel: string;
   groups: { label: string; parts: string[] }[];
   parts: Part[];
 }
 
-const { dir, width, height, init, goal, initLabel, goalLabel, alt, hint, motionLabel, playLabel, stopLabel, groups, parts } =
+const { dir, width, height, init, goal, initLabel, goalLabel, alt, hint, motionLabel, playLabel, groups, parts } =
   Astro.props;
 const byKey = new Map(parts.map((part) => [part.key, part]));
-const stills = ['start', 'all', ...parts.map((part) => part.key)];
+const stills = ['start', ...parts.map((part) => part.key)];
 const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
 ---
 
-<figure class="pd" data-problem data-motion-label={motionLabel} data-play-label={playLabel} data-stop-label={stopLabel}>
+<figure class="pd" data-problem data-motion-label={motionLabel}>
   {/* The stage is the one picture a screen reader meets (its label is the figure's description). */}
   <div class="pd-stage" style={`aspect-ratio: ${width} / ${height}`} role="img" aria-label={alt}>
     {
@@ -67,11 +67,10 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
     <span class="pd-tag pd-tag-init" style={`--x: ${pct(init[0])}; --y: ${pct(init[1])}`} aria-hidden="true">{initLabel}</span>
     <span class="pd-tag pd-tag-goal" style={`--x: ${pct(goal[0])}; --y: ${pct(goal[1])}`} aria-hidden="true">{goalLabel}</span>
   </div>
-  {/* Play (reduced motion, or autoplay refused); Stop while the motion plays under reduced motion. */}
-  <button type="button" class="pd-play" data-pd-play data-mode="play" hidden>
-    <svg class="pd-icon-play" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg>
-    <svg class="pd-icon-stop" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
-    <span data-pd-play-text>{playLabel}</span>
+  {/* Play, while autoplay is refused. */}
+  <button type="button" class="pd-play" data-pd-play hidden>
+    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg>
+    <span>{playLabel}</span>
   </button>
   <p class="pd-hint">
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4.5" /></svg>
@@ -176,10 +175,6 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
   }
   .pd-play svg {
     fill: currentColor;
-  }
-  .pd-play[data-mode='play'] .pd-icon-stop,
-  .pd-play[data-mode='stop'] .pd-icon-play {
-    display: none;
   }
   /* The hint in the prerequisite graph's style: the labels below are buttons, not a legend. */
   .pd-hint {
@@ -320,10 +315,8 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
     const order = [...overlays.keys()]; // the parts in the paper's order (rel, fingers, world)
     const video = fig.querySelector<HTMLVideoElement>('[data-motion]')!;
     const playButton = fig.querySelector<HTMLButtonElement>('[data-pd-play]')!;
-    const playText = playButton.querySelector<HTMLElement>('[data-pd-play-text]')!;
     const status = fig.querySelector<HTMLElement>('[data-pd-status]')!;
-    const { motionLabel = '', playLabel = '', stopLabel = '' } = fig.dataset;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const { motionLabel = '' } = fig.dataset;
 
     // locked: the part the reader chose (timing (b)); null = the default sequence (a).
     let locked: string | null = null;
@@ -344,13 +337,9 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
     let alive = 0;
     let reloads = 0;
 
-    // The button under the stage: shown under reduced motion (Play, or Stop while the motion plays) and while
-    // autoplay is refused (Play).
+    // The button under the stage: shown while autoplay is refused.
     const updateButton = () => {
-      const stop = reduced && view.motion;
-      playButton.hidden = !reduced && !refused;
-      playButton.dataset.mode = stop ? 'stop' : 'play';
-      playText.textContent = stop ? stopLabel : playLabel;
+      playButton.hidden = !refused;
     };
 
     const render = (next: View) => {
@@ -363,8 +352,7 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
       video.classList.toggle('is-on', next.motion);
       for (const b of buttons) {
         const on = b.dataset.partKey === next.part;
-        // the still goal with all three parts (reduced motion) lights every label; none is pressed
-        b.classList.toggle('is-lit', on || (!next.motion && next.still === 'all'));
+        b.classList.toggle('is-lit', on);
         b.setAttribute('aria-pressed', String(on && locked !== null));
       }
       updateButton();
@@ -435,7 +423,6 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
     const giveUp = () => {
       stopWatch();
       video.pause();
-      if (reduced) return advance();
       if (locked !== null) return showPart(locked);
       step = order.length;
       advance();
@@ -458,10 +445,10 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
       stopWatch();
       video.pause();
       setRefused(true);
-      if (reduced || locked !== null) {
-        // the still goal (reduced motion) or the chosen part, lit; (b) waits for a tap
-        waiting = !reduced;
-        render({ still: locked ?? 'all', part: locked, motion: false });
+      if (locked !== null) {
+        // (b): the chosen part, lit, waits for a tap
+        waiting = true;
+        render({ still: locked, part: locked, motion: false });
         return;
       }
       // (a): on through the parts; the motion's turn is skipped until a tap
@@ -470,12 +457,17 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
     };
     // Inside a user gesture: a play() is allowed, and on iOS it lets the element play later from a timer too. Unlocks
     // the clip without showing it (the motion's turn comes as usual).
-    const unlock = () => {
+    // `then` runs once the element is no longer refused (played, or its play() only interrupted by that pause).
+    const unlock = (then?: () => void) => {
       ensureSource();
       const p = video.play();
-      p?.catch((error: unknown) => {
-        if (isRefusal(error)) setRefused(true);
-      });
+      p?.then(
+        () => then?.(),
+        (error: unknown) => {
+          if (isRefusal(error)) setRefused(true);
+          else then?.();
+        }
+      );
       if (!view.motion) video.pause();
     };
 
@@ -493,7 +485,7 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
       reloads = 0;
       ensureSource();
       render({ still: 'start', part: locked, motion: true });
-      video.loop = locked !== null && !reduced;
+      video.loop = locked !== null;
       try {
         video.currentTime = 0;
       } catch {
@@ -503,13 +495,8 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
     };
 
     // The next step: (a) part 1 -> part 2 -> part 3 -> motion -> part 1 ...; (b) the chosen part -> the motion (looped
-    // by the video itself). Reduced motion: after the one played motion, back to the still goal.
+    // by the video itself).
     function advance() {
-      if (reduced) {
-        stopWatch();
-        render({ still: locked ?? 'all', part: locked, motion: false });
-        return;
-      }
       if (locked !== null) {
         if (refused) {
           waiting = true;
@@ -531,7 +518,7 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
         if (!video.paused) video.pause();
         return;
       }
-      if (!started && !reduced) {
+      if (!started) {
         started = true;
         step = 0;
         if (locked === null) return showPart(order[0]);
@@ -560,13 +547,6 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
         started = true;
         waiting = false;
         const label = b.textContent?.trim() ?? part;
-        if (reduced) {
-          clearTimer();
-          video.pause();
-          render({ still: part, part, motion: false });
-          status.textContent = `${label} highlighted on the goal.`;
-          return;
-        }
         // This tap may start the clip: the motion then plays from the timer after the part even where autoplay is
         // refused (iOS Low Power Mode).
         unlock();
@@ -577,13 +557,8 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
     }
 
     playButton.addEventListener('click', () => {
-      if (playButton.dataset.mode === 'stop') {
-        video.pause();
-        advance();
-        return;
-      }
-      // An explicit play: it plays even while the page's clips rest (reduced motion starts paused); the nav's
-      // button still pauses it (its next clips:paused).
+      // An explicit play: it plays even while the page's clips rest; the nav's button still pauses it (its next
+      // clips:paused).
       paused = false;
       if (refused) setRefused(false);
       if (locked === null) step = order.length; // (a): after this motion, the parts from the first again
@@ -591,34 +566,46 @@ const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
       play();
     });
 
-    // Autoplay refused: the next tap or click anywhere is a gesture that may start the clip (as clipPlayback.ts).
+    // Autoplay refused: the next gesture anywhere (a press, a tap, a key, a scroll; the activating ones allow play(),
+    // the others are retries at most every RETRY_MS) may start the clip (as clipPlayback.ts); the play button stays
+    // until it is no longer refused.
+    const RETRY_MS = 250;
+    let lastRetry = -Infinity;
+    let retryTimer = 0;
+    const retry = () => {
+      lastRetry = performance.now();
+      if (!refused) return;
+      unlock(() => {
+        if (!refused) return;
+        setRefused(false);
+        if (waiting) showMotion();
+      });
+    };
     const onGesture = (event: Event) => {
       if (!refused || (event.target as Element | null)?.closest?.('[data-part-key], [data-pd-play]')) return;
-      unlock();
-      setRefused(false);
-      if (waiting) showMotion();
+      // a passive gesture within RETRY_MS of the last retry is folded into one retry at its end
+      const wait = ['touchstart', 'scroll', 'wheel'].includes(event.type) ? lastRetry + RETRY_MS - performance.now() : 0;
+      if (wait <= 0) return retry();
+      if (!retryTimer) {
+        retryTimer = window.setTimeout(() => {
+          retryTimer = 0;
+          retry();
+        }, wait);
+      }
     };
-    document.addEventListener('click', onGesture, true);
-    document.addEventListener('touchend', onGesture, true);
+    for (const type of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'keydown', 'scroll', 'wheel', 'WeixinJSBridgeReady'])
+      document.addEventListener(type, onGesture, { capture: true, passive: true });
 
     document.addEventListener('clips:paused', (event) => {
       paused = (event as CustomEvent<{ paused: boolean }>).detail.paused;
-      // Reduced motion: the nav's "Play all motion" plays the motion once; its pause returns to the still goal.
-      if (reduced && !paused && !view.motion) return showMotion();
-      if (reduced && paused && view.motion) {
-        video.pause();
-        return advance();
-      }
       sync();
     });
     document.addEventListener('visibilitychange', sync);
 
-    if (reduced) render({ still: 'all', part: null, motion: false });
-
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(
         (entries) => {
-          for (const entry of entries) if (entry.isIntersecting && !reduced) ensureSource();
+          for (const entry of entries) if (entry.isIntersecting) ensureSource();
         },
         { rootMargin: '100% 0px' }
       ).observe(fig);

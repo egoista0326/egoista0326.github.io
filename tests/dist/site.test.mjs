@@ -658,7 +658,7 @@ test('/dexgo/ problem definition: between the abstract and Method, three goal pa
   }
   const text = section.replace(/<[^>]+>/g, ' ');
   assert.doesNotMatch(text, /\b(R|T|G|L|RT|RG|RL|TG|TL|GL|RTG|RTL|RGL|TGL|RTGL)\b/, 'no capability letters');
-  for (const name of ['pd_start', 'pd_all', 'pd_rel', 'pd_fingers', 'pd_world', 'ov_rel', 'ov_fingers', 'ov_world']) {
+  for (const name of ['pd_start', 'pd_rel', 'pd_fingers', 'pd_world', 'ov_rel', 'ov_fingers', 'ov_world']) {
     assert.ok(existsSync(join(dist, 'assets', 'dexgo', 'problem', `${name}.webp`)), `${name}.webp`);
   }
   assert.ok(existsSync(join(dist, 'assets', 'dexgo', 'problem', 'pd_motion.mp4')));
