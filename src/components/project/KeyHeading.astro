@@ -4,16 +4,17 @@ interface Props {
   text: string;
   level?: 2 | 3;
   id?: string;
+  class?: string;
 }
 
-const { text, level = 3, id } = Astro.props;
+const { text, level = 3, id, class: className } = Astro.props;
 const Tag = level === 2 ? 'h2' : 'h3';
 // Each part: whether it is a key phrase, and its pieces; odd pieces are hyphenated words ("Long-horizon"),
 // kept on one line.
 const parts = text.split('*').map((part, index) => ({ key: index % 2 === 1, pieces: part.split(/([A-Za-z]+(?:-[A-Za-z]+)+)/) }));
 ---
 
-<Tag id={id} class="dx-heading">
+<Tag id={id} class:list={['dx-heading', className]}>
   {
     parts.map(({ key, pieces }) => {
       const content = pieces.map((piece, i) => (i % 2 === 1 ? <span class="dx-nobr">{piece}</span> : piece));

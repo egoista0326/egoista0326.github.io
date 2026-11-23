@@ -1,0 +1,639 @@
+---
+/**
+ * Problem definition figure (owner 2026-11-23): ONE goal, its three parts highlighted on that same goal, then the
+ * policy's motion from the initial grasp to it. Pictures are full frames on white (one per part, the start state and
+ * all parts at once); the overlays are transparent frames drawn over the motion clip; all share one crop, so they
+ * stack exactly (scripts/build_problem_definition.py).
+ *
+ * Timing (owner): (a) no click: part 1, part 2, part 3, the motion, repeated; (b) after a click on a label: that part,
+ * then the motion, which then loops with the part still highlighted (never back to (a)). Everything holds off screen,
+ * in a hidden tab and while the nav's "Pause all motion" is on (clips:paused). Reduced motion: the goal with all three
+ * parts, still, and a button that plays the motion once and stops it.
+ * Autoplay refused (play() rejected with NotAllowedError, e.g. iOS Low Power Mode): (a) goes on through the parts, the
+ * figure gets `data-play-refused` and shows the play button, and the next tap anywhere lets the motion play.
+ */
+interface Part {
+  key: string;
+  label: string;
+  description: string;
+}
+interface Props {
+  dir: string;
+  width: number;
+  height: number;
+  init: number[];
+  goal: number[];
+  initLabel: string;
+  goalLabel: string;
+  alt: string;
+  hint: string;
+  motionLabel: string;
+  playLabel: string;
+  stopLabel: string;
+  groups: { label: string; parts: string[] }[];
+  parts: Part[];
+}
+
+const { dir, width, height, init, goal, initLabel, goalLabel, alt, hint, motionLabel, playLabel, stopLabel, groups, parts } =
+  Astro.props;
+const byKey = new Map(parts.map((part) => [part.key, part]));
+const stills = ['start', 'all', ...parts.map((part) => part.key)];
+const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
+---
+
+<figure class="pd" data-problem data-motion-label={motionLabel} data-play-label={playLabel} data-stop-label={stopLabel}>
+  {/* The stage is the one picture a screen reader meets (its label is the figure's description). */}
+  <div class="pd-stage" style={`aspect-ratio: ${width} / ${height}`} role="img" aria-label={alt}>
+    {
+      stills.map((name) => (
+        <img
+          class:list={['pd-layer', { 'is-on': name === 'start' }]}
+          data-still={name}
+          src={`${dir}/pd_${name}.webp`}
+          width={width}
+          height={height}
+          alt=""
+          loading="lazy"
+          decoding="async"
+        />
+      ))
+    }
+    <video class="pd-layer pd-video" data-motion data-src={`${dir}/pd_motion.mp4`} width={width} height={height} muted playsinline preload="none" aria-hidden="true" tabindex="-1"></video>
+    {
+      parts.map((part) => (
+        <img class="pd-layer pd-overlay" data-overlay={part.key} src={`${dir}/ov_${part.key}.webp`} width={width} height={height} alt="" loading="lazy" decoding="async" />
+      ))
+    }
+    <span class="pd-tag pd-tag-init" style={`--x: ${pct(init[0])}; --y: ${pct(init[1])}`} aria-hidden="true">{initLabel}</span>
+    <span class="pd-tag pd-tag-goal" style={`--x: ${pct(goal[0])}; --y: ${pct(goal[1])}`} aria-hidden="true">{goalLabel}</span>
+  </div>
+  {/* Play (reduced motion, or autoplay refused); Stop while the motion plays under reduced motion. */}
+  <button type="button" class="pd-play" data-pd-play data-mode="play" hidden>
+    <svg class="pd-icon-play" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg>
+    <svg class="pd-icon-stop" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><rect x="6" y="6" width="12" height="12" rx="1.5" /></svg>
+    <span data-pd-play-text>{playLabel}</span>
+  </button>
+  <p class="pd-hint">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4.5" /></svg>
+    {hint}
+  </p>
+  <div class="pd-parts" role="group" aria-label="Parts of the goal">
+    {
+      groups.map((group, index) => (
+        <div class="pd-group" role="group" aria-labelledby={`pd-group-${index}`} style={`--n: ${group.parts.length}`}>
+          <p id={`pd-group-${index}`} class="pd-group-label">
+            {group.label}
+          </p>
+          <div class="pd-group-buttons">
+            {group.parts.map((key) => {
+              const part = byKey.get(key)!;
+              return (
+                <button type="button" class="pd-part" data-part-key={part.key} aria-pressed="false" aria-describedby={`pd-desc-${part.key}`}>
+                  <span class="pd-mark" aria-hidden="true" />
+                  {part.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))
+    }
+  </div>
+  {/* Descriptions of the labels: read with their button (aria-describedby), never as text of their own. */}
+  {
+    parts.map((part) => (
+      <span id={`pd-desc-${part.key}`} hidden>
+        {part.description}
+      </span>
+    ))
+  }
+  <p class="visually-hidden" data-pd-status aria-live="polite"></p>
+</figure>
+
+<style>
+  .pd {
+    margin: 0;
+  }
+  .pd-stage {
+    position: relative;
+    width: 100%;
+    background: #fff;
+    overflow: hidden;
+  }
+  .pd-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
+    transition: opacity 300ms var(--dx-ease, ease);
+    pointer-events: none;
+  }
+  .pd-layer.is-on {
+    opacity: 1;
+  }
+  .pd-video {
+    object-fit: fill;
+    background: transparent;
+  }
+  .pd-tag {
+    position: absolute;
+    left: max(var(--tag-inset, 0px), var(--x));
+    top: var(--y);
+    transform: translateY(calc(-100% - 6px));
+    font: 600 15px/1.2 var(--dx-sans);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  /* A darker tone of the warm "initial" colour: 5.2:1 on white for 12-15 px text (the warm accent is 4.2:1). */
+  .pd-tag-init {
+    color: #9c5b46;
+  }
+  .pd-tag-goal {
+    color: var(--dx-ink, #367a73);
+  }
+  .pd-play {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    margin: 14px auto 0;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--dx-ink, #367a73);
+    color: #fff;
+    font: 600 15px/1 var(--dx-sans);
+    cursor: pointer;
+    transition: background-color 150ms var(--dx-ease, ease);
+  }
+  .pd-play[hidden] {
+    display: none;
+  }
+  .pd-play:hover {
+    background: var(--dx-ink-hover, #2b665f);
+  }
+  .pd-play svg {
+    fill: currentColor;
+  }
+  .pd-play[data-mode='play'] .pd-icon-stop,
+  .pd-play[data-mode='stop'] .pd-icon-play {
+    display: none;
+  }
+  /* The hint in the prerequisite graph's style: the labels below are buttons, not a legend. */
+  .pd-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 20px 0 0;
+    color: var(--dx-ink, #367a73);
+    font: 600 16px/1.3 var(--dx-sans);
+    text-align: center;
+  }
+  .pd-hint svg {
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+  }
+  .pd-hint svg circle + circle {
+    fill: currentColor;
+    stroke: none;
+  }
+  .pd-parts {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 0 28px;
+    margin-top: 14px;
+  }
+  .pd-group-label {
+    margin: 0 0 6px;
+    padding-top: 10px;
+    border-top: 1px solid var(--dx-hair, #dfe3e2);
+    color: var(--dx-fg-2, #586366);
+    font: 400 15px/1.45 var(--dx-sans);
+  }
+  .pd-group-buttons {
+    display: grid;
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+    gap: 8px;
+  }
+  .pd-part {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 6px 10px 6px 0;
+    border: 0;
+    background: none;
+    color: var(--dx-fg-2, #586366);
+    font: 500 17px/1.25 var(--dx-sans);
+    text-align: left;
+    cursor: pointer;
+    transition: color 150ms var(--dx-ease, ease);
+  }
+  .pd-part:hover {
+    color: var(--dx-fg, #1e2528);
+  }
+  .pd-part:focus-visible,
+  .pd-play:focus-visible {
+    outline: 2px solid var(--dx-accent, #438f87);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  /* A dot: one part is chosen at a time (a ring when not shown, filled when shown). */
+  .pd-mark {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid var(--dx-line, #d2d6d5);
+    border-radius: 50%;
+    transition: background-color 250ms var(--dx-ease, ease), border-color 250ms var(--dx-ease, ease);
+  }
+  .pd-part.is-lit {
+    color: var(--dx-fg, #1e2528);
+    font-weight: 600;
+  }
+  .pd-part.is-lit .pd-mark {
+    border-color: var(--dx-accent, #438f87);
+    background: var(--dx-accent, #438f87);
+  }
+  @media (max-width: 719px) {
+    /* Phones: the stage runs to the window's edges (the shell's 20 px gutters), about 11 % larger. */
+    .pd-stage {
+      width: calc(100% + 40px);
+      margin-inline: -20px;
+      --tag-inset: 10px;
+    }
+    .pd-tag {
+      font-size: 12px;
+      transform: translateY(calc(-100% - 3px));
+    }
+    .pd-hint {
+      margin-top: 16px;
+      font-size: 15px;
+    }
+    .pd-parts {
+      grid-template-columns: 1fr;
+      margin-top: 10px;
+    }
+    .pd-group + .pd-group {
+      margin-top: 6px;
+    }
+    .pd-part {
+      font-size: 15px;
+    }
+    .pd-play {
+      height: 36px;
+      padding: 0 16px;
+      font-size: 14px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pd-layer,
+    .pd-part,
+    .pd-mark {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  import { isPaused } from '../../scripts/clipPlayback';
+
+  const HOLD_MS = 2400; // one part highlighted (owner timing (a) and (b))
+  // Stall watchdog: while the motion should play, its time must move (or data arrive) at least every STALL_MS; else it
+  // is loaded again from where it was, at most MAX_RELOADS times, and then the sequence moves on without it.
+  const WATCH_MS = 1000;
+  const STALL_MS = 4000;
+  const MAX_RELOADS = 2;
+  type View = { still: string; part: string | null; motion: boolean };
+
+  const isRefusal = (error: unknown) => (error as { name?: string } | null)?.name === 'NotAllowedError';
+
+  function setup(fig: HTMLElement) {
+    const stills = new Map([...fig.querySelectorAll<HTMLImageElement>('[data-still]')].map((el) => [el.dataset.still!, el]));
+    const overlays = new Map([...fig.querySelectorAll<HTMLImageElement>('[data-overlay]')].map((el) => [el.dataset.overlay!, el]));
+    const buttons = [...fig.querySelectorAll<HTMLButtonElement>('[data-part-key]')];
+    const order = [...overlays.keys()]; // the parts in the paper's order (rel, fingers, world)
+    const video = fig.querySelector<HTMLVideoElement>('[data-motion]')!;
+    const playButton = fig.querySelector<HTMLButtonElement>('[data-pd-play]')!;
+    const playText = playButton.querySelector<HTMLElement>('[data-pd-play-text]')!;
+    const status = fig.querySelector<HTMLElement>('[data-pd-status]')!;
+    const { motionLabel = '', playLabel = '', stopLabel = '' } = fig.dataset;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // locked: the part the reader chose (timing (b)); null = the default sequence (a).
+    let locked: string | null = null;
+    let step = 0; // index into the default sequence: order.length means the motion
+    let view: View = { still: 'start', part: null, motion: false };
+    let visible = false;
+    let paused = isPaused();
+    let timer = 0;
+    let remaining = 0;
+    let armedAt = 0;
+    let started = false;
+    // Autoplay refused: the motion waits for a user gesture. `waiting`: (b) shows its part and waits for that tap.
+    let refused = false;
+    let waiting = false;
+    // Stall watchdog (see WATCH_MS).
+    let watchTimer = 0;
+    let lastTime = 0;
+    let alive = 0;
+    let reloads = 0;
+
+    // The button under the stage: shown under reduced motion (Play, or Stop while the motion plays) and while
+    // autoplay is refused (Play).
+    const updateButton = () => {
+      const stop = reduced && view.motion;
+      playButton.hidden = !reduced && !refused;
+      playButton.dataset.mode = stop ? 'stop' : 'play';
+      playText.textContent = stop ? stopLabel : playLabel;
+    };
+
+    const render = (next: View) => {
+      view = next;
+      fig.dataset.view = next.motion ? 'motion' : next.still;
+      fig.dataset.part = next.part ?? '';
+      // Under the motion the start picture stays on (it is the clip's first frame), so a clip still loading shows it.
+      for (const [name, el] of stills) el.classList.toggle('is-on', next.motion ? name === 'start' : name === next.still);
+      for (const [name, el] of overlays) el.classList.toggle('is-on', next.motion && name === next.part);
+      video.classList.toggle('is-on', next.motion);
+      for (const b of buttons) {
+        const on = b.dataset.partKey === next.part;
+        // the still goal with all three parts (reduced motion) lights every label; none is pressed
+        b.classList.toggle('is-lit', on || (!next.motion && next.still === 'all'));
+        b.setAttribute('aria-pressed', String(on && locked !== null));
+      }
+      updateButton();
+    };
+
+    const setRefused = (value: boolean) => {
+      refused = value;
+      fig.toggleAttribute('data-play-refused', value);
+      updateButton();
+    };
+
+    const running = () => visible && !paused && !document.hidden;
+
+    const ensureSource = () => {
+      if (!video.getAttribute('src') && video.dataset.src) {
+        video.src = video.dataset.src;
+        video.preload = 'auto';
+      }
+    };
+
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        remaining = Math.max(0, remaining - (performance.now() - armedAt));
+        timer = 0;
+      }
+    };
+    const armTimer = () => {
+      if (timer || view.motion || waiting || remaining <= 0 || !running()) return;
+      armedAt = performance.now();
+      timer = window.setTimeout(() => {
+        timer = 0;
+        remaining = 0;
+        advance();
+      }, remaining);
+    };
+
+    const stopWatch = () => {
+      clearTimeout(watchTimer);
+      watchTimer = 0;
+    };
+    // Starts the watchdog (a fresh start counts from now: time spent paused or off screen is no stall).
+    const watch = () => {
+      if (watchTimer) return;
+      lastTime = video.currentTime;
+      alive = performance.now();
+      watchTimer = window.setTimeout(check, WATCH_MS);
+    };
+    function check() {
+      watchTimer = 0;
+      if (!view.motion || refused || !running() || video.ended) return;
+      const now = performance.now();
+      if (video.currentTime !== lastTime) {
+        lastTime = video.currentTime;
+        alive = now;
+      } else if (now - alive >= STALL_MS) {
+        if (reloads >= MAX_RELOADS) return giveUp();
+        reloads += 1;
+        alive = now;
+        const at = video.currentTime;
+        video.load();
+        if (at > 0) video.currentTime = at;
+        play();
+      }
+      watchTimer = window.setTimeout(check, WATCH_MS);
+    }
+    // The motion did not load: (a) goes on with the parts, (b) shows its part again and then tries the motion again.
+    const giveUp = () => {
+      stopWatch();
+      video.pause();
+      if (reduced) return advance();
+      if (locked !== null) return showPart(locked);
+      step = order.length;
+      advance();
+    };
+
+    // Plays the motion clip. A refusal ends the motion step (onRefused); an interrupted play is the watchdog's.
+    const play = () => {
+      ensureSource();
+      const p = video.play();
+      p?.then(
+        () => {
+          if (refused) setRefused(false);
+        },
+        (error: unknown) => {
+          if (isRefusal(error) && view.motion) onRefused();
+        }
+      );
+    };
+    const onRefused = () => {
+      stopWatch();
+      video.pause();
+      setRefused(true);
+      if (reduced || locked !== null) {
+        // the still goal (reduced motion) or the chosen part, lit; (b) waits for a tap
+        waiting = !reduced;
+        render({ still: locked ?? 'all', part: locked, motion: false });
+        return;
+      }
+      // (a): on through the parts; the motion's turn is skipped until a tap
+      step = order.length;
+      advance();
+    };
+    // Inside a user gesture: a play() is allowed, and on iOS it lets the element play later from a timer too. Unlocks
+    // the clip without showing it (the motion's turn comes as usual).
+    const unlock = () => {
+      ensureSource();
+      const p = video.play();
+      p?.catch((error: unknown) => {
+        if (isRefusal(error)) setRefused(true);
+      });
+      if (!view.motion) video.pause();
+    };
+
+    const showPart = (part: string) => {
+      clearTimer();
+      stopWatch();
+      video.pause();
+      render({ still: part, part, motion: false });
+      remaining = HOLD_MS;
+      armTimer();
+    };
+    const showMotion = () => {
+      clearTimer();
+      waiting = false;
+      reloads = 0;
+      ensureSource();
+      render({ still: 'start', part: locked, motion: true });
+      video.loop = locked !== null && !reduced;
+      try {
+        video.currentTime = 0;
+      } catch {
+        /* not loaded yet: it starts at 0 */
+      }
+      sync();
+    };
+
+    // The next step: (a) part 1 -> part 2 -> part 3 -> motion -> part 1 ...; (b) the chosen part -> the motion (looped
+    // by the video itself). Reduced motion: after the one played motion, back to the still goal.
+    function advance() {
+      if (reduced) {
+        stopWatch();
+        render({ still: locked ?? 'all', part: locked, motion: false });
+        return;
+      }
+      if (locked !== null) {
+        if (refused) {
+          waiting = true;
+          return;
+        }
+        return showMotion();
+      }
+      step = (step + 1) % (order.length + 1);
+      if (step === order.length && refused) step = 0;
+      if (step === order.length) showMotion();
+      else showPart(order[step]);
+    }
+
+    // Play or hold whatever the current view needs.
+    function sync() {
+      if (!running()) {
+        clearTimer();
+        stopWatch();
+        if (!video.paused) video.pause();
+        return;
+      }
+      if (!started && !reduced) {
+        started = true;
+        step = 0;
+        if (locked === null) return showPart(order[0]);
+      }
+      if (view.motion) {
+        play();
+        watch();
+      } else armTimer();
+    }
+
+    video.addEventListener('ended', () => {
+      if (view.motion && !video.loop) advance();
+    });
+    // A failed load is loaded again at the watchdog's next look; data arriving on a slow link is no stall.
+    video.addEventListener('error', () => {
+      if (view.motion) alive = -Infinity;
+    });
+    video.addEventListener('progress', () => {
+      alive = performance.now();
+    });
+
+    for (const b of buttons) {
+      b.addEventListener('click', () => {
+        const part = b.dataset.partKey!;
+        locked = part;
+        started = true;
+        waiting = false;
+        const label = b.textContent?.trim() ?? part;
+        if (reduced) {
+          clearTimer();
+          video.pause();
+          render({ still: part, part, motion: false });
+          status.textContent = `${label} highlighted on the goal.`;
+          return;
+        }
+        // This tap may start the clip: the motion then plays from the timer after the part even where autoplay is
+        // refused (iOS Low Power Mode).
+        unlock();
+        if (refused) setRefused(false);
+        status.textContent = `${label} highlighted on the goal, then ${motionLabel.toLowerCase()} in a loop.`;
+        showPart(part);
+      });
+    }
+
+    playButton.addEventListener('click', () => {
+      if (playButton.dataset.mode === 'stop') {
+        video.pause();
+        advance();
+        return;
+      }
+      // An explicit play: it plays even while the page's clips rest (reduced motion starts paused); the nav's
+      // button still pauses it (its next clips:paused).
+      paused = false;
+      if (refused) setRefused(false);
+      if (locked === null) step = order.length; // (a): after this motion, the parts from the first again
+      showMotion();
+      play();
+    });
+
+    // Autoplay refused: the next tap or click anywhere is a gesture that may start the clip (as clipPlayback.ts).
+    const onGesture = (event: Event) => {
+      if (!refused || (event.target as Element | null)?.closest?.('[data-part-key], [data-pd-play]')) return;
+      unlock();
+      setRefused(false);
+      if (waiting) showMotion();
+    };
+    document.addEventListener('click', onGesture, true);
+    document.addEventListener('touchend', onGesture, true);
+
+    document.addEventListener('clips:paused', (event) => {
+      paused = (event as CustomEvent<{ paused: boolean }>).detail.paused;
+      // Reduced motion: the nav's "Play all motion" plays the motion once; its pause returns to the still goal.
+      if (reduced && !paused && !view.motion) return showMotion();
+      if (reduced && paused && view.motion) {
+        video.pause();
+        return advance();
+      }
+      sync();
+    });
+    document.addEventListener('visibilitychange', sync);
+
+    if (reduced) render({ still: 'all', part: null, motion: false });
+
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) if (entry.isIntersecting && !reduced) ensureSource();
+        },
+        { rootMargin: '100% 0px' }
+      ).observe(fig);
+      new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) visible = entry.isIntersecting;
+          sync();
+        },
+        { threshold: 0.35 }
+      ).observe(fig.querySelector('.pd-stage')!);
+    } else {
+      visible = true;
+      sync();
+    }
+  }
+
+  for (const fig of document.querySelectorAll<HTMLElement>('[data-problem]')) setup(fig);
+</script>

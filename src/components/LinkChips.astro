@@ -34,6 +34,8 @@ const icons: Record<LinkChipIcon, string[]> = {
 ---
 
 <ul class:list={['project-card-links', className]} aria-label={label}>
+  {/* An optional first item (slot "lead"), e.g. /dexgo/'s filled "Interactive demo" pill. */}
+  {Astro.slots.has('lead') ? <li><slot name="lead" /></li> : null}
   {
     links.map((link) => {
       const icon = (

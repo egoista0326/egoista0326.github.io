@@ -13,7 +13,8 @@ interface Props {
 
 const { clip, mode = 'loop', class: className } = Astro.props;
 const unit = mode === 'row' ? undefined : mode === 'once' ? 'once' : '';
-// The poster loads near the viewport (clipPlayback.ts copies `data-poster`); nothing loads before that.
+// Nothing loads with the page: the poster loads near the viewport (clipPlayback.ts copies `data-poster`), the clip about
+// a screen ahead or once it is asked to play.
 ---
 
 <div class:list={['dx-clip', className]} data-play-unit={unit} style={`--clip-aspect: ${clip.width} / ${clip.height}`}>

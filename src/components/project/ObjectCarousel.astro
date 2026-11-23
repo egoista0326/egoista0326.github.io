@@ -130,17 +130,28 @@ const { items, label } = Astro.props;
     });
     track.addEventListener('dragstart', (event) => event.preventDefault());
 
-    // Posters of the whole row load once the row nears the viewport (the playback script only sees
-    // items inside the track's visible part).
+    // Posters ahead in the row: once the row nears the viewport, each item's poster loads when it comes within one
+    // track width of the track's visible part, so a swipe finds them drawn (the playback script only sees items inside
+    // the visible part). Not the whole row at once: on a phone that is some 0.8 MB at the moment the clips in view
+    // need the connection.
+    const ahead = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const video = entry.target as HTMLVideoElement;
+          if (!video.poster) video.poster = video.dataset.poster ?? '';
+          ahead.unobserve(video);
+        }
+      },
+      { root: track, rootMargin: '0px 100%' }
+    );
     const posters = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
-        for (const video of track.querySelectorAll<HTMLVideoElement>('video[data-poster]')) {
-          if (!video.poster) video.poster = video.dataset.poster ?? '';
-        }
+        for (const video of track.querySelectorAll<HTMLVideoElement>('video[data-poster]')) ahead.observe(video);
         posters.disconnect();
       },
-      { rootMargin: '800px 0px' }
+      { rootMargin: '300% 0px' }
     );
     posters.observe(root);
     update();

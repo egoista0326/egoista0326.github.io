@@ -1,37 +1,39 @@
 ---
-// The interactive demo: a poster of what the visitor will see (the demo's own layout: tabs, scene with the goal hand
-// and object, graph and legend; its Play / Reset and status left out), with one button where the running demo shows
-// its status, so it never hides the scene or the goal hand; a click anywhere on the poster also starts it. The
-// iframe (about 20 MB with the physics engine, about 6 MB compressed) is created only on click, in the same box, so
-// starting never changes the layout. It stays invisible until the demo reports its first drawn frame
-// ('dexgo-demo-ready', posted by its app/main.js); until then the poster stays, with a quiet loading line and an
-// indeterminate bar where the button was. If the demo cannot start (no WebGL 2, a failed download), it reports
-// 'dexgo-demo-failed' with its sentence (the cause, for a missing WebGL 2) and the line shows it instead, over the
-// poster dimmed to half (its drawn controls no longer look live); after 60 s without either, the iframe is shown as it is.
+// The interactive demo's stage. Before Start it plays a recorded long-horizon chain (the project video's showcase with
+// its task ticker, a muted loop under the page's playback rules and the nav's pause), so a reader who never starts the
+// demo still sees one; a centred "Start the live demo" pill sits on it, and a click anywhere on the stage also starts
+// it. The iframe (about 20 MB with the physics engine, about 6 MB compressed) is created only on Start, in the same
+// box. It stays invisible until the demo reports its first drawn frame ('dexgo-demo-ready', posted by its
+// app/main.js); meanwhile the recording keeps playing and a quiet loading line with an indeterminate bar takes the
+// pill's place; the recording then stops (held). If the demo cannot start (no WebGL 2, a failed download), it reports
+// 'dexgo-demo-failed' with its sentence and the line shows it instead, over the recording dimmed to half; when the
+// demo says a retry can help (a failed download, not a missing WebGL 2), the line also offers "Try again", which reloads
+// the same iframe. After 60 s without either, the iframe is shown as it is.
 // Keyboard focus moves into the demo only after a keyboard start; after a pointer start the loading line gives up its
 // focus, so Space and the arrows keep scrolling the page.
 // The page's own clips are suspended only while the demo simulates (it reports 'dexgo-demo-running' on every start and
-// stop: Pause, its view off screen, a hidden tab, the chain's end) and at least 60 % of the stage is in view; otherwise
-// they play as usual. Under the stage, one line: the caption, then "Open in a new tab".
+// stop) and at least 60 % of the stage is in view. Under the stage, one line: "Open in a new tab" (no caption, owner).
 //
-// The demo lays itself out side by side only in a frame at least 780 px wide and wider than tall (its index.html).
-// The stage fills the page's 800 px column from an 864 px viewport (32 px gutters) and then shows that layout with
-// the poster captured in an 800 px frame, so the poster and the running demo match. Below 864 px the stage is a
-// 9:16 frame at least 340 px wide where the screen allows (on phones under 380 px it reaches into the side gutters for
-// that; under 340 px it is the screen less 20 px, and the demo's smaller top row for frames under 316 px keeps its tabs
-// apart down to 300 px; global.css, .dx-demo-stage), and the poster is the capture of the demo's stacked layout in a
-// 350 x 622 frame. The demo sizes that layout in units of the frame (its index.html, --u), so in the wider tablet
-// frames (522-610 px) it is the same layout scaled up, like the poster, and starting still changes nothing. In the
-// 300-319 px frames of viewports under 340 px the demo keeps --u at its 0.96 floor instead of scaling the 350 px layout
-// down, so they get their own poster, captured in a 300 x 533 frame (POSTER_SMALL; the start button sits at that
-// poster's status centre, global.css).
-// TALL_MEDIA below must match the media query of global.css that sizes the stage and places the start button. From
-// 844 px a landscape viewport keeps the wide stage (a phone on its side: the demo runs side by side in its 780+ px
-// frame); 640-843 px landscape stays tall, since the demo lays out side by side only from a 780 px frame.
-// The Start iframe runs the posters' seed, so the live demo continues the poster's scene ("Open in a new tab" is
-// unseeded: a new random run); it opens the demo's canonical address (/dexgo/demo/), the iframe keeps index.html.
-// The demo reports its hand with every model ('dexgo-demo-hand', {hand, first}): after a switch to another hand than
-// the first of its hands.json, the link opens /dexgo/demo/?hand=<id>; back on the first, /dexgo/demo/ again.
+// The demo lays itself out side by side only in a frame at least 780 px wide and wider than tall (its index.html). From
+// an 864 px viewport the stage fills the 800 px column at the demo's 800 x 474 frame and the recording is drawn
+// contained in it. In the stacked media (TALL_MEDIA, global.css) the stage first shows the phone cut of the recording
+// with a 96 px band for the pill under it, and on Start it grows to the demo's 9:16 frame in 300 ms, anchored at its
+// top (the content below moves down). Once the frame has its running size, the page then scrolls only as far as needed
+// to show the running frame below the nav (its top never under the nav; a phone shows its controls, view and task
+// graph, a landscape phone at least its controls and status), and only if the visitor has not scrolled since Start.
+// That scroll never leaves a line of the part head above (eyebrow, headline) cut by the nav's bottom edge. After a
+// width change (a rotation), a running demo that was in view is placed the same way again.
+// The demo reports its hand and object with every model ('dexgo-demo-hand', {hand, first, object, firstObject}): the
+// link opens /dexgo/demo/ with ?hand=<id> for another hand than the first of its hands.json and &object=<slug> for
+// another object than the first of that hand's list; back on the first ones, /dexgo/demo/ again.
+// The embedded demo starts with ?seed=47 (the curated opening, lead default 2026-11-22: its worker keeps that seed for
+// the first 10 goals of Random chain, then re-seeds from crypto.getRandomValues); "Open in a new tab" stays unseeded.
+// The nav's "Pause all motion" / "Play all motion" ('clips:paused', clipPlayback.ts) reaches a started demo as
+// 'dexgo-pause' {paused}: a pause stops it, a play resumes it only if that pause stopped it (its app/main.js). Nothing
+// is sent at Start, so a Start under reduced motion (the page's clips start paused) still runs the demo.
+import ClipVideo from './ClipVideo.astro';
+import type { Clip } from '../../data/dexgo';
+
 interface Props {
   /** Page embedded in the iframe, e.g. '/dexgo/demo/index.html' (served from public/). */
   src: string;
@@ -41,50 +43,44 @@ interface Props {
   loadingLabel: string;
   newTabLabel: string;
   caption: string;
-  /** Posters of the side-by-side layout (in the 800 px column) and of the stacked (9:16) layout; sizes in CSS px. */
-  poster: { src: string; width: number; height: number };
-  posterPhone: { src: string; width: number; height: number };
-  posterAlt: string;
+  /** The recorded chain for the side-by-side stage and its phone cut for the stacked stage. */
+  preview: Clip;
+  previewPhone: Clip;
 }
 
-const { src, title, startLabel, loadingLabel, newTabLabel, caption, poster, posterPhone, posterAlt } = Astro.props;
+const { src, title, startLabel, loadingLabel, newTabLabel, caption, preview, previewPhone } = Astro.props;
+// Must match global.css (.dx-demo-stage): where the demo runs stacked in a 9:16 frame.
 const TALL_MEDIA = '(max-width: 843px), (max-width: 863px) and (orientation: portrait)';
-// the stacked layout in a 300 x 533 frame (seed 47, goal 0, 12 control steps, as the other two posters), for frames
-// under 340 px; SMALL_MEDIA must match the start button rule of global.css
-const SMALL_MEDIA = '(max-width: 339px)';
-const POSTER_SMALL = { src: '/assets/dexgo/demo_poster_tall_300.webp', width: 300, height: 533 };
-// The task code of the first goal all three posters show (seed 47, goal 0; the demo's chain data decides it). Written
-// on the poster as data-first-goal so a check can compare it with the running demo's first task (body[data-node] in
-// the iframe) after Start; a new chain or seed that changes the first goal needs new posters (R/web/README.md, Posters).
-const POSTER_FIRST_GOAL = 'RGL';
 const newTabHref = src.replace(/index\.html$/, '');
 ---
 
-<div class="dx-demo" data-demo-embed data-demo-src={src} data-demo-title={title}>
-  <div class="dx-demo-stage" data-demo-frame style={`--poster-ratio: ${poster.width} / ${poster.height}`}>
-    <picture data-first-goal={POSTER_FIRST_GOAL}>
-      <source media={SMALL_MEDIA} srcset={POSTER_SMALL.src} width={POSTER_SMALL.width} height={POSTER_SMALL.height} />
-      <source media={TALL_MEDIA} srcset={posterPhone.src} width={posterPhone.width} height={posterPhone.height} />
-      <img src={poster.src} alt={posterAlt} width={poster.width} height={poster.height} loading="lazy" decoding="async" />
-    </picture>
-    <button type="button" class="dx-button dx-demo-start" data-demo-start>{startLabel}</button>
+<div class="dx-demo" data-demo-embed data-demo-src={src} data-demo-title={title} data-tall-media={TALL_MEDIA}>
+  <div class="dx-demo-stage" data-demo-frame style={`--preview-phone-ratio: ${previewPhone.width} / ${previewPhone.height}`}>
+    <div class="dx-demo-preview" data-demo-preview>
+      <ClipVideo clip={preview} class="dx-demo-preview-wide" />
+      <ClipVideo clip={previewPhone} class="dx-demo-preview-phone" />
+    </div>
+    <button type="button" class="dx-pill dx-pill-primary dx-demo-start" data-demo-start>
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg>
+      {startLabel}
+    </button>
     <div class="dx-demo-loading" data-demo-loading role="status" tabindex="-1" hidden>
       <span data-demo-loading-text>{loadingLabel}</span>
       <span class="dx-demo-progress" aria-hidden="true"></span>
+      <button type="button" class="dx-pill dx-demo-retry" data-demo-retry hidden>Try again</button>
     </div>
   </div>
-  <p class="dx-note">
+  <p class="dx-note dx-demo-links">
     {caption ? <span class="dx-note-text">{caption}</span> : null}
-    <a class="dx-control" href={newTabHref} target="_blank" rel="noopener" data-demo-newtab>{newTabLabel}</a>
+    <a class="dx-link" href={newTabHref} target="_blank" rel="noopener" data-demo-newtab>{newTabLabel}<span aria-hidden="true">&nbsp;↗</span></a>
   </p>
 </div>
 
 <script>
   const REVEAL_FALLBACK_MS = 60000;
-  // The posters' moment (demo_poster_{wide,tall,tall_300}.webp): seed 47, the first goal (RGL, POSTER_FIRST_GOAL),
-  // 12 control steps in, MANO, round object, Random chain. The Start iframe runs this seed, so its first frame
-  // continues the poster's scene.
-  const POSTER_SEED = 47;
+  // The curated opening (lead default 2026-11-22): the worker keeps seed 47 for the first 10 goals, then re-seeds.
+  const OPENING_SEED = 47;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const SUSPEND_RATIO = 0.6; // share of the stage in view above which a running demo suspends the page's clips
 
   for (const embed of document.querySelectorAll<HTMLElement>('[data-demo-embed]')) {
@@ -93,8 +89,91 @@ const newTabHref = src.replace(/index\.html$/, '');
     const loading = embed.querySelector<HTMLElement>('[data-demo-loading]');
     const loadingText = embed.querySelector<HTMLElement>('[data-demo-loading-text]');
     const newTab = embed.querySelector<HTMLAnchorElement>('[data-demo-newtab]');
+    const retry = embed.querySelector<HTMLButtonElement>('[data-demo-retry]');
     if (!frame || !start || !loading || !loadingText) continue;
+    const loadingDefault = loadingText.textContent ?? '';
     const newTabBase = newTab?.getAttribute('href') ?? '';
+    const tall = window.matchMedia(embed.dataset.tallMedia ?? 'none');
+    // The recording rests once the live demo shows (its units are held; clipPlayback.ts).
+    const holdPreview = () => {
+      for (const unit of embed.querySelectorAll<HTMLElement>('[data-demo-preview] [data-play-unit]')) unit.setAttribute('data-play-hold', '');
+      document.dispatchEvent(new CustomEvent('clips:refresh'));
+    };
+    // Stacked stage: grow from the recording's height to the demo's 9:16 frame in 300 ms, anchored at the top; `then`
+    // runs once, when the frame has its running size. Returns false when nothing animates (side by side, or stacked
+    // under reduced motion, where .is-started sets the 9:16 frame at once).
+    const grow = (then: () => void) => {
+      if (!tall.matches || reducedMotion) return false;
+      const from = frame.getBoundingClientRect().height;
+      frame.style.height = `${from}px`;
+      void frame.offsetHeight;
+      frame.classList.add('is-growing');
+      frame.style.height = `${(frame.getBoundingClientRect().width * 16) / 9}px`;
+      let ended = false;
+      const done = (event?: TransitionEvent) => {
+        // only the stage's own height transition (the children's transitions bubble here too), or the timeout
+        if (ended || (event && (event.target !== frame || event.propertyName !== 'height'))) return;
+        ended = true;
+        frame.removeEventListener('transitionend', done);
+        frame.classList.remove('is-growing');
+        frame.style.height = '';
+        then();
+      };
+      frame.addEventListener('transitionend', done);
+      window.setTimeout(done, 400);
+      return true;
+    };
+    // The text lines of the part head above the stage (eyebrow, headline) as [top, bottom] in window px: the boxes of
+    // their text and inline spans (a range over each element's contents), not the elements' block boxes.
+    const headLines = () => {
+      const lines: [number, number][] = [];
+      const range = document.createRange();
+      for (const el of embed.closest('[data-part]')?.querySelectorAll('.dx-part-head > *') ?? []) {
+        range.selectNodeContents(el);
+        for (const b of range.getClientRects()) if (b.height > 0) lines.push([b.top, b.bottom]);
+      }
+      return lines;
+    };
+    // The running frame (controls, view, task graph) on screen: its top below the sticky nav (nav bottom + 8 px), its
+    // bottom pulled up to the window's bottom - 12 px without moving its top above that line; a frame already there
+    // does not move (desktops). When the page does scroll, it never parks a line of the part head on the nav's bottom
+    // edge (cut letters): the scroll dy is moved out of every such range (1 px clear), to the end where the line goes
+    // wholly under the nav or to the one where it shows whole below it. Of those that keep the frame placed (top at nav
+    // bottom + 8 px or lower and, where the frame fits the window, bottom 12 px above the window's bottom or higher)
+    // the nearer one; if neither does, the first while the frame's top stays placed, else the second.
+    const place = (behavior: ScrollBehavior) => {
+      const navBottom = Math.max(0, document.querySelector('.dx-localnav')?.getBoundingClientRect().bottom ?? 0);
+      const r = frame.getBoundingClientRect();
+      const top = navBottom + 8;
+      const most = r.top - top; // the largest scroll that keeps the frame's top at nav bottom + 8 px
+      const fits = top + r.height + 12 <= window.innerHeight;
+      let dy = 0;
+      if (r.top < top) dy = most;
+      else if (r.bottom + 12 > window.innerHeight) dy = Math.min(r.bottom + 12 - window.innerHeight, most);
+      if (Math.abs(dy) < 1) return;
+      const placed = (d: number) => d <= most + 0.5 && (!fits || r.bottom - d + 12 <= window.innerHeight + 0.5);
+      // the scrolls that would cut a head line, (lineTop - navBottom, lineBottom - navBottom), merged where they meet
+      // (a line's text box is taller than its line pitch, so the two lines of the headline merge)
+      const cuts = headLines()
+        .map(([t, b]) => [t - navBottom - 1, b - navBottom + 1])
+        .sort((a, b) => a[0] - b[0]);
+      for (let i = 0; i < cuts.length; i++) {
+        let [lo, hi] = cuts[i];
+        while (i + 1 < cuts.length && cuts[i + 1][0] < hi) hi = Math.max(hi, cuts[++i][1]);
+        if (lo < dy && dy < hi) {
+          const ends = [hi, lo].filter(placed).sort((a, b) => Math.abs(a - dy) - Math.abs(b - dy));
+          dy = ends[0] ?? (hi <= most ? hi : lo);
+          break;
+        }
+      }
+      if (Math.abs(dy) >= 1) window.scrollBy({ top: dy, behavior });
+    };
+    // After a Start, once the frame has its running size. Not if the visitor has scrolled since the Start (they have
+    // moved on).
+    const fitRunning = (scrollAtStart: number) => {
+      if (Math.abs(window.scrollY - scrollAtStart) > 4) return;
+      place(reducedMotion ? 'auto' : 'smooth');
+    };
 
     let started = false;
     const begin = (viaKeyboard: boolean) => {
@@ -105,7 +184,7 @@ const newTabHref = src.replace(/index\.html$/, '');
       iframe.allow = 'fullscreen';
       let fallback = 0;
 
-      // Show the demo in place of the poster (first frame drawn, or the fallback). After a keyboard start, focus
+      // Show the demo in place of the recording (first frame drawn, or the fallback). After a keyboard start, focus
       // follows it unless the visitor has moved on meanwhile: the demo is asked ('dexgo-focus') to put it, with a
       // visible ring, on its "Pause demo"; after a pointer start the loading line lets go of it.
       const reveal = () => {
@@ -113,6 +192,7 @@ const newTabHref = src.replace(/index\.html$/, '');
         window.clearTimeout(fallback);
         embed.classList.add('is-loaded');
         loading.hidden = true;
+        holdPreview();
         const waiting = document.activeElement === loading || document.activeElement === document.body;
         if (viaKeyboard && waiting) {
           iframe.focus();
@@ -131,6 +211,19 @@ const newTabHref = src.replace(/index\.html$/, '');
         document.dispatchEvent(new CustomEvent(on ? 'clips:suspend' : 'clips:resume'));
       };
 
+      // The nav's pause / play reaches the demo (it ignores a play after a pause of its own). Only on changes, never at
+      // Start: under reduced motion the page's clips start paused, and a Start must still run the demo. A change made
+      // while the demo still loads is sent again once it shows (its listener may not have existed yet).
+      let navPaused: boolean | null = null;
+      const tellPause = () => {
+        if (navPaused === null) return;
+        iframe.contentWindow?.postMessage({ type: 'dexgo-pause', paused: navPaused }, window.location.origin);
+      };
+      document.addEventListener('clips:paused', (event) => {
+        navPaused = (event as CustomEvent<{ paused?: boolean }>).detail?.paused === true;
+        tellPause();
+      });
+
       const onMessage = (event: MessageEvent) => {
         if (event.source !== iframe.contentWindow || event.origin !== window.location.origin) return;
         const data = event.data as {
@@ -139,20 +232,30 @@ const newTabHref = src.replace(/index\.html$/, '');
           running?: boolean;
           hand?: string;
           first?: boolean;
+          object?: string;
+          firstObject?: boolean;
+          retry?: boolean;
         } | null;
         if (data?.type === 'dexgo-demo-ready') {
           reveal();
+          tellPause();
         } else if (data?.type === 'dexgo-demo-running') {
           running = data.running === true;
           sync();
         } else if (data?.type === 'dexgo-demo-hand' && newTab && typeof data.hand === 'string') {
-          // "Open in a new tab" opens the hand the visitor chose (the first hand needs no parameter)
-          newTab.href = data.first ? newTabBase : `${newTabBase}?hand=${encodeURIComponent(data.hand)}`;
+          // "Open in a new tab" opens the hand and object the visitor chose (the first ones need no parameter)
+          const query = new URLSearchParams();
+          if (!data.first) query.set('hand', data.hand);
+          if (!data.firstObject && typeof data.object === 'string' && data.object) query.set('object', data.object);
+          const search = query.toString();
+          newTab.href = search ? `${newTabBase}?${search}` : newTabBase;
         } else if (data?.type === 'dexgo-demo-failed') {
-          // keep the poster: the line says that the demo could not start ("Open in a new tab" stays below)
+          // keep the recording: the line says that the demo could not start ("Open in a new tab" stays below); a
+          // failed download (not a missing WebGL 2) also gets "Try again"
           window.clearTimeout(fallback);
           embed.classList.add('is-failed');
-          loadingText.textContent = data.message || 'The demo could not start in this browser.';
+          loadingText.textContent = data.message || 'The demo could not load.';
+          if (retry) retry.hidden = data.retry !== true;
           running = false;
           sync();
         }
@@ -161,25 +264,65 @@ const newTabHref = src.replace(/index\.html$/, '');
       fallback = window.setTimeout(reveal, REVEAL_FALLBACK_MS);
 
       const url = new URL(embed.dataset.demoSrc ?? '', window.location.href);
-      url.searchParams.set('seed', String(POSTER_SEED));
-      iframe.src = url.pathname + url.search;
+      url.searchParams.set('seed', String(OPENING_SEED));
+      const demoSrc = url.pathname + url.search;
+      iframe.src = demoSrc;
       loading.hidden = false;
+      let scrollAtStart = window.scrollY;
+      const animating = grow(() => fitRunning(scrollAtStart));
       frame.append(iframe);
       embed.classList.add('is-started');
       start.hidden = true;
       loading.focus(); // the start button is gone: focus (and the screen reader) stay on the loading line
+      scrollAtStart = window.scrollY; // that focus may itself have scrolled the loading line into view
+      if (!animating) requestAnimationFrame(() => fitRunning(scrollAtStart));
 
+      let seen = false; // at least 30 % of the stage in view
       new IntersectionObserver(
         (entries) => {
-          for (const entry of entries) inView = entry.isIntersecting && entry.intersectionRatio >= SUSPEND_RATIO;
+          for (const entry of entries) {
+            inView = entry.isIntersecting && entry.intersectionRatio >= SUSPEND_RATIO;
+            seen = entry.isIntersecting && entry.intersectionRatio >= 0.3;
+          }
           sync();
         },
         { threshold: [0, 0.3, SUSPEND_RATIO, 1] }
       ).observe(frame);
+
+      // A width change (a rotation, or a window crossing the stacked / side-by-side breakpoint) changes the height of
+      // everything above the stage while scrollY stays, which can leave the running frame off screen (where the demo
+      // pauses itself). If the stage was in view before the change, place it again once the burst of resize events
+      // has settled. Height-only changes (the phone's URL bar) do nothing; a stage the visitor had left stays left.
+      let lastWidth = window.innerWidth;
+      let keep = false;
+      let settle = 0;
+      window.addEventListener('resize', () => {
+        if (window.innerWidth === lastWidth) return;
+        if (!settle) keep = seen; // the state before this burst (resize events run before the observer updates)
+        lastWidth = window.innerWidth;
+        window.clearTimeout(settle);
+        settle = window.setTimeout(() => {
+          settle = 0;
+          if (keep) requestAnimationFrame(() => place('auto'));
+        }, 150);
+      });
+
+      // "Try again" after a failed download: the same iframe loads again (its WindowProxy, and so this page's message
+      // listener, stay valid); the loading line and the 60 s fallback start over.
+      retry?.addEventListener('click', (event) => {
+        viaKeyboard = event.detail === 0;
+        embed.classList.remove('is-failed');
+        retry.hidden = true;
+        loadingText.textContent = loadingDefault;
+        loading.focus({ preventScroll: true }); // the button is gone: focus stays on the loading line
+        window.clearTimeout(fallback);
+        fallback = window.setTimeout(reveal, REVEAL_FALLBACK_MS);
+        iframe.src = demoSrc; // setting src navigates even when the value is the same
+      });
     };
     // A click with detail 0 comes from the keyboard (Enter / Space on the button).
     start.addEventListener('click', (event) => begin(event.detail === 0));
-    // The poster is part of the target (pointer only; the button is the keyboard way in).
-    frame.querySelector('img')?.addEventListener('click', () => begin(false));
+    // The recording is part of the target (pointer only; the button is the keyboard way in).
+    frame.querySelector('[data-demo-preview]')?.addEventListener('click', () => begin(false));
   }
 </script>

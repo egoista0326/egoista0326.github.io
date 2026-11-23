@@ -7,31 +7,22 @@ import KeyHeading from '../components/project/KeyHeading.astro';
 import LinkChips from '../components/LinkChips.astro';
 import MediaNote from '../components/project/MediaNote.astro';
 import MethodFigure from '../components/project/MethodFigure.astro';
-import ProjectVideo from '../components/project/ProjectVideo.astro';
+import EncodingFigure from '../components/project/EncodingFigure.astro';
+import ProblemFigure from '../components/project/ProblemFigure.astro';
+import LazyDemo from '../components/project/LazyDemo.astro';
 import UnlockGraph from '../components/project/UnlockGraph.astro';
 import { dexgoPage as page } from '../data/dexgo';
 import { isPlaceholder } from '../lib/placeholders';
-import { emphasisText, texDisplay, texInline } from '../lib/tex';
+import { texDisplay, texInline } from '../lib/tex';
 
-const { method } = page;
+const { method, problem } = page;
+const { demo } = page.results;
 // The figure's own props; `page` describes the separate figure page (src/pages/dexgo/figure.astro).
 const { page: _figurePage, ...figure } = method.figure;
-// Self-hosted web fonts. global.css declares the regular faces; the serif's italic is used only by the abstract's
-// \emph phrase, so its file is a subset of that phrase's letters (made with the Google Fonts `text=` API for exactly
-// these characters), declared here for only them (unicode-range); the dist test checks that the file has a glyph for
-// each, so a changed phrase needs a new subset file.
-const italicSrc = '/fonts/source-serif-4/source-serif-4-italic-emph.woff2';
-const italicChars = [...new Set(emphasisText(page.abstract))].sort().join('');
-const italicFace = italicChars
-  ? `@font-face{font-family:"Source Serif 4";font-style:italic;font-weight:400;font-display:swap;src:url("${italicSrc}") format("woff2");unicode-range:${[...italicChars].map((char) => `U+${char.codePointAt(0)!.toString(16).toUpperCase()}`).join(',')}}`
-  : null;
-// All three files are preloaded: the title block and the abstract use them on the first screen, and a face that
-// arrives after the first layout would reflow the abstract (the italic alone moved it by a line at 768 px).
-const fontPreloads = [
-  '/fonts/source-sans-3/source-sans-3-latin-var.woff2',
-  '/fonts/source-serif-4/source-serif-4-latin-opsz.woff2',
-  ...(italicFace ? [italicSrc] : [])
-];
+// Self-hosted web font: Source Sans 3 for all text (owner 2026-11-23, one family); global.css declares it. The
+// abstract's one \emph phrase is its synthesized oblique. Preloaded: the title block and the abstract use it on the
+// first screen, and a face that arrives after the first layout would reflow the abstract.
+const fontPreloads = ['/fonts/source-sans-3/source-sans-3-latin-var.woff2'];
 // A link shows once it has a target, or before that as a muted "soon" chip when marked so (Paper, Code).
 const links = page.links.filter((link) => link.href || link.soon);
 const hasEqual = page.authors.some((author) => author.equal);
@@ -64,9 +55,26 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
     <meta name="twitter:image" content={shareImage} />
     <meta name="twitter:image:alt" content={page.share.alt} />
     {fontPreloads.map((href) => <link rel="preload" as="font" type="font/woff2" href={href} crossorigin />)}
-    {italicFace ? <style is:inline set:html={italicFace} /> : null}
-    <link rel="preload" as="image" href={page.video.poster} fetchpriority="high" />
+    <link rel="preload" as="image" href={page.teaser.poster} fetchpriority="high" media="(min-width: 640px)" />
+    <link rel="preload" as="image" href={page.teaserPhone.poster} fetchpriority="high" media="(max-width: 639px)" />
   </Fragment>
+
+  {/* Slim sticky in-page nav (no personal site name, icon or link: the page stays standalone). The current part is
+      marked by the scrollspy below; the round button pauses and resumes every clip on the page (clipPlayback.ts). */}
+  <nav slot="nav" class="dx-localnav" aria-label="DexGO sections">
+    <div class="dx-localnav-inner">
+      <a class="dx-localnav-name" href="#main">{page.title}</a>
+      <ul class="dx-localnav-links">
+        <li><a href="#method" data-nav="method">Method</a></li>
+        <li><a href="#live-demo" data-nav="live-demo">Live demo</a></li>
+        <li><a href="#results" data-nav="results">Results</a></li>
+      </ul>
+      <button type="button" class="dx-navpause" data-video-toggle data-toggle-icon aria-label="Pause all motion">
+        <svg class="dx-icon-pause" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path d="M7 5h3.2v14H7zM13.8 5H17v14h-3.2z" /></svg>
+        <svg class="dx-icon-play" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg>
+      </button>
+    </div>
+  </nav>
 
   <article class="dx-page">
     <header class="dx-title">
@@ -83,49 +91,60 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
       </p>
       <p class="dx-affiliation">{page.affiliation}</p>
       {hasEqual ? <p class="dx-author-note" aria-hidden="true">*{page.equalNote}</p> : null}
-      {links.length > 0 ? <LinkChips links={links} label="Project links" class="dx-links" /> : null}
-      <div class="dx-video-controls">
-        <button type="button" class="dx-control dx-video-toggle" data-video-toggle>Pause videos</button>
-        {/* Turns on the project video's sound (ProjectVideo.astro); gone once the sound is on. */}
-        <button type="button" class="dx-control dx-sound" data-sound-on aria-controls="project-video" aria-label="Turn sound on">
-          {/* A speaker with a cross: the sound is off now. */}
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
-            <path d="M11 5 6 9H3v6h3l5 4z" />
-            <path d="m16 9 5 6" />
-            <path d="m21 9-5 6" />
-          </svg>
-          Sound on
-        </button>
-      </div>
+      {/* One pill style: the filled "Interactive demo" pill jumps to the Live demo part (and focuses its start button,
+          script below); Paper and Code follow as outlined "soon" pills. */}
+      <LinkChips links={links} label="Project links" class="dx-links">
+        <a slot="lead" class="dx-pill dx-pill-primary" href={page.demoLink.href} data-demo-jump>
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg>
+          {page.demoLink.label}
+        </a>
+      </LinkChips>
     </header>
 
+    {/* The teaser: the 2:1 cut, and below 640 px the 4:3 phone cut (global.css shows one; the hidden one never comes
+        near the viewport, so it loads nothing). Muted loops; the nav's pause button covers them. */}
     <div class="dx-media dx-hero">
-      <ProjectVideo id="project-video" video={page.video} />
+      <ClipVideo clip={page.teaser} class="dx-hero-wide" />
+      <ClipVideo clip={page.teaserPhone} class="dx-hero-phone" />
     </div>
 
     <section class="dx-section dx-abstract" aria-labelledby="abstract-heading">
-      <div class="dx-text">
+      <div class="dx-text" data-reveal>
         <h2 id="abstract-heading" class="dx-label">Abstract</h2>
         <p class="dx-prose" set:html={texInline(page.abstract)} />
       </div>
     </section>
 
-    <section class="dx-section" aria-labelledby="method-heading">
-      <h2 id="method-heading" class="visually-hidden">Method</h2>
+    {/* Problem definition (owner 2026-11-23): what one goal is, between the abstract and the Method. A small section
+        set like the abstract (eyebrow, 34 px heading, no hairline), not a fourth part: the nav lists three. */}
+    <section id={problem.id} class="dx-section dx-problem" aria-labelledby="problem-heading">
+      <header class="dx-problem-head" data-reveal>
+        <p class="dx-eyebrow">{problem.eyebrow}</p>
+        <KeyHeading id="problem-heading" level={2} text={problem.heading} />
+      </header>
+      <div class="dx-text" data-reveal>
+        <p class="dx-prose" set:html={texInline(problem.text)} />
+      </div>
+      <div class="dx-media" data-reveal="media">
+        <ProblemFigure {...problem.figure} />
+      </div>
+    </section>
 
-      <section class="dx-screen dx-screen-first" aria-labelledby="method-overview">
-        <KeyHeading id="method-overview" text={method.heading} />
-        <div class="dx-text">
-          <p class="dx-prose" set:html={texInline(method.intro)} />
-        </div>
-        <div class="dx-media">
-          <MethodFigure {...figure} />
-        </div>
-      </section>
+    <section id="method" class="dx-part" aria-labelledby="method-overview" data-part>
+      <header class="dx-part-head" data-reveal>
+        <p class="dx-eyebrow">{method.eyebrow}</p>
+        <KeyHeading id="method-overview" level={2} text={method.heading} class="dx-part-title" />
+      </header>
+      <div class="dx-text" data-reveal>
+        <p class="dx-prose" set:html={texInline(method.intro)} />
+      </div>
+      <div class="dx-media" data-reveal="media">
+        <MethodFigure {...figure} />
+      </div>
 
       <section class="dx-screen" aria-labelledby={method.graph.id}>
         <KeyHeading id={method.graph.id} text={method.graph.heading} />
-        <div class="dx-text">
+        <div class="dx-text" data-reveal>
           <p class="dx-prose" set:html={texInline(method.graph.text)} />
         </div>
         <div class="dx-media">
@@ -143,7 +162,7 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
 
       <section class="dx-screen" aria-labelledby={method.kernel.id}>
         <KeyHeading id={method.kernel.id} text={method.kernel.heading} />
-        <div class="dx-text">
+        <div class="dx-text" data-reveal>
           <p class="dx-prose" set:html={texInline(method.kernel.text)} />
         </div>
         <div class="dx-media" data-replay-scope>
@@ -156,16 +175,38 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
 
       <section class="dx-screen" aria-labelledby={method.encoding.id}>
         <KeyHeading id={method.encoding.id} text={method.encoding.heading} />
-        <div class="dx-text">
+        <div class="dx-text" data-reveal>
           <p class="dx-prose" set:html={texInline(method.encoding.lead)} />
           <div class="dx-formula" set:html={texDisplay(method.encoding.formula)} />
           <p class="dx-prose" set:html={texInline(method.encoding.text)} />
         </div>
+        <div class="dx-media" data-reveal="media">
+          <EncodingFigure {...method.encoding.figure} />
+        </div>
       </section>
     </section>
 
-    <section class="dx-section" aria-labelledby="results-heading">
-      <h2 id="results-heading" class="visually-hidden">Results</h2>
+    {/* The one tinted part (owner 2026-11-23): a full-bleed light-grey band behind the whole Live demo part. */}
+    <section id="live-demo" class="dx-part dx-part-band" aria-labelledby="results-demo" data-part>
+      <header class="dx-part-head" data-reveal>
+        <p class="dx-eyebrow">{demo.eyebrow}</p>
+        <KeyHeading id="results-demo" level={2} text={demo.heading} class="dx-part-title" />
+      </header>
+      <div class="dx-media" data-reveal="media">
+        <LazyDemo
+          src={demo.src}
+          title={demo.title}
+          startLabel={demo.startLabel}
+          loadingLabel={demo.loadingLabel}
+          newTabLabel={demo.newTabLabel}
+          caption={demo.caption}
+          preview={demo.preview}
+          previewPhone={demo.previewPhone}
+        />
+      </div>
+    </section>
+
+    <section id="results" class="dx-part" aria-labelledby="results-targets" data-part>
       <DexgoResults />
     </section>
 
@@ -183,3 +224,66 @@ const shareTitle = `${page.title}: ${page.subtitle}`;
     }
   </article>
 </ProjectLayout>
+
+<script>
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // "Interactive demo": scroll to the Live demo part (instantly under reduced motion) and put focus on its start
+  // button without a second scroll, so Enter starts the demo. The band's top meets the nav where the whole stage
+  // then fits on the screen; on shorter windows the page scrolls further, until the stage ends 16 px above the
+  // window's bottom, so the focused start button (at the stage's bottom) is always in view.
+  for (const link of document.querySelectorAll<HTMLAnchorElement>('[data-demo-jump]')) {
+    link.addEventListener('click', (event) => {
+      const target = document.querySelector<HTMLElement>(link.hash);
+      if (!target) return;
+      event.preventDefault();
+      const nav = document.querySelector<HTMLElement>('.dx-localnav')?.offsetHeight ?? 0;
+      const stage = target.querySelector<HTMLElement>('.dx-demo-stage');
+      const headTop = target.getBoundingClientRect().top + window.scrollY - nav;
+      const stageBottom = stage ? stage.getBoundingClientRect().bottom + window.scrollY + 16 : headTop;
+      window.scrollTo({ top: Math.max(headTop, stageBottom - window.innerHeight), behavior: reducedMotion ? 'auto' : 'smooth' });
+      history.replaceState(null, '', link.hash);
+      target.querySelector<HTMLElement>('[data-demo-start]:not([hidden])')?.focus({ preventScroll: true });
+    });
+  }
+
+  // Scrollspy: the nav marks the part that holds the line 40 % down the screen.
+  const navLinks = new Map([...document.querySelectorAll<HTMLAnchorElement>('[data-nav]')].map((a) => [a.dataset.nav, a]));
+  const parts = [...document.querySelectorAll<HTMLElement>('[data-part]')];
+  const spy = () => {
+    const line = window.innerHeight * 0.4;
+    let current: string | undefined;
+    for (const part of parts) if (part.getBoundingClientRect().top <= line) current = part.id;
+    if (current && parts.find((p) => p.id === current)!.getBoundingClientRect().bottom < line) current = undefined;
+    for (const [id, a] of navLinks) {
+      if (id === current) a.setAttribute('aria-current', 'true');
+      else a.removeAttribute('aria-current');
+    }
+  };
+  let spyFrame = 0;
+  window.addEventListener('scroll', () => {
+    if (!spyFrame) spyFrame = requestAnimationFrame(() => ((spyFrame = 0), spy()));
+  }, { passive: true });
+  window.addEventListener('resize', spy);
+  spy();
+
+  // Reveal: part heads and section text fade up 16 px once, media only fades (global.css, [data-reveal]). Blocks
+  // already on screen at load show at once; nothing hides without this script or under reduced motion.
+  if (!reducedMotion && 'IntersectionObserver' in window) {
+    const blocks = [...document.querySelectorAll<HTMLElement>('[data-reveal]')];
+    const fold = window.innerHeight;
+    const later = blocks.filter((el) => el.getBoundingClientRect().top > fold);
+    for (const el of later) el.classList.add('is-pending');
+    const reveal = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.remove('is-pending');
+          reveal.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.15 }
+    );
+    for (const el of later) reveal.observe(el);
+  }
+</script>

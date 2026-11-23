@@ -1124,11 +1124,13 @@ html.is-photo-quiet .photo-quiet-close:focus-visible {
   outline-offset: 2px;
 }
 
-/* Metadata values link to their category or tag gallery. */
+/* Metadata values link to their category or tag gallery. A value never breaks inside its name ("Black & White");
+   lines break only between values, at the ", " separator. */
 .metadata-row .metadata-link {
   color: inherit;
   text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
   text-underline-offset: 3px;
+  white-space: nowrap;
 }
 
 .metadata-row .metadata-link:hover {

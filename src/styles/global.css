@@ -757,24 +757,14 @@ html[data-not-found="dexgo"] {
 
 /* The page's web fonts, self-hosted like Inter (public/fonts/, SIL OFL 1.1, each with its OFL.txt): the Latin files
    Google Fonts serves, so the page needs no third-party host. Source Sans 3 is variable in weight (the page sets 400,
-   600 and 700); Source Serif 4 is the 400 roman with its optical-size axis (8-60). dexgo.astro preloads both and
-   declares the serif's italic, a subset of the abstract's emphasised letters. */
+   600 and 700) and sets all of the page's text (owner 2026-11-23, one family); dexgo.astro preloads it. The
+   abstract's one emphasised phrase is its synthesized oblique. */
 @font-face {
   font-family: "Source Sans 3";
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
   src: url("/fonts/source-sans-3/source-sans-3-latin-var.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
-    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: "Source Serif 4";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/source-serif-4/source-serif-4-latin-opsz.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
@@ -813,28 +803,6 @@ html[data-not-found="dexgo"] {
   line-gap-override: 0%;
 }
 
-/* The same for the prose serif: Times New Roman (Liberation Serif on Linux) scaled to Source Serif 4's width over the
-   abstract (113.5 %), ascent and descent Source Serif 4's (1.04 em and 0.34 em) over size-adjust, so paragraphs keep
-   their line count when the web font swaps in. The italic face uses the regular's ratio. */
-@font-face {
-  font-family: "Source Serif 4 Fallback";
-  font-style: normal;
-  src: local("Times New Roman"), local("TimesNewRomanPSMT"), local("Liberation Serif"), local("LiberationSerif-Regular");
-  size-adjust: 113.5%;
-  ascent-override: 91.6%;
-  descent-override: 30%;
-  line-gap-override: 0%;
-}
-
-@font-face {
-  font-family: "Source Serif 4 Fallback";
-  font-style: italic;
-  src: local("Times New Roman Italic"), local("TimesNewRomanPS-ItalicMT"), local("Liberation Serif Italic"), local("LiberationSerif-Italic");
-  size-adjust: 113.5%;
-  ascent-override: 91.6%;
-  descent-override: 30%;
-  line-gap-override: 0%;
-}
 
 .page-dexgo,
 html[data-not-found="dexgo"] body {
@@ -855,7 +823,6 @@ html[data-not-found="dexgo"] body {
   --dx-locked: #b5b9bf;
   --dx-caption: #5f6368;
   --dx-sans: "Source Sans 3", "Source Sans 3 Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --dx-serif: "Source Serif 4", "Source Serif 4 Fallback", Georgia, "Times New Roman", serif;
   --dx-measure: 800px; /* paragraphs */
   --dx-media: 800px; /* media and headings: the same column as the text */
   --dx-gap: 96px; /* between sections (64 px on phones) */
@@ -872,6 +839,21 @@ html[data-not-found="dexgo"] body {
 
 .page-dexgo .site-shell {
   max-width: calc(var(--dx-media) + 80px);
+}
+
+/* The page still never scrolls sideways, but the clip sits on the window (body), not on the 880 px shell, so the Live
+   demo band's box-shadow bleed reaches both window edges (owner 2026-11-23: a full-bleed band). */
+body.page-dexgo {
+  overflow-x: clip;
+}
+.page-dexgo .site-shell {
+  overflow-x: visible;
+}
+
+/* The title block's own 56 / 48 px are the whole space under the sticky nav (the shell adds no top padding);
+   /dexgo/figure/ (same body class, no nav) keeps the shell's padding. */
+body.page-dexgo:not(.page-dexgo-figure) .site-shell {
+  padding-top: 0;
 }
 
 .page-dexgo .site-footer {
@@ -1033,7 +1015,6 @@ html[data-not-found="dexgo"] body {
   font: 700 30px/1.2 var(--dx-sans);
   text-align: center;
   text-wrap: balance;
-  scroll-margin-top: 32px;
 }
 
 .dx-key {
@@ -1056,7 +1037,7 @@ html[data-not-found="dexgo"] body {
 .dx-prose {
   margin: 0;
   color: var(--dx-fg);
-  font: 400 18px/1.55 var(--dx-serif);
+  font: 400 19px/1.6 var(--dx-sans);
   /* Justified body text; hyphenation (needs the page's lang="en") keeps the narrow phone column free of gaps.
      No lone last word on a paragraph's last line. */
   text-align: justify;
@@ -1103,32 +1084,22 @@ html[data-not-found="dexgo"] body {
   background: #ffffff;
 }
 
-/* The project video at the top (ProjectVideo.astro): a 16:9 player with native controls in the 800 px column (450 px
-   tall; the column's full width on phones), on the white page like the clips. Its corners are rounded (8 px), which
-   shows only where the player's own control shading meets the page (paused, or controls in view). Its "Sound on"
-   button sits in the title block (.dx-sound), never over the video. */
-.dx-player {
-  width: 100%;
-  aspect-ratio: var(--clip-aspect);
-  background: #ffffff;
-}
-
-.dx-player video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 8px;
-  object-fit: contain;
-  background: #ffffff;
-}
-
-/* Landscape phones: the whole player (its top and its control bar) fits one screen with 22 px to spare, centred in
-   the column (a 667x375 phone, whose 627 px column already fits, keeps its width); the aspect-ratio keeps it 16:9. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .dx-player {
-    width: min(100%, calc((100svh - 22px) * 16 / 9));
-    margin-inline: auto;
-  }
+/* Autoplay refused (clipPlayback.ts; e.g. iOS Low Power Mode): the poster stays, with a play mark over it, and a tap
+   anywhere on the page plays the clips in view. */
+.dx-clip[data-play-refused]::after,
+[data-play-refused] .dx-clip::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.5)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 5v14l11-7z' fill='white'/%3E%3C/svg%3E")
+    center / 22px no-repeat;
+  pointer-events: none;
 }
 
 /* Captions: 640 px (about 98 characters a line at 14 px), centred under the 800 px column (scoped to .dx-page so the
@@ -1173,46 +1144,6 @@ html[data-not-found="dexgo"] body {
 
 .dx-control[hidden] {
   display: none;
-}
-
-/* One page-level control for every clip: a quiet text button under the title links (.dx-control look). Beside it,
-   while the project video is muted, "Sound on" (ProjectVideo.astro) in the same look with a muted-speaker icon: out
-   of the video, it covers neither the video's headings nor a browser's own controls, and it is on every first
-   screen. */
-.dx-video-controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 0 20px;
-  margin-top: 8px;
-}
-
-/* Both buttons need the page's scripts; without them the player keeps its own controls. */
-@media (scripting: none) {
-  .dx-video-controls {
-    display: none;
-  }
-}
-
-.dx-video-toggle,
-.dx-sound {
-  padding: 6px 4px;
-}
-
-.dx-sound {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dx-sound svg {
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 /* Target grasps: two pair composites (each file holds one pair as two rows), side by side as in the video,
@@ -1553,169 +1484,6 @@ html[data-not-found="dexgo"] body {
   .dx-toggle button[aria-pressed="false"] {
     border-bottom-color: Canvas;
   }
-}
-
-/* Interactive demo: the poster of what the visitor will see, then the iframe in the same box (LazyDemo.astro).
-   The iframe stays invisible and lets clicks through until the demo reports its first drawn frame. */
-
-.dx-demo-stage {
-  position: relative;
-  aspect-ratio: var(--poster-ratio);
-}
-
-.dx-demo-stage picture {
-  display: contents;
-}
-
-.dx-demo-stage img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.dx-demo-stage iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: #ffffff;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 200ms ease-out;
-}
-
-.dx-demo.is-loaded .dx-demo-stage iframe {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* Before start: the button sits where the running demo shows its status (above the graph), so the scene and the
-   goal hand stay visible; the whole poster is clickable. While the demo loads, a quiet loading line with an
-   indeterminate bar takes the button's place (the poster stays); if the demo cannot start, the line says so.
-   Wide poster (the demo's 800 x 474 frame): the centre of its status block is at 79.25 % / 24.4 %. */
-.dx-demo:not(.is-started) .dx-demo-stage img {
-  cursor: pointer;
-}
-
-.dx-demo-start,
-.dx-demo-loading {
-  position: absolute;
-  left: 79.25%;
-  top: 24.4%;
-  z-index: 1;
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
-}
-
-.dx-demo-loading {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  margin: 0;
-  color: var(--dx-muted);
-  font: 400 15px/1.4 var(--dx-sans);
-  outline: none;
-}
-
-.dx-demo-progress {
-  position: relative;
-  width: 96px;
-  height: 2px;
-  overflow: hidden;
-  border-radius: 1px;
-  background: var(--dx-rule);
-}
-
-.dx-demo-progress::after {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 40%;
-  background: var(--dx-accent);
-  animation: dx-demo-progress 1.4s ease-in-out infinite;
-}
-
-@keyframes dx-demo-progress {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(250%);
-  }
-}
-
-.dx-demo.is-failed .dx-demo-loading {
-  width: 37.5%; /* the status column of the wide poster (300 of 800 px): the sentence wraps inside it */
-  color: var(--dx-fg);
-  text-align: center;
-  white-space: normal;
-}
-
-.dx-demo.is-failed .dx-demo-progress {
-  display: none;
-}
-
-/* The demo could not start: the poster's drawn tabs and graph no longer look usable. */
-.dx-demo.is-failed .dx-demo-stage img {
-  opacity: 0.5;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dx-demo-progress::after {
-    width: 100%;
-    opacity: 0.5;
-    animation: none;
-  }
-}
-
-/* Below 864 px the stage is narrower than the 800 px column whose side-by-side layout the wide poster shows, so
-   the demo stacks its graph under the view (its index.html, below 780 px or taller than wide): the stage is then
-   that layout's 9:16 frame from the start,
-   with the matching poster (LazyDemo.astro), so starting changes nothing in the page. It is at most as tall as
-   the screen less some room, but at least 340 px wide (on phones under 360 px the screen less 20 px: 300 px at
-   320; the demo keeps its controls apart down to a 300 px frame, with smaller tabs and gaps under 316 px), so on
-   short screens (landscape phones, a browser toolbar) it is taller than the visible area. It stays within the
-   column, except on phones narrower than 380 px, where it reaches into the side gutters up to 340 px, keeping
-   10 px from the screen edges (the
-   demo insets its tabs and graph by 12 px, so they still sit about at the text's edge). Always centred. The
-   button and the loading line sit where the status runs, above the graph (the centre of the status block of the
-   350 x 622 poster: 50 % / 58.7 %). Landscape phones of 844-863 px (an iPhone 12-15 on its side) keep the wide
-   stage: its 780+ px frame runs the side-by-side layout, so the hand and the graph are on screen together; below
-   844 px the demo's frame would be narrower than 780 px, so landscape stays tall there. The same query as
-   TALL_MEDIA in LazyDemo.astro. */
-@media (max-width: 843px), (max-width: 863px) and (orientation: portrait) {
-  .dx-demo-stage {
-    --dx-stage-w: max(min(100%, max(340px, calc((100svh - 96px) * 9 / 16))), min(340px, 100vw - 20px));
-    width: var(--dx-stage-w);
-    margin-inline: calc((100% - var(--dx-stage-w)) / 2);
-    aspect-ratio: 9 / 16;
-  }
-
-  .dx-demo-start,
-  .dx-demo-loading {
-    left: 50%;
-    top: 58.7%;
-  }
-
-  .dx-demo.is-failed .dx-demo-loading {
-    width: 88%;
-  }
-}
-
-/* Viewports under 340 px (300-319 px stages) show the poster captured in a 300 x 533 frame (SMALL_MEDIA in
-   LazyDemo.astro), whose status block is centred at 50 % / 53.7 %. */
-@media (max-width: 339px) {
-  .dx-demo-start,
-  .dx-demo-loading {
-    top: 53.7%;
-  }
-}
-
-.dx-demo-loading[hidden],
-.dx-demo-start[hidden] {
-  display: none;
 }
 
 .dx-button {
@@ -2219,9 +1987,6 @@ html[data-not-found="dexgo"] body {
   transition: opacity 200ms ease-out;
 }
 
-.dx-unlock[data-state="anim"] .dx-unlock-clip {
-  opacity: 0.4;
-}
 
 /* Landscape phones (stacked layout, short screen): the clip shrinks with the screen height so that, after the reveal
    scroll of a tap (revealPlayer() in UnlockGraph.astro puts the clip's top 16 px under the screen top), the clip and
@@ -2264,9 +2029,6 @@ html[data-not-found="dexgo"] body {
 }
 
 /* After the first selection the hint hides but keeps its line, so the graph does not move under the cursor. */
-.dx-unlock .dx-unlock-hint.is-done {
-  visibility: hidden;
-}
 
 /* Beside the graph from 864 px, where the column (and the demo stage) reaches 800 px: stacked, graph and player never
    fit one window, so a clicked task's clip would open below the fold. Below this width a selection scrolls the clip
@@ -2431,5 +2193,934 @@ html[data-not-found="dexgo"] body {
   .page-dexgo *::before,
   .page-dexgo *::after {
     transition-duration: 0s !important;
+  }
+}
+
+/* ===== /dexgo/ R10 redesign (spec design_research/r10_redesign/SPEC.md, owner 2026-11-23) =====
+   Apple-like restraint inside the 800 px column: three visibly separate parts (Method, Live demo, Results), each
+   opened by an eyebrow and a 52 px headline; 34 px section headings; Source Sans 3 for all text; one teal accent;
+   one light-grey full-bleed band behind the Live demo part; one fade-up per block. These rules come last and set
+   the page's type scale, spacing and new components; the phone values sit in the media queries at the end. */
+.page-dexgo {
+  --dx-surface: #f5f5f7;
+  --dx-fg-2: #586366;
+  --dx-fg-3: #6e7579; /* quieter than --dx-fg-2 and still 4.7:1 on white: it is used for text ("· soon", "linear") */
+  --dx-hair: #dfe3e2;
+  --dx-line: #d2d6d5;
+  --dx-track: #eef0f0;
+  --dx-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dx-gap: 112px; /* between sections inside a part */
+  --dx-head-gap: 24px; /* section heading to its text */
+  --dx-part-gap: 160px; /* between parts */
+  --dx-text-media: 40px;
+  --dx-nav-h: 52px;
+}
+
+/* Sticky in-page nav: translucent white with blur, a hairline under it, its content in the 800 px column. */
+.dx-localnav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--dx-nav-h);
+  border-bottom: 1px solid var(--dx-hair);
+  background: rgb(255 255 255 / 0.82);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  backdrop-filter: saturate(180%) blur(16px);
+}
+.dx-localnav-inner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  max-width: calc(var(--dx-media) + 64px);
+  height: 100%;
+  margin-inline: auto;
+  padding-inline: 32px;
+}
+.dx-localnav-name {
+  margin-right: auto;
+  color: var(--dx-fg);
+  font: 700 19px/1 var(--dx-sans);
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+.dx-localnav-links {
+  display: flex;
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dx-localnav-links a {
+  display: block;
+  padding: 6px 0 4px;
+  border-bottom: 2px solid transparent;
+  color: var(--dx-fg-2);
+  font: 400 14px/1.2 var(--dx-sans);
+  text-decoration: none;
+  transition: color 150ms var(--dx-ease), border-color 250ms var(--dx-ease);
+}
+.dx-localnav-links a:hover {
+  color: var(--dx-fg);
+}
+.dx-localnav-links a[aria-current="true"] {
+  border-bottom-color: var(--dx-accent);
+  color: var(--dx-fg);
+}
+.dx-navpause {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--dx-line);
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--dx-fg);
+  cursor: pointer;
+  transition: border-color 150ms var(--dx-ease);
+}
+.dx-navpause:hover {
+  border-color: var(--dx-fg-2);
+}
+.dx-navpause svg {
+  fill: currentColor;
+}
+.dx-navpause .dx-icon-play,
+.dx-navpause[data-paused] .dx-icon-pause {
+  display: none;
+}
+.dx-navpause[data-paused] .dx-icon-play {
+  display: block;
+}
+@media (scripting: none) {
+  .dx-navpause {
+    display: none;
+  }
+}
+/* Anchors and focus scrolling stop 20 px under the sticky nav: the offset sits on the scroller (the root), so it also
+   applies when Tab or Shift+Tab scrolls a focused control into view (WCAG 2.4.11), not only to anchor targets.
+   52 px nav + 20, 44 + 20 below 720 px (--dx-nav-h, which lives on body and so cannot be read here). The Live demo
+   band lands flush under the nav (-20 px), its own 96 / 64 px top padding keeping the eyebrow clear. */
+html:has(> body.page-dexgo .dx-localnav) {
+  scroll-padding-top: 72px;
+}
+@media (max-width: 719px) {
+  html:has(> body.page-dexgo .dx-localnav) {
+    scroll-padding-top: 64px;
+  }
+}
+.page-dexgo #live-demo {
+  scroll-margin-top: -20px;
+}
+
+/* Title block. */
+.page-dexgo .dx-title {
+  padding-top: 56px;
+}
+.page-dexgo .dx-title h1 {
+  font: 700 72px/1 var(--dx-sans);
+  letter-spacing: -0.025em;
+}
+.page-dexgo .dx-title .dx-subtitle {
+  margin-top: 14px;
+  font: 400 28px/1.2 var(--dx-sans);
+}
+.page-dexgo .dx-authors {
+  margin-top: 24px;
+  font-size: 19px;
+}
+.page-dexgo .dx-affiliation {
+  margin-top: 6px;
+  color: var(--dx-fg-2);
+  font-size: 17px;
+}
+.page-dexgo .dx-author-note {
+  margin-top: 6px;
+  color: var(--dx-fg-2);
+  font-size: 14px;
+}
+
+/* Pills: one style for the title links and the demo's start button; the filled teal one is the main action. */
+.page-dexgo .dx-title .dx-links {
+  gap: 12px;
+  margin-top: 32px;
+}
+.dx-pill,
+.page-dexgo .dx-title .project-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--dx-line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--dx-fg-2);
+  font: 600 15px/1 var(--dx-sans);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.page-dexgo .dx-title .project-chip svg {
+  width: 16px;
+  height: 16px;
+}
+.page-dexgo .dx-title .project-chip-soon {
+  color: var(--dx-fg-3);
+  font-weight: 400;
+}
+.dx-pill-primary {
+  border-color: var(--dx-ink);
+  background: var(--dx-ink);
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 150ms var(--dx-ease), border-color 150ms var(--dx-ease);
+}
+.dx-pill-primary svg {
+  fill: currentColor;
+}
+.dx-pill-primary:hover {
+  border-color: var(--dx-ink-hover);
+  background: var(--dx-ink-hover);
+  color: #ffffff;
+}
+.dx-pill-primary:focus-visible {
+  outline: 2px solid var(--dx-ink);
+  outline-offset: 2px;
+}
+
+/* Teaser hero: the 2:1 cut, the 4:3 phone cut below 640 px. */
+.page-dexgo .dx-hero {
+  margin-top: 40px;
+}
+.dx-hero-phone {
+  display: none;
+}
+@media (max-width: 639px) {
+  .dx-hero-wide {
+    display: none;
+  }
+  .dx-hero-phone {
+    display: block;
+  }
+}
+
+/* Abstract: the eyebrow look, justified prose. */
+.page-dexgo .dx-abstract {
+  margin-top: 96px;
+}
+.page-dexgo .dx-label {
+  margin-bottom: 14px;
+  color: var(--dx-ink);
+  font: 600 17px/1.3 var(--dx-sans);
+}
+
+/* Problem definition: a small section after the abstract, set like it (96 px above, no hairline) with the eyebrow
+   and a 34 px heading, so it does not read as a fourth part. */
+.page-dexgo .dx-problem {
+  margin-top: 96px;
+}
+.dx-problem-head {
+  text-align: center;
+}
+.page-dexgo .dx-problem-head .dx-heading {
+  font: 700 34px/1.15 var(--dx-sans);
+  letter-spacing: -0.012em;
+}
+
+/* Parts: a hairline across the column, 56 px, the eyebrow, 10 px, the 52 px headline. */
+.dx-part {
+  margin-top: var(--dx-part-gap);
+}
+.dx-part-head {
+  padding-top: 56px;
+  border-top: 1px solid var(--dx-hair);
+  text-align: center;
+}
+.dx-eyebrow {
+  margin: 0 0 10px;
+  color: var(--dx-ink);
+  font: 600 17px/1.3 var(--dx-sans);
+}
+.page-dexgo .dx-part-title {
+  max-width: 760px;
+  margin-bottom: 24px;
+  font: 700 52px/1.08 var(--dx-sans);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.dx-part-head + .dx-text,
+.dx-part-head + .dx-part-body,
+.dx-part-head + .dx-media {
+  margin-top: 0;
+}
+.dx-part-head + .dx-media,
+.dx-part-head + .dx-part-body > .dx-media:first-child {
+  margin-top: 40px;
+}
+.dx-part > .dx-screen:first-of-type {
+  margin-top: var(--dx-gap);
+}
+
+/* Sections inside a part: 34 px headings. */
+.page-dexgo .dx-screen > .dx-heading {
+  font: 700 34px/1.15 var(--dx-sans);
+  letter-spacing: -0.012em;
+}
+.page-dexgo .dx-text + .dx-media {
+  margin-top: var(--dx-text-media);
+}
+.page-dexgo .dx-page .dx-note {
+  max-width: 680px;
+  color: var(--dx-fg-2);
+  font: 400 15px/1.45 var(--dx-sans);
+}
+
+/* The Live demo part: the page's one tinted band, full-bleed (a box-shadow spread clipped to the band's own height,
+   so nothing widens the page). */
+.dx-part-band {
+  padding: 96px 0 72px;
+  background: var(--dx-surface);
+  box-shadow: 0 0 0 100vmax var(--dx-surface);
+  clip-path: inset(0 -100vmax);
+}
+.dx-part-band .dx-part-head {
+  padding-top: 0;
+  border-top: 0;
+}
+.dx-part-band + .dx-part {
+  margin-top: var(--dx-part-gap);
+}
+
+/* Inline links: one style, teal, underlined on hover only. */
+.dx-link {
+  color: var(--dx-ink);
+  font-weight: 600;
+  text-decoration: none;
+  text-underline-offset: 4px;
+}
+.dx-link:hover {
+  text-decoration: underline 1px;
+}
+
+/* Reveal: blocks below the first screen fade up 16 px once (text) or only fade (media), 600 ms. */
+[data-reveal] {
+  transition: opacity 600ms var(--dx-ease), transform 600ms var(--dx-ease);
+}
+[data-reveal].is-pending {
+  opacity: 0;
+  transform: translateY(16px);
+}
+[data-reveal="media"].is-pending {
+  transform: none;
+}
+
+/* Demo stage: a white card on the band; the recorded chain contained in the demo's 800 x 474 frame, the start pill
+   centred 28 px above its bottom. */
+.dx-demo-stage {
+  position: relative;
+  aspect-ratio: 800 / 474;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 28px rgb(0 0 0 / 0.06);
+  transition: height 300ms var(--dx-ease);
+}
+.dx-demo-preview {
+  position: absolute;
+  inset: 0;
+  top: 24px; /* the recording's baked ticker 24 px lower, clear of the card's top edge (side by side only) */
+  cursor: pointer;
+}
+.dx-demo-preview .dx-clip {
+  height: 100%;
+  aspect-ratio: auto;
+}
+.dx-demo-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #ffffff;
+}
+.dx-demo-preview-phone {
+  display: none;
+}
+.dx-demo-stage iframe {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease-out;
+}
+.dx-demo.is-loaded .dx-demo-stage iframe {
+  opacity: 1;
+  pointer-events: auto;
+}
+.dx-demo-start,
+.dx-demo-loading {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.dx-demo-start.dx-pill {
+  height: 52px;
+  padding: 0 26px;
+  font-size: 17px;
+  box-shadow: 0 6px 20px rgb(54 122 115 / 0.28);
+}
+.dx-demo-loading {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.9);
+  color: var(--dx-fg-2);
+  font: 400 15px/1.4 var(--dx-sans);
+  outline: none;
+}
+.dx-demo-progress {
+  position: relative;
+  width: 96px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--dx-hair);
+}
+.dx-demo-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--dx-accent);
+  animation: dx-demo-progress 1.4s ease-in-out infinite;
+}
+@keyframes dx-demo-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.dx-demo.is-failed .dx-demo-loading {
+  width: min(88%, 420px);
+  color: var(--dx-fg);
+  text-align: center;
+  white-space: normal;
+}
+.dx-demo.is-failed .dx-demo-progress {
+  display: none;
+}
+.dx-demo.is-failed .dx-demo-preview {
+  opacity: 0.5;
+}
+/* After a failed download: one outlined pill under the sentence (the WebGL 2 sentence has none). */
+.dx-demo-retry.dx-pill {
+  width: auto;
+  height: 40px;
+  cursor: pointer;
+}
+.dx-demo-retry.dx-pill:hover {
+  border-color: var(--dx-fg-3);
+  color: var(--dx-fg);
+}
+.dx-demo-loading[hidden],
+.dx-demo-start[hidden],
+.dx-demo-retry[hidden] {
+  display: none;
+}
+.page-dexgo .dx-page .dx-demo-links {
+  max-width: none;
+  margin-top: 16px;
+  font-size: 15px;
+  text-align: right;
+}
+/* Stacked media (must match LazyDemo.astro TALL_MEDIA): the phone cut of the recording with a 96 px band for the
+   pill; on Start the stage becomes the demo's 9:16 frame. */
+@media (max-width: 843px), (max-width: 863px) and (orientation: portrait) {
+  /* the stage's width, shared with the "Open in a new tab" line under it (its right edge = the stage's) */
+  .dx-demo {
+    --dx-stage-w: max(min(100%, max(340px, calc((100svh - 96px) * 9 / 16))), min(300px, 100vw - 20px));
+  }
+  .page-dexgo .dx-page .dx-demo-links {
+    width: var(--dx-stage-w);
+    margin-inline: calc((100% - var(--dx-stage-w)) / 2);
+  }
+  .dx-demo-stage {
+    width: var(--dx-stage-w);
+    margin-inline: calc((100% - var(--dx-stage-w)) / 2);
+    aspect-ratio: auto;
+    padding-bottom: 96px;
+    border-radius: 14px;
+  }
+  .dx-demo-preview {
+    position: relative;
+    inset: auto;
+    aspect-ratio: var(--preview-phone-ratio);
+  }
+  .dx-demo.is-started .dx-demo-stage {
+    aspect-ratio: 9 / 16;
+    padding-bottom: 0;
+  }
+  .dx-demo.is-started .dx-demo-preview {
+    position: absolute;
+    inset: 0;
+  }
+  .dx-demo.is-started .dx-demo-stage.is-growing {
+    aspect-ratio: auto;
+  }
+  .dx-demo-preview-wide {
+    display: none;
+  }
+  .dx-demo-preview-phone {
+    display: block;
+  }
+  .dx-demo-start,
+  .dx-demo-loading {
+    bottom: 22px;
+  }
+  .dx-demo.is-started .dx-demo-loading {
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Segmented control (the carousel's hand toggle): a grey track, the chosen segment a white thumb. */
+.page-dexgo .dx-segmented {
+  display: inline-flex;
+  gap: 0;
+  margin: 0 auto 28px;
+  padding: 2px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--dx-track);
+}
+.page-dexgo .dx-segmented button {
+  height: 30px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dx-fg-2);
+  font: 500 14px/1 var(--dx-sans);
+  text-decoration: none;
+  box-shadow: none;
+  transition: background-color 250ms var(--dx-ease), box-shadow 250ms var(--dx-ease), color 150ms var(--dx-ease);
+}
+.page-dexgo .dx-segmented button[aria-pressed="true"] {
+  border: 0;
+  background: #ffffff;
+  color: var(--dx-fg);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+.page-dexgo .dx-segmented button[aria-pressed="false"]:hover {
+  color: var(--dx-fg);
+}
+.dx-hands {
+  text-align: center;
+}
+.dx-hands > .dx-media {
+  text-align: start;
+}
+
+/* Prerequisite graph: hint above, graph and player side by side from 864 px (420 : 356), every node marked as a
+   button that plays a clip (a play glyph from the first frame, hover/focus ring, a "Play <task>" tooltip). */
+.page-dexgo .dx-unlock-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  color: var(--dx-ink);
+  font: 600 16px/1.3 var(--dx-sans);
+}
+.dx-unlock-hint svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+.dx-unlock-hint svg path {
+  fill: currentColor;
+  stroke: none;
+}
+.dx-node-play {
+  position: absolute;
+  top: 50%;
+  right: 0.9cqw;
+  width: max(9px, 2.6cqw);
+  height: max(9px, 2.6cqw);
+  background: var(--dx-accent);
+  opacity: 0.85;
+  clip-path: polygon(22% 10%, 92% 50%, 22% 90%);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.dx-unlock[data-state="explore"] .dx-node[aria-pressed="true"] .dx-node-play {
+  background: #ffffff;
+  opacity: 1;
+}
+.dx-node::after {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 3;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--dx-fg);
+  color: #ffffff;
+  content: attr(data-tip);
+  font: 600 13px/1 var(--dx-sans);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 150ms var(--dx-ease) 0ms;
+  white-space: nowrap;
+}
+.dx-node[data-row="0"]::after {
+  top: calc(100% + 8px);
+  bottom: auto;
+}
+@media (hover: hover) {
+  .dx-node:hover {
+    background: rgb(67 143 135 / 0.1);
+  }
+  .dx-node:hover::after {
+    opacity: 1;
+    transition-delay: 300ms;
+  }
+}
+.dx-node:focus-visible::after {
+  opacity: 1;
+  transition-delay: 300ms;
+}
+.dx-unlock-graph {
+  overflow: visible;
+}
+.dx-unlock-anim {
+  position: relative;
+  overflow: hidden;
+}
+.dx-unlock-endframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms var(--dx-ease);
+}
+.dx-unlock[data-state="explore"] .dx-unlock-endframe {
+  opacity: 1;
+}
+.page-dexgo .dx-unlock-clip {
+  position: relative;
+  max-width: 420px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+/* The frame's 1 px hairline, drawn over the clip (an inset shadow of the box would lie under the video). */
+.page-dexgo .dx-unlock-clip > video {
+  border-radius: 12px;
+  outline: 1px solid var(--dx-hair);
+  outline-offset: -1px;
+}
+.dx-unlock-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0 0 0 3px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.9);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
+  color: var(--dx-accent);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+.dx-unlock-play svg {
+  fill: currentColor;
+}
+.dx-unlock[data-state="anim"] .dx-unlock-clip:not([data-play-force]) .dx-unlock-play {
+  display: grid;
+}
+.page-dexgo .dx-unlock-caption {
+  font-size: 16px;
+}
+@media (min-width: 864px) {
+  .page-dexgo .dx-unlock {
+    grid-template-columns: minmax(0, 420fr) minmax(0, 356fr);
+    align-items: start;
+  }
+}
+
+/* Observation encoding figure: plot and legend side by side, stacked on phones. */
+.dx-encoding {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 32px;
+  align-items: center;
+  margin: 0;
+}
+.dx-encoding-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.dx-enc-axis {
+  fill: none;
+  stroke: var(--dx-fg);
+  stroke-width: 1.2;
+}
+.dx-enc-linear {
+  stroke: #8e9290;
+  stroke-width: 1.4;
+  stroke-dasharray: 5 5;
+}
+.dx-enc-curve {
+  fill: none;
+  stroke: var(--dx-fg);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dx-enc-label {
+  fill: var(--dx-fg-2);
+  font: 400 14px/1 var(--dx-sans);
+}
+.dx-enc-linear-label {
+  fill: var(--dx-fg-3);
+}
+.dx-enc-tint-near {
+  fill: var(--dx-learned-bg);
+}
+.dx-enc-tint-far {
+  fill: var(--dx-training-bg);
+}
+.dx-enc-bar-near {
+  fill: var(--dx-accent);
+}
+.dx-enc-bar-far {
+  fill: var(--dx-training);
+}
+.dx-enc-line-near {
+  stroke: var(--dx-accent);
+  stroke-width: 1;
+}
+/* The far interval's one guide (at its near end; its far end is the curve's end point at 1) reads as a projection. */
+.dx-enc-line-far {
+  stroke: var(--dx-training);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  stroke-opacity: 0.7;
+}
+.dx-encoding-legend {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dx-encoding-legend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--dx-hair);
+  color: var(--dx-fg);
+  font: 600 18px/1.3 var(--dx-sans);
+}
+.dx-encoding-legend li::before {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  content: "";
+}
+.dx-enc-key-near::before {
+  background: var(--dx-accent);
+}
+.dx-enc-key-far::before {
+  background: var(--dx-training);
+}
+.dx-encoding.is-armed .dx-enc-curve {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.dx-encoding.is-armed [data-step] {
+  opacity: 0;
+}
+.dx-encoding.is-drawn .dx-enc-curve {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 700ms var(--dx-ease);
+}
+.dx-encoding.is-drawn [data-step] {
+  opacity: 1;
+  transition: opacity 300ms var(--dx-ease) 800ms;
+}
+.dx-encoding.is-drawn [data-step="2"] {
+  transition-delay: 1300ms;
+}
+/* Stacked where the graph stacks: the plot is never squeezed beside the legend; it takes the column up to its
+   520 px viewBox width (labels at 14 px), and on narrower columns its labels grow in viewBox units so they stay at
+   about 12-16 px on screen (16 units 12.9-16 px from 460 px, 20 units 12.3-16 px from 360 px wide). */
+@media (max-width: 863px) {
+  .dx-encoding {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .dx-encoding-plot {
+    max-width: 520px;
+    margin-inline: auto;
+  }
+  .dx-encoding-legend {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+    width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
+  }
+}
+@media (max-width: 559px) {
+  .dx-enc-label {
+    font-size: 16px;
+  }
+}
+@media (max-width: 459px) {
+  .dx-enc-label {
+    font-size: 20px;
+  }
+}
+/* A formula wider than a phone scrolls sideways in its box; vertically nothing scrolls (KaTeX's few px of overflow
+   would otherwise make the box an empty Tab stop). */
+.page-dexgo .dx-formula {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Forced colours drop the segmented control's white thumb and shadow: the pressed segment keeps a system outline. */
+@media (forced-colors: active) {
+  .page-dexgo .dx-segmented button[aria-pressed="true"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+
+/* Below 768 px the shell's gutter is 20 px: the nav's content keeps the column's edges. */
+@media (max-width: 767px) {
+  .dx-localnav-inner {
+    padding-inline: 20px;
+  }
+}
+
+/* Phones. */
+@media (max-width: 719px) {
+  .page-dexgo {
+    --dx-gap: 72px;
+    --dx-head-gap: 16px;
+    --dx-part-gap: 96px;
+    --dx-text-media: 28px;
+    --dx-nav-h: 44px;
+  }
+  .dx-localnav-inner {
+    gap: 14px;
+  }
+  .dx-localnav-links {
+    gap: 14px;
+  }
+  .page-dexgo .dx-title {
+    padding-top: 48px;
+  }
+  .page-dexgo .dx-title h1 {
+    font-size: 48px;
+  }
+  .page-dexgo .dx-title .dx-subtitle {
+    font-size: 22px;
+  }
+  .page-dexgo .dx-authors {
+    font-size: 17px;
+  }
+  .page-dexgo .dx-prose {
+    font-size: 17px;
+  }
+  .dx-eyebrow,
+  .page-dexgo .dx-label {
+    font-size: 15px;
+  }
+  .page-dexgo .dx-part-title {
+    font-size: 34px;
+  }
+  .page-dexgo .dx-screen > .dx-heading,
+  .page-dexgo .dx-problem-head .dx-heading {
+    font-size: 26px;
+  }
+  .page-dexgo .dx-page .dx-note {
+    font-size: 14px;
+  }
+  .dx-part-band {
+    padding: 64px 0 48px;
+  }
+  .dx-encoding-legend li {
+    font-size: 15px;
+  }
+}
+/* The narrowest phones: with the 20 px gutters, 10 px gaps keep "Live demo" on one line in the nav. */
+@media (max-width: 359px) {
+  .dx-localnav-inner,
+  .dx-localnav-links {
+    gap: 10px;
+  }
+}
+@media (max-width: 639px) {
+  .page-dexgo .dx-title .dx-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    max-width: 420px;
+  }
+  .page-dexgo .dx-title .dx-links > li:first-child {
+    grid-column: 1 / -1;
+  }
+  .dx-pill,
+  .page-dexgo .dx-title .project-chip {
+    width: 100%;
+    height: 38px;
+  }
+  .dx-demo-start.dx-pill {
+    width: auto;
+    height: 48px;
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  .dx-demo-stage,
+  .dx-unlock-endframe {
+    transition: none;
+  }
+  .dx-demo-progress::after {
+    width: 100%;
+    opacity: 0.5;
+    animation: none;
   }
 }

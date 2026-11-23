@@ -1,0 +1,99 @@
+---
+// The observation encoding as a figure (after its formula and text): the encoded value f(d) = log(1 + d/d0) /
+// log(1 + dmax/d0) of one error magnitude d against a dashed linear scaling d / dmax, for d from 0 to dmax. A teal
+// interval near the goal and a warm one far away (equal widths in cm) show on the encoded axis how much of the range
+// each takes: small errors magnified, large errors compressed (the talk video's two steps and wording). Inline SVG in
+// the page's tokens; its labels are 14 viewBox units, more on columns narrower than the viewBox (global.css
+// .dx-enc-label), so they stay readable on phones. It draws once when 40 % of it is in view (curve, then
+// the near interval with legend row 1, then the far one with row 2); without the script or under reduced motion it
+// shows its final state.
+interface Props {
+  /** Scales of the encoding in cm. */
+  d0: number;
+  dmax: number;
+  /** [from, to] of the two intervals on the error axis, in cm. */
+  near: [number, number];
+  far: [number, number];
+  xLabel: string;
+  yLabel: string;
+  linearLabel: string;
+  nearLabel: string;
+  farLabel: string;
+  /** Accessible description of the plot (role="img"). */
+  label: string;
+}
+
+const { d0, dmax, near, far, xLabel, yLabel, linearLabel, nearLabel, farLabel, label } = Astro.props;
+// Plot box in viewBox units (520 x 330): 440 x 250 at (58, 22).
+const [X0, Y0, PW, PH] = [58, 22, 440, 250];
+const f = (d: number) => Math.log(1 + d / d0) / Math.log(1 + dmax / d0);
+const px = (d: number) => X0 + (d / dmax) * PW;
+const py = (v: number) => Y0 + PH - v * PH;
+const r = (v: number) => v.toFixed(1);
+const N = 150;
+const curve = Array.from({ length: N + 1 }, (_, i) => (i / N) * dmax);
+const curvePath = curve.map((d, i) => `${i ? 'L' : 'M'}${r(px(d))} ${r(py(f(d)))}`).join(' ');
+// Area under the curve over an interval, from the error axis up.
+const area = ([a, b]: [number, number]) => {
+  const pts = Array.from({ length: 31 }, (_, i) => a + ((b - a) * i) / 30);
+  return `M${r(px(a))} ${r(py(0))} ` + pts.map((d) => `L${r(px(d))} ${r(py(f(d)))}`).join(' ') + ` L${r(px(b))} ${r(py(0))} Z`;
+};
+const ticks = [10, 20, 30].filter((t) => t <= dmax);
+const bar = 6;
+---
+
+<figure class="dx-encoding" data-encoding>
+  <svg class="dx-encoding-plot" viewBox="0 0 520 330" role="img" aria-label={label}>
+    <g class="dx-enc-near" data-step="1">
+      <path class="dx-enc-tint-near" d={area(near)} />
+      <line class="dx-enc-line-near" x1={X0} x2={r(px(near[1]))} y1={r(py(f(near[1])))} y2={r(py(f(near[1])))} />
+      <rect class="dx-enc-bar-near" x={r(px(near[0]))} y={Y0 + PH - bar / 2} width={r(px(near[1]) - px(near[0]))} height={bar} />
+      <rect class="dx-enc-bar-near" x={X0 - bar / 2} y={r(py(f(near[1])))} width={bar} height={r(py(f(near[0])) - py(f(near[1])))} />
+    </g>
+    <g class="dx-enc-far" data-step="2">
+      <path class="dx-enc-tint-far" d={area(far)} />
+      {/* One dashed guide per end that the axes do not already mark: at dmax the curve ends on the "1" tick. */}
+      <line class="dx-enc-line-far" x1={X0} x2={r(px(far[0]))} y1={r(py(f(far[0])))} y2={r(py(f(far[0])))} />
+      {far[1] < dmax ? <line class="dx-enc-line-far" x1={X0} x2={r(px(far[1]))} y1={r(py(f(far[1])))} y2={r(py(f(far[1])))} /> : null}
+      <rect class="dx-enc-bar-far" x={r(px(far[0]))} y={Y0 + PH - bar / 2} width={r(px(far[1]) - px(far[0]))} height={bar} />
+      <rect class="dx-enc-bar-far" x={X0 - bar / 2} y={r(py(f(far[1])))} width={bar} height={r(py(f(far[0])) - py(f(far[1])))} />
+    </g>
+    <line class="dx-enc-linear" x1={X0} y1={py(0)} x2={px(dmax)} y2={py(1)} />
+    <text class="dx-enc-label dx-enc-linear-label" x={r(px(dmax * 0.62))} y={r(py(0.62) + 18)}>{linearLabel}</text>
+    <path class="dx-enc-axis" d={`M${X0} ${Y0 - 6} V${Y0 + PH} H${X0 + PW + 6}`} />
+    {ticks.map((t) => (
+      <>
+        <line class="dx-enc-axis" x1={r(px(t))} x2={r(px(t))} y1={Y0 + PH} y2={Y0 + PH + 5} />
+        <text class="dx-enc-label" x={r(px(t))} y={Y0 + PH + 21} text-anchor="middle">{t}</text>
+      </>
+    ))}
+    <text class="dx-enc-label" x={X0} y={Y0 + PH + 21} text-anchor="middle">0</text>
+    <text class="dx-enc-label" x={X0 - 10} y={Y0 + 5} text-anchor="end">1</text>
+    <text class="dx-enc-label" x={X0 - 10} y={Y0 + PH + 5} text-anchor="end">0</text>
+    <text class="dx-enc-label" x={X0 + PW / 2} y={Y0 + PH + 46} text-anchor="middle">{xLabel}</text>
+    <text class="dx-enc-label" transform={`translate(${X0 - 26} ${Y0 + PH / 2}) rotate(-90)`} text-anchor="middle">{yLabel}</text>
+    <path class="dx-enc-curve" d={curvePath} pathLength="1" />
+  </svg>
+  <ul class="dx-encoding-legend" aria-hidden="true">
+    <li class="dx-enc-key-near" data-step="1">{nearLabel}</li>
+    <li class="dx-enc-key-far" data-step="2">{farLabel}</li>
+  </ul>
+</figure>
+
+<script>
+  // Draw once when 40 % of the figure is in view; under reduced motion (or without the observer) it stays final.
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
+    for (const figure of document.querySelectorAll<HTMLElement>('[data-encoding]')) {
+      figure.classList.add('is-armed');
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          figure.classList.add('is-drawn');
+          observer.disconnect();
+        },
+        { threshold: 0.4 }
+      );
+      observer.observe(figure);
+    }
+  }
+</script>

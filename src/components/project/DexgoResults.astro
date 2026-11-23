@@ -1,12 +1,12 @@
 ---
 import ClipVideo from './ClipVideo.astro';
 import KeyHeading from './KeyHeading.astro';
-import LazyDemo from './LazyDemo.astro';
 import MediaNote from './MediaNote.astro';
 import ObjectCarousel from './ObjectCarousel.astro';
 import { dexgoPage } from '../../data/dexgo';
 
-const { demo, targets, objects, sizes } = dexgoPage.results;
+// The Results part (dexgo.astro wraps it in <section id="results">): its head with the pairs, then two sections.
+const { targets, objects, sizes } = dexgoPage.results;
 // Pairs: one common scale for both files (columns in proportion to their frame widths).
 const pairColumns = `--pair-columns: ${targets.pair.map((clip) => `minmax(0, ${clip.width}fr)`).join(' ')}`;
 // Sizes: one common scale k for the three files (see .dx-sizes in global.css). In source px: --span-sum, the
@@ -20,26 +20,12 @@ const sizeRow = [
 ].join('; ');
 ---
 
-<section class="dx-screen" aria-labelledby="results-demo">
-  <KeyHeading id="results-demo" text={demo.heading} />
-  <div class="dx-media">
-    <LazyDemo
-      src={demo.src}
-      title={demo.title}
-      startLabel={demo.startLabel}
-      loadingLabel={demo.loadingLabel}
-      newTabLabel={demo.newTabLabel}
-      caption={demo.caption}
-      poster={demo.poster}
-      posterPhone={demo.posterPhone}
-      posterAlt={demo.posterAlt}
-    />
-  </div>
-</section>
-
-<section class="dx-screen" aria-labelledby="results-targets">
-  <KeyHeading id="results-targets" text={targets.heading} />
-  <div class="dx-media">
+<header class="dx-part-head" data-reveal>
+  <p class="dx-eyebrow">{targets.eyebrow}</p>
+  <KeyHeading id="results-targets" level={2} text={targets.heading} class="dx-part-title" />
+</header>
+<div class="dx-part-body">
+  <div class="dx-media" data-reveal="media">
     {/* Two pairs side by side (screwdriver left, hammer right, as in the video; stacked below 640 px), each named
         above its clip; each loops on its own, since the two files differ in length. The wrapper is the size
         container that the gutter width is measured against (global.css, .dx-pairs-box). */}
@@ -57,14 +43,14 @@ const sizeRow = [
     </div>
     <MediaNote caption={targets.caption} />
   </div>
-</section>
+</div>
 
 <section class="dx-screen" aria-labelledby="results-objects">
   <KeyHeading id="results-objects" text={objects.heading} />
   <div class="dx-hands" data-hand-switch>
     {
       objects.hands.length > 1 ? (
-        <div class="dx-toggle" role="group" aria-label="Hand">
+        <div class="dx-toggle dx-segmented" role="group" aria-label="Hand">
           {objects.hands.map((hand, index) => (
             <button type="button" data-hand-option={hand.id} aria-pressed={index === 0 ? 'true' : 'false'}>
               {hand.label}

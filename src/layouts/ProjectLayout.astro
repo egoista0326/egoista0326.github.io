@@ -36,6 +36,8 @@ const canonical = new URL(path, Astro.site ?? Astro.url).toString();
   </head>
   <body class={bodyClass}>
     <a class="skip-link" href="#main">Skip to content</a>
+    {/* A page's own in-page nav (e.g. /dexgo/'s sticky section nav), outside the column so it spans the window. */}
+    <slot name="nav" />
     <div class="site-shell">
       <main id="main" tabindex="-1">
         <slot />

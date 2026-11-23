@@ -27,12 +27,18 @@ const W = animation.width;
 const H = animation.height;
 const pct = (value: number, total: number) => `${((value / total) * 100).toFixed(3)}%`;
 const selected = tasks.find((task) => task.id === defaultTask) ?? tasks[0];
-const square = selected.clip.width === selected.clip.height;
+// The player keeps the clips' frame (one common crop for all 15 tasks).
+const clipRatio = `${selected.clip.width} / ${selected.clip.height}`;
 // Where the stacked layout's Replay button rises to once the legend is covered (global.css): its top 28 frame px
 // under the legend band's top, as a share of the frame width (the graph's drawn width scales it).
 const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
 ---
 
+{/* The hint sits above the graph from the first paint and stays (nothing moves after a selection). */}
+<p class="dx-unlock-hint" data-unlock-hint>
+  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /><path d="M10 8.2v7.6l6-3.8z" /></svg>
+  {hint}
+</p>
 <div class="dx-unlock" data-unlock data-state="anim" data-end-poster={animation.endPoster} style={`--replay-lift: ${replayLift}`}>
   {/* The graph and, centred under it, the button that replays its unlocking. */}
   <div class="dx-unlock-main">
@@ -41,6 +47,8 @@ const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
         <video muted playsinline preload="none" data-poster={animation.poster} width={W} height={H} aria-label={animation.label}>
           <source src={animation.src} type="video/mp4" />
         </video>
+        {/* The learned end frame: a click during the unlocking cross-fades the graph to it in 200 ms (global.css). */}
+        <img class="dx-unlock-endframe" src={animation.endPoster} alt="" width={W} height={H} loading="lazy" decoding="async" />
       </div>
       <div
         class="dx-unlock-legend-cover"
@@ -83,12 +91,15 @@ const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
               data-words={task.spoken}
               data-rule={task.rule}
               data-prerequisites={task.prerequisites.join(' ')}
+              data-tip={`Play ${task.id}`}
               aria-pressed={task.id === selected.id ? 'true' : 'false'}
               aria-label={`Watch task ${task.id}: ${task.spoken}`}
               aria-describedby="unlock-keys"
               style={`left: ${pct(task.rect[0], W)}; top: ${pct(task.rect[1], H)}; width: ${pct(task.rect[2], W)}; height: ${pct(task.rect[3], H)}`}
             >
               <span class="dx-node-label">{task.id}</span>
+              {/* Every node shows that it plays a clip, from the first frame; the tooltip names it (global.css). */}
+              <span class="dx-node-play" aria-hidden="true"></span>
             </button>
           ))
         }
@@ -102,17 +113,21 @@ const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
       class="dx-clip dx-unlock-clip"
       data-play-unit=""
       data-play-hold
-      style={`aspect-ratio: ${square ? '1 / 1' : '4 / 3'}`}
+      style={`aspect-ratio: ${clipRatio}`}
     >
       <video muted playsinline loop preload="none" data-poster={selected.clip.poster} width={selected.clip.width} height={selected.clip.height} aria-label={selected.clip.label}>
         <source src={selected.clip.src} type="video/mp4" />
       </video>
+      {/* While the graph unlocks, the player shows the default task's poster with a play button (same as selecting
+          that task); global.css shows it only in the "anim" state. */}
+      <button type="button" class="dx-unlock-play" data-unlock-play aria-label={`Play ${selected.id}`}>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z" /></svg>
+      </button>
     </div>
     <p class="dx-unlock-caption" aria-live="polite">
       <span class="dx-unlock-task"><span data-unlock-code>{selected.id}</span>: <span data-unlock-words>{selected.spoken}</span></span>
       <span class="dx-unlock-rule" data-unlock-rule>{selected.rule}</span>
     </p>
-    <p class="dx-unlock-hint" data-unlock-hint>{hint}</p>
   </div>
 </div>
 
@@ -135,8 +150,8 @@ const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
     const code = root.querySelector<HTMLElement>('[data-unlock-code]');
     const words = root.querySelector<HTMLElement>('[data-unlock-words]');
     const rule = root.querySelector<HTMLElement>('[data-unlock-rule]');
-    const hint = root.querySelector<HTMLElement>('[data-unlock-hint]');
     const caption = root.querySelector<HTMLElement>('.dx-unlock-caption');
+    const playButton = root.querySelector<HTMLButtonElement>('[data-unlock-play]');
     const nodes = [...root.querySelectorAll<HTMLButtonElement>('[data-task]')];
     if (!animUnit || !anim || !clipUnit || !player || !replay || !caption) continue;
 
@@ -180,6 +195,7 @@ const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
       if (code) code.textContent = node.dataset.task ?? '';
       if (words) words.textContent = node.dataset.words ?? '';
       if (rule) rule.textContent = node.dataset.rule ?? '';
+      playButton?.setAttribute('aria-label', `Play ${node.dataset.task}`);
       const src = node.dataset.src ?? '';
       const current = player.currentSrc || player.getAttribute('src') || player.querySelector('source')?.getAttribute('src') || '';
       if (!current.endsWith(src)) {
@@ -213,11 +229,6 @@ const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
           setState('explore');
         }
         select(node);
-        // The hint is needed only until the first selection; its line keeps its space so nothing moves.
-        if (hint) {
-          hint.classList.add('is-done');
-          hint.setAttribute('aria-hidden', 'true');
-        }
         force(clipUnit);
         refresh();
         revealPlayer();
@@ -268,6 +279,10 @@ const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
     });
 
     anim.addEventListener('ended', () => setState('explore'));
+    // The player's play button during the unlocking (the first one and every replay) plays the selected task.
+    playButton?.addEventListener('click', () => {
+      (nodes.find((node) => node.getAttribute('aria-pressed') === 'true') ?? nodes[0])?.click();
+    });
 
     replay.addEventListener('click', (event) => {
       // 640-863 px: the explore state lifts the button (global.css). A mouse click that starts the replay keeps it
@@ -277,6 +292,8 @@ const replayLift = ((H - (legendRect[1] + 28)) / W).toFixed(4);
       }
       anim.currentTime = 0;
       force(animUnit);
+      // The player waits on its frame again, with its play button (global.css shows it only without the force).
+      clipUnit.removeAttribute('data-play-force');
       setState('anim');
     });
     replay.addEventListener('pointerleave', () => root.removeAttribute('data-replay-held'));
