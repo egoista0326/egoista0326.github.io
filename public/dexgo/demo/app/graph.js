@@ -291,8 +291,10 @@ export class TaskGraph {
       g.classList.toggle('is-queued', node === queued);
       g.classList.toggle('is-selectable', pick);
       g.setAttribute('aria-disabled', String(!pick));
-      g.setAttribute('aria-label', pick ? `Next task ${node}: ${taskWords(node)}${node === queued ? ' (queued)' : ''}`
-        : `${node}: ${taskWords(node)}${st === 'current' ? ' (current task)' : ''}`);
+      // the running task is named as such, also where it can be picked again (clicks work at any time)
+      const words = `${node}: ${taskWords(node)}`;
+      g.setAttribute('aria-label', st === 'current' ? `Current task ${words}`
+        : pick ? `Next task ${words}${node === queued ? ' (queued)' : ''}` : words);
     }
     for (const { lower, line } of this.edges) line.classList.toggle('is-active', state(lower) !== 'unavailable');
     // the tab stop: the node the viewer focused last; before any focus, the first available node (reading order)

@@ -50,7 +50,7 @@ import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { fetchLoader } from '../engine/loader.js';
 import { AxesOverlay } from './axes_overlay.js';
 import { SKIN } from './config.js';
-import { TaskGraph, taskWords } from './graph.js';
+import { ROWS, TaskGraph, taskWords } from './graph.js';
 import { decodeVisual, partOffsets, resolveHands } from './hands.js';
 
 const params = new URLSearchParams(location.search);
@@ -65,7 +65,8 @@ const OPENING = params.has('opening') ? Number(params.get('opening')) : undefine
 const SLOW_STEP = Number(params.get('slowstep')) || 0; // test only: extra busy ms per control step in the worker
 const $ = (id) => document.getElementById(id);
 const ui = {
-  play: $('play'), reset: $('reset'), view: $('view'), axes: $('axes'), loading: $('loading'),
+  play: $('play'), playLabel: $('play-label'), reset: $('reset'), setup: $('setup'), pop: $('setup-pop'),
+  setupHand: $('setup-hand'), setupObject: $('setup-object'), view: $('view'), axes: $('axes'), loading: $('loading'),
   colliders: $('colliders'), collidersToggle: $('colliders-toggle'), objects: $('objects'), hands: $('hands'),
   modes: [...document.querySelectorAll('[data-mode]')], code: $('task-code'), words: $('task-words'),
   goals: $('goals'), note: $('note'), graph: $('graph'), marker: $('marker-status'), announce: $('announce'),
@@ -77,13 +78,21 @@ const ASSETS = new URL('../assets/', import.meta.url).href;
 // --------------------------------------------------------------------------------------------- embedding page
 // The project page (LazyDemo.astro) keeps its poster over this frame until the first frame is drawn
 // ('dexgo-demo-ready'), and shows the failure sentence instead of its loading line when the demo cannot start
-// ('dexgo-demo-failed', {message}). Same origin only; nothing is posted when the page is opened alone.
+// ('dexgo-demo-failed', {message, retry}: retry, whether loading again can help, i.e. anything but a missing WebGL 2;
+// the page then offers "Try again", which reloads this frame). Same origin only; nothing is posted when the page is
+// opened alone.
 // While embedded it also reports whether the simulation runs ('dexgo-demo-running', {running}): Play / Pause, the view
 // leaving the screen, a hidden tab or the chain's end; the page suspends its own clips only while the demo runs in view.
-// With every model it reports the hand ('dexgo-demo-hand', {hand, first}: its hands.json id, whether it is the first
-// entry), so the page's "Open in a new tab" opens the same hand (?hand=<id>, none for the first).
+// With every model (start, hand and object switches) it reports the hand and the object ('dexgo-demo-hand', {hand,
+// first, object, firstObject}: the hands.json id, whether it is the first entry; the object's label slug, the
+// ?object= value, whether it is the first of that hand's list), so the page's "Open in a new tab" opens the same hand
+// and object (?hand=<id>&object=<slug>, each left out when it is the first).
 // After a keyboard start the page sends 'dexgo-focus': "Pause demo" takes the focus with a visible ring.
-const FAILED = 'The demo could not start in this browser.'; // details go to the console
+// The page's nav "Pause all motion" / "Play all motion" arrives as 'dexgo-pause' {paused} (only when the visitor presses
+// it, never at Start): paused stops a running demo (pausedByPage); a play resumes it only if that pause stopped it and
+// the visitor has not since pressed Play / Pause or Reset or picked a node in the demo, so the nav never overrides a
+// choice made in the demo.
+const FAILED = 'The demo could not load.'; // a failed download or model load; details go to the console
 const NO_WEBGL = 'The demo needs WebGL 2, which this browser has turned off or does not support.';
 const EMBEDDED = window.parent !== window;
 if (EMBEDDED) { // one main landmark and one h1 on the project page (axe landmark-unique, heading-order)
@@ -109,11 +118,17 @@ function fail(detail, message = FAILED) {
   ui.loading.hidden = false;
   ui.loading.textContent = message;
   console.error(detail);
-  tellPage('dexgo-demo-failed', { message });
+  tellPage('dexgo-demo-failed', { message, retry: message !== NO_WEBGL });
 }
 let focusWanted = false; // the page asked for the focus before the controls were enabled
+let pausedByPage = false; // the page's nav pause stopped the demo; its play resumes it (cleared by a choice in the demo)
 window.addEventListener('message', (e) => {
-  if (e.origin !== location.origin || e.source !== window.parent || e.data?.type !== 'dexgo-focus') return;
+  if (e.origin !== location.origin || e.source !== window.parent) return;
+  if (e.data?.type === 'dexgo-pause') {
+    pageWantsPause(e.data.paused === true);
+    return;
+  }
+  if (e.data?.type !== 'dexgo-focus') return;
   if (ui.play.disabled) focusWanted = true;
   else ui.play.focus({ focusVisible: true });
 });
@@ -227,6 +242,12 @@ controls.enableDamping = true;
 // Page scrolling (the demo sits in an iframe of the project page): the plain wheel and one-finger swipes scroll the
 // page; Ctrl / Cmd + wheel zooms (a trackpad pinch arrives as Ctrl + wheel); two fingers orbit and pinch-zoom.
 controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+// Never under the floor: the polar angle from the up axis (+z, camera.up above) stays within 10-95 deg, an elevation
+// of 80 to -5 deg seen from the target (an unclamped drag reached -90 deg: the view looked up through the floor grid
+// at the unlit back of the hand). The default views (35 deg chain, 25 deg marker) lie inside; turning about the
+// vertical stays free.
+controls.minPolarAngle = THREE.MathUtils.degToRad(10);
+controls.maxPolarAngle = THREE.MathUtils.degToRad(95);
 renderer.domElement.style.touchAction = 'pan-y'; // OrbitControls sets 'none'
 const zoomHint = $('zoom-hint');
 if (/Mac|iPhone|iPad/.test(navigator.platform)) zoomHint.textContent = '\u2318 + scroll to zoom';
@@ -299,8 +320,8 @@ function aimStudio(center) {
 
 function resize() {
   const { clientWidth: w, clientHeight: h } = ui.view;
-  // the Play / Reset overlay at the top of the view (stacked layout): the follow camera keeps the span below it
-  // (and the Mode tabs in its top-left corner, same row, since 2026-11-22)
+  // the Mode segmented control over the view's top-left corner (stacked layout; Pause / Reset sit there too when a
+  // layout puts them over the view): the follow camera keeps the span below it
   const view = ui.view.getBoundingClientRect();
   follow.reserve = Math.max(0, ...[ui.play.parentElement, ui.modes[0].parentElement].map((el) => {
     const r = el.getBoundingClientRect();
@@ -693,7 +714,42 @@ function frameChain(objP, handP) {
 const FOLLOW = { tau: 0.35, margin: 0.045, scale: [1350, 3200], extent: 0.279 }; // s, m, px/m, m
 const CAMERA_MODE = params.get('camera');
 const follow = { target: new THREE.Vector3(), distance: 1, manual: 0, applied: 0, snap: true, reserve: 0,
-  anchor: new THREE.Vector3(), anchorDistance: 0, reaim: true };
+  anchor: new THREE.Vector3(), anchorDistance: 0, reaim: true, heading: 0, dir: null };
+// Set goal camera (lead 2026-11-23, relative_sweep/RESULTS.md section 6): the once-per-goal re-aim stays; for editor
+// goals the zoom-out floor is EDITOR_VIEW.scale px per metre (the hand's own floor when lower: Sharpa 600), so the
+// largest relative goals (p95 span 0.55 m) fit; at each started editor goal the view turns about the vertical by
+// that goal's applied Turn (the worker's frame.view.turnDeg: R* = Rz(turn) R ..., so the same side of the hand stays
+// in view after accumulated turns; review M3: a heading read from the goal rotation is undefined palm down, where it
+// swung the view by up to 128 deg on a goal with Turn 0), the viewer's orbit azimuth kept, and its elevation follows
+// the goal palm: the default 35 deg up to a sideways palm, falling linearly to EDITOR_VIEW.lowDeg at palm down (from
+// above, the back of the hand covers the rod). follow.dir: the direction the view eases to (time constant
+// FOLLOW.tau); follow.heading: the sum (deg) of the turns applied since the last cut (leaving Set goal or a fresh
+// start in it turns the view back by it).
+const EDITOR_VIEW = { scale: 800, lowDeg: 8 };
+const VIEW_ELEVATION = Math.asin(CHAIN_VIEW.direction[2] / Math.hypot(...CHAIN_VIEW.direction)); // rad (35 deg)
+const DIAG = params.has('diag'); // tools: body data-overflow = whether the span leaves the view (followStep)
+const fwDir = new THREE.Vector3();
+const editorGoals = () => document.body.dataset.mode === 'editor';
+/** Turn the follow view by turnDeg (deg, about the vertical) and set its elevation for a goal palm tilt palmDeg (deg;
+ *  see EDITOR_VIEW): a started editor goal's frame.view, or the way back to the default view. */
+function editorCamera({ turnDeg, palmDeg }) {
+  if (!following()) return;
+  const base = follow.dir ?? fwDir.subVectors(camera.position, controls.target).normalize();
+  const az = Math.atan2(base.y, base.x) + THREE.MathUtils.degToRad(turnDeg);
+  follow.heading += turnDeg;
+  const low = THREE.MathUtils.degToRad(EDITOR_VIEW.lowDeg), palm = Math.min(180, Math.max(90, palmDeg));
+  const el = VIEW_ELEVATION + ((low - VIEW_ELEVATION) * (palm - 90)) / 90;
+  follow.dir = new THREE.Vector3(Math.cos(el) * Math.cos(az), Math.cos(el) * Math.sin(az), Math.sin(el));
+}
+/** The default view direction again after editor goals (leaving Set goal, a fresh start in it). */
+const editorCameraBack = () => editorCamera({ turnDeg: -follow.heading, palmDeg: 0 });
+/** Azimuth (deg from world +x toward +y, whole degrees) of the view's horizontal viewing direction, the one it eases
+ *  to when it turns: Set goal's Right / Away sliders (#ed-x / #ed-y) move along screen right and away from the viewer
+ *  (the worker's setting.awayDeg, editor.js moveAxes; review S2: world x / y had no on-screen reference). */
+function awayDeg() {
+  const d = follow.dir ? fw.mean.copy(follow.dir) : fwDir.subVectors(camera.position, controls.target);
+  return Math.round(THREE.MathUtils.radToDeg(Math.atan2(-d.y, -d.x)));
+}
 // Bounded follow (owner feedback, relocation must show): the camera aims once per goal (anchor = the span's centre and
 // fit when the goal appears), then holds; within the goal it moves only by the amount the span (hand, object, goal
 // ghost, plus the margin) would leave FOLLOW.dead of the half view, and zooms out but never in. Replayed on the Node
@@ -749,7 +805,9 @@ function followAim() {
     ((x1 - x0) / 2 + FOLLOW.margin) / (t * camera.aspect));
   const near = H / (2 * t * FOLLOW.scale[1]);
   // zoomed out at least FOLLOW.scale[0] px per metre, or the hand's own floor (assets/hands.json minScale: Sharpa 600)
-  const far = Math.max(H / (2 * t * (hand?.minScale ?? FOLLOW.scale[0])), (FOLLOW.extent * H) / (2 * t * Math.min(W, usable)));
+  const floor = hand?.minScale ?? FOLLOW.scale[0];
+  const far = Math.max(H / (2 * t * (editorGoals() ? Math.min(floor, EDITOR_VIEW.scale) : floor)),
+    (FOLLOW.extent * H) / (2 * t * Math.min(W, usable)));
   const distance = THREE.MathUtils.clamp(fit, near, far);
   // target: the span's centre on the image plane at the points' mean depth, raised by half the reserve so the span
   // sits centred in the usable part of the view
@@ -792,8 +850,10 @@ function followStep(dt) {
   const actual = camera.position.distanceTo(controls.target);
   if (follow.applied > 0 && Math.abs(actual - follow.applied) > 1e-6) follow.manual = actual; // the viewer zoomed
   const scale0 = ui.view.clientHeight / (2 * Math.max(actual, 1e-6) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  const turnLeft = follow.dir ? fwDir.subVectors(camera.position, controls.target).normalize().angleTo(follow.dir) : 0;
   const residual = fw.raw.distanceTo(follow.target) * scale0
-    + (follow.manual ? 0 : (Math.abs(raw - follow.distance) / Math.max(raw, 1e-6)) * ui.view.clientHeight / 2);
+    + (follow.manual ? 0 : (Math.abs(raw - follow.distance) / Math.max(raw, 1e-6)) * ui.view.clientHeight / 2)
+    + turnLeft * ui.view.clientHeight; // an editor view turn still to go (rad x view height)
   // Paused (or ended): finish the easing quickly so the frame loop stops: time constant FOLLOW.pauseTau, and a snap
   // to the aim FOLLOW.pauseCap s after the pause at the latest (left: about exp(-cap / pauseTau) = 2 % of the lag)
   const tau = paused ? FOLLOW.pauseTau : FOLLOW.tau;
@@ -804,6 +864,10 @@ function followStep(dt) {
   follow.distance += (raw - follow.distance) * k;
   setZoomBounds(follow.distance); // the viewer's zoom stays within ZOOM.range of the automatic distance
   const direction = fw.p.subVectors(camera.position, controls.target).normalize();
+  if (follow.dir) { // an editor goal's view turn (EDITOR_VIEW), eased as the target
+    direction.lerp(follow.dir, k).normalize();
+    if (k === 1 || direction.angleTo(follow.dir) < 1e-4) follow.dir = null;
+  }
   controls.target.copy(follow.target);
   follow.applied = follow.manual || follow.distance;
   camera.position.copy(follow.target).addScaledVector(direction, follow.applied);
@@ -811,6 +875,16 @@ function followStep(dt) {
   const height = 2 * follow.applied * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   axisLength = Math.min(LOOK.axisFraction * Math.max(height, height * camera.aspect), LOOK.axisMax);
   document.body.dataset.scale = String(Math.round(ui.view.clientHeight / height)); // px per metre at the target
+  if (DIAG && fw.box) { // tools: the span (hand, object, goal ghost) past the view's usable part at this frame
+    const H = Math.max(1, ui.view.clientHeight), t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const hw = follow.applied * t * camera.aspect, hh = follow.applied * t * ((H - follow.reserve) / H);
+    const cx = follow.target.dot(fw.r), cy = follow.target.dot(fw.u) - (follow.reserve / H) * follow.applied * t;
+    const [x0, x1, y0, y1] = fw.box;
+    document.body.dataset.overflow = x0 < cx - hw || x1 > cx + hw || y0 < cy - hh || y1 > cy + hh ? '1' : '0';
+    // the view direction (from the target to the camera): azimuth and elevation (deg), and the editor turn sum
+    document.body.dataset.view = `${THREE.MathUtils.radToDeg(Math.atan2(direction.y, direction.x)).toFixed(1)} `
+      + `${THREE.MathUtils.radToDeg(Math.asin(Math.min(1, Math.max(-1, direction.z)))).toFixed(1)} ${follow.heading}`;
+  }
   return k === 1 ? 0 : residual;
 }
 
@@ -818,9 +892,11 @@ function followStep(dt) {
 // A very light floor grid, fixed in the world 16 cm below the start wrist (5 cm cells, 1 px lines at most 22 %
 // dark, fading out radially within 0.5 m), so a relocation reads against it while the camera follows. (A trail of the object
 // centre was tried and dropped: over composite goals the centre loops and the trail read as a scribble.) Drawn first, in the ghost pass, so the ghost,
-// the hand and the object all draw over it. Placed at load and Reset (the start grasps share the home pose).
+// the hand and the object all draw over it. Placed at load and Reset (the start grasps share the home pose); in Set
+// goal moved along at each started goal (floorUnder, review S3: far relocations left it behind).
+const FLOOR_CELL = 0.05; // m
 const floor = (() => { // 1 px lines (a textured plane was 10 x slower under software rendering)
-  const half = 0.6, cell = 0.05, piece = 0.025, n = Math.round((2 * half) / cell);
+  const half = 0.6, cell = FLOOR_CELL, piece = 0.025, n = Math.round((2 * half) / cell);
   const pos = [], col = [];
   const alpha = (x, y) => 0.22 * Math.max(0, 1 - Math.hypot(x, y) / (0.85 * half)) ** 1.5; // radial fade
   for (let i = 0; i <= n; i++) {
@@ -846,15 +922,27 @@ const floor = (() => { // 1 px lines (a textured plane was 10 x slower under sof
 
 function placeFloor(objP, handP) {
   floor.position.set((objP[0] + handP[0]) / 2, (objP[1] + handP[1]) / 2, handP[2] - 0.16);
+  floor.userData.origin = floor.position.clone(); // the cells' world positions (floorUnder keeps them)
   floor.visible = true;
+}
+/** Set goal: the grid under a started goal, centred between the hand and the goal wrist in whole cells from its
+ *  origin (the lines keep their world positions); lowered when a wrist or object (now or at the goal) comes within
+ *  0.16 m of it, raised to that when they are all more than 0.4 m above it. points: world positions (3 each). */
+function floorUnder(handP, goalP, points) {
+  const o = floor.userData.origin, c = FLOOR_CELL;
+  if (!o) return;
+  const snap = (v, v0) => v0 + Math.round((v - v0) / c) * c, low = Math.min(...points.map((q) => q[2])) - 0.16;
+  const z = low < floor.position.z || low - floor.position.z > 0.24 ? low : floor.position.z;
+  floor.position.set(snap((handP[0] + goalP[0]) / 2, o.x), snap((handP[1] + goalP[1]) / 2, o.y), z);
 }
 
 // --------------------------------------------------------------------------------------------- goal, axes
 /** Install a goal (or none) with the worker's ghost poses (12 per geom at the goal state): goal object, goal hand
- *  (skin, or its colliders), fade-in. */
-function setGoal(newGoal, poses) {
+ *  (skin, or its colliders), fade-in; reaim: the follow camera aims at the new span once (false for Set goal
+ *  previews). */
+function setGoal(newGoal, poses, reaim = true) {
   goal = newGoal;
-  follow.reaim = true;
+  if (reaim) follow.reaim = true; // (a Set goal preview: the deadband keeps its ghost in view, no pan per slider step)
   if (goal) {
     for (const ghost of [...ghosts, ...handGhosts]) {
       matrixOf(poses, ghost.userData.geom, ghost.matrix);
@@ -923,11 +1011,13 @@ function drawAxes(alpha, goalAlpha) {
 
 // --------------------------------------------------------------------------------------------- status
 const deg = (r) => (r * 180) / Math.PI;
-const NOTES = { // wording of the project page's copy review (review_copy_r2.md, row 6)
-  drop: 'The object was dropped: starting from a new initial grasp.',
+// wording of the project page's copy review (review_copy_r2.md, row 6); drop and 'no node available' shortened to fit
+// one phone line (320 px frame, stacked note; review r9 round 12 DN-a)
+const NOTES = {
+  drop: 'Object dropped: starting from a new initial grasp.',
   timeout: 'Goal not reached: starting from a new initial grasp.',
   recover: 'Goal not reached: continuing from the current grasp.',
-  'no node available': 'No task is available from this grasp: starting from a new initial grasp.',
+  'no node available': 'No task available: starting from a new initial grasp.',
   restart: 'Starting from a new initial grasp.',
 };
 // a reached goal: the note line shows "✓ <task> reached" in the ink colour (bold) for SUCCESS_MS of wall time (the
@@ -950,11 +1040,12 @@ function setText(el, text) {
   if (el.textContent !== text) el.textContent = text;
 }
 
-/** A note for ms of wall time: kind 'fail' (a failed goal, brown), 'error' (a hand that could not be loaded, brown; a
- *  reached goal's note does not replace it while it shows: in Random chain goals are reached every 1-3 s) or 'done' (a
- *  reached goal, ink). */
+/** A note for ms of wall time: kind 'fail' (a failed goal, brown), 'error' (a hand that could not be loaded, brown) or
+ *  'done' (a reached goal, ink). A reached goal's note does not replace a failure or error note while it shows (in
+ *  Random chain goals are reached every 1-3 s; the failure note names the failed task): the reached goal still counts
+ *  in "N goals completed", and say() still reads it in Manual. */
 function flashNote(text, ms = 2600, kind = 'fail') {
-  if (kind === 'done' && note.kind === 'error' && note.until > performance.now()) return;
+  if (kind === 'done' && (note.kind === 'error' || note.kind === 'fail') && note.until > performance.now()) return;
   note = { text, kind, until: performance.now() + ms };
   clearTimeout(noteTimer);
   noteTimer = setTimeout(() => { // the note expires (a timer: the frame loop may be stopped)
@@ -987,6 +1078,7 @@ function say(text, { goal = null, reached = null } = {}) {
   }, Math.max(0, sayLast + SAY_MS - performance.now()));
 }
 
+const GRAPH_NODES = new Set(ROWS.flat()); // the 15 tasks (a Set goal goal is named 'Goal')
 function showChain(c) {
   const previous = lastChain;
   lastChain = c;
@@ -997,8 +1089,11 @@ function showChain(c) {
     setText(ui.words, 'Chain ended. Press Reset to start again.');
   } else if (active) {
     setText(ui.code, c.node);
-    // no check mark here: the note line's "✓ X reached" is the one success signal (review r9 round 3)
-    setText(ui.words, taskWords(c.node));
+    // no check mark here: the note line's "✓ X reached" is the one success signal (review r9 round 3); "grasp type
+    // change" never splits over two lines here (no-break spaces; the announcer and the graph keep plain spaces). A Set
+    // goal goal ('Goal', no graph node) has no words, in any mode (it may still run after a switch to Manual).
+    setText(ui.words, GRAPH_NODES.has(c.node)
+      ? taskWords(c.node).replace('grasp type change', 'grasp\u00a0type\u00a0change') : '');
   } else {
     setText(ui.code, '');
     setText(ui.words, manual ? 'Select the next task on the graph.' : '');
@@ -1047,7 +1142,7 @@ function showInfo(info) {
     toldRunning = info.playing;
     tellPage('dexgo-demo-running', { running: info.playing });
   }
-  ui.play.textContent = info.playing || (wantPlay && autoPaused) ? 'Pause demo' : 'Play demo';
+  setPlay(info.playing || (wantPlay && autoPaused) ? 'Pause demo' : 'Play demo');
   ui.play.disabled = !!info.end;
   if (SCENE === 'marker') showMarker(info);
   Object.assign(document.body.dataset, { state: info.playing ? 'playing' : 'idle', step: String(info.step),
@@ -1082,6 +1177,24 @@ function syncPlay() {
   worker.postMessage({ type: run ? 'play' : 'pause' });
 }
 document.addEventListener('visibilitychange', syncPlay);
+/** The page's nav pause (true) or play (false), 'dexgo-pause': a pause stops a demo the visitor wants running; a play
+ *  resumes only a demo that pause stopped (pausedByPage), never one the visitor paused in the demo. */
+function pageWantsPause(paused) {
+  if (paused) {
+    if (!wantPlay) return;
+    wantPlay = false;
+    pausedByPage = true;
+    syncPlay();
+    if (lastInfo) showInfo(lastInfo);
+    return;
+  }
+  if (pausedByPage) {
+    wantPlay = true;
+    syncPlay();
+    if (lastInfo) showInfo(lastInfo);
+  }
+  pausedByPage = false;
+}
 new IntersectionObserver((entries) => {
   inSight = entries[entries.length - 1].isIntersecting;
   syncPlay();
@@ -1187,10 +1300,15 @@ function onFrame(msg) {
     styleColliders();
   }
   if ('goal' in msg) setGoal(msg.goal, msg.ghost);
+  if (msg.view) { // a Set goal goal started: the view turns by its Turn (EDITOR_VIEW), the grid comes along
+    editorCamera(msg.view);
+    if (msg.goal) floorUnder(msg.hand, msg.goal.wristP, [msg.hand, msg.goal.wristP, msg.object, msg.goal.objectP]);
+  }
   const events = msg.events ?? [];
   for (const e of events) if (e.type === 'goal' && e.node === wantedNext) wantedNext = null; // the clicked task runs
   // Manual: every goal and result is read; Random chain: only every PROGRESS_EVERY-th completed goal (say)
-  const manual = (msg.chain ?? lastChain)?.mode === 'manual';
+  const modeNow = (msg.chain ?? lastChain)?.mode, editing = modeNow === 'editor';
+  const manual = modeNow === 'manual' || editing;
   // a timeout comes before its recovery or fresh start in the same frame: their note names the task ("GL not reached")
   let timedOut = null;
   for (const e of events) { // a failure and its fresh start come in the same frame (cut 'restart')
@@ -1202,7 +1320,9 @@ function onFrame(msg) {
       if (manual) say(`${e.node} reached.`, { reached: e.node });
       else if (done > 0 && done % PROGRESS_EVERY === 0) say(`${done} goals completed.`);
     }
-    if (e.type === 'goal' && manual) say(`Goal ${e.node}: ${taskWords(e.node)}.`, { goal: e.node });
+    if (e.type === 'goal' && manual) {
+      say(GRAPH_NODES.has(e.node) ? `Goal ${e.node}: ${taskWords(e.node)}.` : 'Goal started.', { goal: e.node });
+    }
     if (e.type === 'recover') {
       const text = timedOut ? `${timedOut} not reached: continuing from the current grasp.` : NOTES.recover;
       flashNote(text);
@@ -1223,7 +1343,10 @@ function onFrame(msg) {
     follow.snap = true; // the follow camera jumps to the new state, it never pans across a cut
     follow.reaim = true;
     if (msg.cut !== 'restart' && SCENE === 'chain') placeFloor(objP, handP);
+    else if (floor.userData.origin) floor.position.copy(floor.userData.origin); // a fresh start at home: the grid too
     if (msg.cut !== 'restart') follow.manual = 0; // load, Reset, an object or hand switch: automatic zoom again
+    if (msg.cut !== 'restart') { follow.heading = 0; follow.dir = null; } // frameChain's default view
+    else if (editing) editorCameraBack(); // a fresh start at the home pose: Set goal's default view again
     // frameChain's snap moved the camera: not a viewer zoom (followStep reads a distance other than the one it applied
     // as one; before 2026-11-22 every Reset and object switch left the view at the fixed camera's zoom, 1594 instead of
     // about 3000 px per metre at 1440 x 900)
@@ -1242,6 +1365,7 @@ function onFrame(msg) {
   // Manual: a failure (a timeout or drop starts a fresh grasp; a recovery keeps the grasp) clears the runner's queue, or
   // drops a queued task the grasp no longer offers. The task the viewer clicked is queued again when the grasp offers
   // it (it starts after the fresh start's hold), else its node shows the refusal outline; either way it is said.
+  if (editing && (msg.cut || events.some((e) => ['done', 'recover', 'restart', 'end', 'drop'].includes(e.type)))) editorFresh();
   const failed = events.some((e) => e.type === 'restart' || e.type === 'recover');
   if (failed && wantedNext && msg.chain?.mode === 'manual' && !msg.chain.queued && msg.chain.phase !== 'ended') {
     const node = wantedNext;
@@ -1275,7 +1399,6 @@ worker.onmessage = (e) => {
     nStarts = msg.nStarts ?? 1;
     endSwitch(); // the switch's model is here: its first frame follows
     if (msg.hand) { // the hand this model belongs to: its look (fetched before the worker was asked for it)
-      tellPage('dexgo-demo-hand', { hand: msg.hand, first: msg.hand === hands[0]?.id });
       hand = hands.find((h) => h.id === msg.hand) ?? hand;
       look = looks.get(msg.hand) ?? look;
       document.body.dataset.hand = msg.hand;
@@ -1293,6 +1416,11 @@ worker.onmessage = (e) => {
         b.removeAttribute('aria-disabled');
       }
     }
+    if (msg.hand) { // the page's "Open in a new tab" follows (the object tabs list this hand's objects in order)
+      const object = slugOf.get(current) ?? '';
+      tellPage('dexgo-demo-hand', { hand: msg.hand, first: msg.hand === hands[0]?.id, object,
+        firstObject: object === ui.objects.querySelector('[data-object]')?.dataset.object });
+    }
   } else if (msg.type === 'frame') {
     onFrame(msg);
     if (!ready) { // the controls that need a running chain (the mode tabs too: the worker has no runner before)
@@ -1302,6 +1430,8 @@ worker.onmessage = (e) => {
       if (focusWanted) ui.play.focus({ focusVisible: true });
       syncPlay();
     }
+  } else if (msg.type === 'editor') {
+    onEditor(msg);
   } else if (msg.type === 'chain') {
     showChain(msg.chain);
   } else if (msg.type === 'error') {
@@ -1312,7 +1442,89 @@ worker.onmessage = (e) => {
 worker.onerror = (e) => fail(`worker: ${e.message}`);
 
 // --------------------------------------------------------------------------------------------- controls
+/** The Pause / Play icon button: its hidden label (its name, which the tools read as its text) and tooltip, and the
+ *  glyph (data-paused shows Play). */
+function setPlay(label) {
+  if (ui.playLabel.textContent === label) return;
+  ui.playLabel.textContent = label;
+  ui.play.dataset.tip = label;
+  ui.play.toggleAttribute('data-paused', label === 'Play demo');
+}
+
+/** A segmented control's thumb under its pressed segment (offsets within the track, px); it slides from the second
+ *  placement on (data-placed), and is hidden while no segment is pressed or the track is not laid out (closed
+ *  popover; a ResizeObserver places it when the popover opens). */
+function placeThumb(seg) {
+  const on = seg.querySelector('.toggle[aria-pressed="true"]');
+  const thumb = seg.querySelector('.seg-thumb');
+  if (!thumb) return;
+  if (!on || !seg.offsetWidth) {
+    thumb.style.visibility = 'hidden';
+    return;
+  }
+  seg.style.setProperty('--x', `${on.offsetLeft}px`);
+  seg.style.setProperty('--w', `${on.offsetWidth}px`);
+  thumb.style.visibility = '';
+  if (!seg.hasAttribute('data-placed')) requestAnimationFrame(() => seg.setAttribute('data-placed', ''));
+}
+const segs = [ui.hands, ui.objects, ui.modes[0].parentElement];
+const thumbs = new ResizeObserver((entries) => { for (const e of entries) placeThumb(e.target); });
+for (const seg of segs) thumbs.observe(seg);
+
+/** The setup menu button: it names the pressed hand and object ("MANO · Round", also while a switch loads) and
+ *  answers only while no model loads (aria-disabled, not disabled, so a keyboard user keeps the focus on it). */
+function syncSetup() {
+  const pressed = (box) => box.querySelector('.toggle[aria-pressed="true"]')?.textContent;
+  ui.setupHand.textContent = pressed(ui.hands) ?? ui.setupHand.textContent;
+  ui.setupObject.textContent = pressed(ui.objects) ?? ui.setupObject.textContent;
+  const busy = !ui.hands.querySelector('[data-hand]') || !ui.objects.querySelector('[data-object]')
+    || !!ui.pop.querySelector('[aria-disabled="true"]');
+  if (busy) ui.setup.setAttribute('aria-disabled', 'true');
+  else ui.setup.removeAttribute('aria-disabled');
+  for (const seg of segs) placeThumb(seg);
+}
+// the hand, object and mode tabs change their pressed / disabled marks in many places (switches, the worker's model
+// message, a failed hand switch, a click on a node that turns Random chain into Manual): one observer follows them all
+new MutationObserver(syncSetup).observe(ui.pop, { subtree: true, childList: true, attributes: true,
+  attributeFilter: ['aria-pressed', 'aria-disabled'] });
+new MutationObserver(() => placeThumb(segs[2])).observe(segs[2], { subtree: true, attributes: true,
+  attributeFilter: ['aria-pressed'] });
+
+/** The setup popover: opens from the button (click, Enter, Space), closes on Escape, a choice, a click or focus
+ *  outside, or when the frame loses the focus (a click in the embedding page); Escape and a choice return the focus
+ *  to the button. */
+function openSetup(open, refocus = false) {
+  if (open === !ui.pop.hidden) return;
+  ui.pop.hidden = !open;
+  ui.setup.setAttribute('aria-expanded', String(open));
+  if (open) {
+    for (const seg of [ui.hands, ui.objects]) placeThumb(seg);
+    (ui.hands.querySelector('[aria-pressed="true"]') ?? ui.hands.querySelector('button'))?.focus();
+  } else if (refocus) ui.setup.focus();
+}
+ui.setup.onclick = () => {
+  if (ui.setup.getAttribute('aria-disabled') === 'true' && ui.pop.hidden) return;
+  openSetup(ui.pop.hidden);
+};
+ui.setup.parentElement.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !ui.pop.hidden) {
+    e.preventDefault();
+    e.stopPropagation();
+    openSetup(false, true);
+  }
+});
+// a choice closes the popover after the tab's own handler has started the switch (bubbling order)
+ui.pop.addEventListener('click', (e) => { if (e.target.closest('.toggle')) openSetup(false, true); });
+ui.setup.parentElement.addEventListener('focusout', (e) => {
+  if (e.relatedTarget && !ui.setup.parentElement.contains(e.relatedTarget)) openSetup(false);
+});
+document.addEventListener('pointerdown', (e) => {
+  if (!ui.pop.hidden && !ui.setup.parentElement.contains(e.target)) openSetup(false);
+});
+window.addEventListener('blur', () => openSetup(false));
+
 ui.play.onclick = () => {
+  pausedByPage = false; // the visitor's own choice: a later nav play does not override it
   wantPlay = !(lastInfo?.playing || autoPaused);
   syncPlay();
   if (lastInfo) showInfo(lastInfo);
@@ -1325,19 +1537,215 @@ ui.reset.onclick = () => {
     counts.restarts = counts.drops = counts.timeouts = 0;
     note.until = 0;
     wantedNext = null;
+    pausedByPage = false;
     worker.postMessage({ type: 'reset' });
   }
 };
-const MODE_NAMES = { random: 'Random chain', manual: 'Manual' };
+const MODE_NAMES = { random: 'Random chain', manual: 'Manual', editor: 'Set goal' };
 for (const b of ui.modes) {
   b.onclick = () => {
     if (b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-disabled') === 'true') return; // (a switch)
-    if (b.dataset.mode === 'random') wantedNext = null;
+    if (b.dataset.mode !== 'manual') wantedNext = null; // Random chain and Set goal forget a Manual pick (worker too)
+    if (document.body.dataset.mode === 'editor') editorCameraBack(); // the default view back
     for (const o of ui.modes) o.setAttribute('aria-pressed', String(o === b));
     worker.postMessage({ type: 'mode', mode: b.dataset.mode });
+    document.body.dataset.mode = b.dataset.mode;
+    if (b.dataset.mode === 'editor') editorFresh();
     say(`${MODE_NAMES[b.dataset.mode]}.`);
   };
 }
+
+// ---------------------------------------------------------------------------- Set goal (the hands-on editor)
+// The page sends the setting; the worker (app/editor.js) builds the exact goal (base grasp + exact roll / slide, no
+// snapping), clamps it to the trained single-goal ranges and answers with the offered grasp types, the applied values
+// and the goal's ghost. Go runs it as
+// ONE goal (ChainRunner.runCustom); afterwards the editor starts again from the new state.
+// Sliders: Position is the fingertip-cluster centre along the object (mm, absolute; enclosure targets only); Roll,
+// Right / Away (#ed-x / #ed-y: the move along the view's screen right and away from the viewer, awayDeg), Height,
+// Turn, Tilt and Twist are changes RELATIVE to the reached pose (0 = no change; after each goal
+// they start at zero again, so turns and travel add up). The tracks span the full per-goal ranges (Move +-250 mm,
+// Height +-150 mm, rotations +-90 deg); the part a guard forbids (the worker's limits: each slider's interval with
+// the others at their values) is washed out and the thumb stops at its edge (each slider clamped on its own, no
+// coupled pull-back); a slider with no room left is greyed. The tick marks the current state (Position: the current
+// grip; its track also reaches a current grip outside -50..55 mm, washed out), the fill the asked change. On release,
+// on a grasp choice and after an orbit of the view, each thumb moves to the value the goal applies, and the preview
+// follows, so a thumb always matches its readout. A greyed grasp choice does nothing (review M1).
+const ed = { form: $('editor'), grasp: $('ed-grasp'), go: $('ed-go'), aRow: document.querySelector('[data-for="a"]'),
+  inputs: {}, outs: {}, seq: 0, design: null, options: [], family: null, busy: true, timer: 0, noop: true,
+  touchedA: false, settle: false, zeroA: 0, lim: {} };
+const ED_KEYS = ['a', 'roll', 'x', 'y', 'z', 'turn', 'tilt', 'twist'];
+const ED_WRIST = ['x', 'y', 'z', 'turn', 'tilt', 'twist']; // relative wrist keys (mm, deg), editor.js WRIST_KEYS
+const ED_DEG = new Set(['roll', 'turn', 'tilt', 'twist']);
+const A_MM = [-50, 55]; // the Position slider's range (mm; editor.js LIMITS.A_MM)
+for (const k of ED_KEYS) {
+  ed.inputs[k] = $(`ed-${k}`);
+  ed.outs[k] = $(`ed-${k}-out`);
+  ed.inputs[k].addEventListener('input', () => {
+    if (k === 'a') ed.touchedA = true;
+    const lim = ed.lim[k], el = ed.inputs[k]; // per-axis clamp to the guard interval (the others at their values)
+    if (lim) el.value = String(Math.min(lim[1], Math.max(lim[0], Number(el.value))));
+    paintSlider(k);
+    editorChanged();
+  });
+  ed.inputs[k].addEventListener('change', () => { ed.settle = true; editorChanged(); });
+}
+const isEncl = (f) => f === 'E_n' || f === 'E_r';
+/** Button text of target family f from start family f0 (the rod end named by the hand's side). */
+function graspName(f0, f) {
+  if (f === f0) return 'Keep';
+  if (isEncl(f0)) return (f0 === 'E_n') === (f === 'T_b') ? 'Pinch, little-finger end' : 'Pinch, thumb end';
+  return (f0 === 'T_b') === (f === 'E_n') ? 'Wrap, end to little finger' : 'Wrap, end to thumb';
+}
+/** The track of slider k: the tick at the current state (--z), the fill from it to the thumb (--v), as fractions. */
+function paintSlider(k) {
+  const el = ed.inputs[k], lo = Number(el.min), hi = Number(el.max), span = hi - lo || 1;
+  const zero = k === 'a' ? ed.zeroA : 0;
+  el.style.setProperty('--z', String(Math.min(1, Math.max(0, (zero - lo) / span))));
+  el.style.setProperty('--v', String((Number(el.value) - lo) / span));
+  const lim = ed.lim[k] ?? [lo, hi]; // the admissible part of the track (outside: washed out)
+  el.style.setProperty('--la', String((lim[0] - lo) / span));
+  el.style.setProperty('--lb', String((lim[1] - lo) / span));
+  el.closest('.ed-row')?.classList.toggle('ed-blocked', lim[0] === 0 && lim[1] === 0 && ED_WRIST.includes(k));
+}
+function setSlider(k, value, range = null) {
+  const el = ed.inputs[k];
+  if (range) { el.min = String(range[0]); el.max = String(range[1]); }
+  el.value = String(Math.round(value));
+  paintSlider(k);
+}
+function editorSetting() {
+  const v = (k) => Number(ed.inputs[k].value);
+  return { family: ed.family, aMm: ed.touchedA ? v('a') : null, rollDeg: v('roll'),
+    wrist: Object.fromEntries(ED_WRIST.map((k) => [k, v(k)])), awayDeg: awayDeg() };
+}
+function editorLock(on) {
+  ed.busy = on;
+  for (const el of Object.values(ed.inputs)) el.disabled = on;
+  for (const b of ed.grasp.querySelectorAll('button')) b.disabled = on;
+  ed.go.disabled = on || !ed.design || ed.noop;
+}
+/** A fresh start from the runner's current design (after a goal, a recovery, a fresh grasp, a load or the mode). */
+function editorFresh() {
+  ed.design = null;
+  editorLock(true);
+  worker?.postMessage({ type: 'editor', seq: ++ed.seq, setting: null, awayDeg: awayDeg() });
+}
+// an orbit moves screen right / away: the preview follows the new view, the thumbs to the values it applies
+controls.addEventListener('end', () => {
+  if (document.body.dataset.mode !== 'editor' || ed.busy || !ed.design) return;
+  ed.settle = true;
+  editorChanged();
+});
+function editorChanged() {
+  if (ed.busy || !ed.design) return;
+  ed.aRow.hidden = !isEncl(ed.family);
+  clearTimeout(ed.timer); // at most one preview request per frame of slider motion
+  ed.timer = setTimeout(() => worker?.postMessage({ type: 'editor', seq: ++ed.seq, setting: editorSetting() }), 30);
+}
+function renderGrasp(f0) {
+  ed.grasp.replaceChildren(...ed.options.map((o) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ed-choice';
+    b.textContent = graspName(f0, o.family);
+    b.dataset.family = o.family;
+    b.setAttribute('aria-pressed', String(o.family === ed.family));
+    if (!o.enabled) b.setAttribute('aria-disabled', 'true');
+    b.disabled = ed.busy;
+    b.onclick = () => { // (Enter / Space on a focused chip too) the live offer, not the one this chip was drawn with
+      const live = ed.options.find((x) => x.family === b.dataset.family);
+      if (!live?.enabled || ed.busy || ed.family === live.family) return;
+      ed.family = live.family;
+      ed.settle = true; // the thumbs move to what the new grasp applies (a switch caps the turn at 60 deg)
+      for (const x of ed.grasp.children) x.setAttribute('aria-pressed', String(x.dataset.family === ed.family));
+      editorChanged();
+    };
+    return b;
+  }));
+}
+const fmt = (v, unit, signed = false) => {
+  const r = Math.round(v) === 0 ? 0 : Math.round(v);
+  return `${signed && r > 0 ? '+' : ''}${r}${unit}`;
+};
+/** A new design (sliders at "no change", Keep), relative to the reached pose: the wrist tracks keep their full
+ *  spans, the design's limits wash out what the guards forbid. */
+function editorStart(design, options) {
+  ed.family = design.family;
+  ed.options = options;
+  ed.touchedA = false;
+  ed.settle = false;
+  ed.zeroA = Math.round(design.aMm);
+  // the Position track: LIMITS.A_MM (editor.js), reaching the current grip when it lies outside (washed out)
+  setSlider('a', design.aMm, [Math.min(A_MM[0], ed.zeroA), Math.max(A_MM[1], ed.zeroA)]);
+  ed.lim = { a: A_MM, ...design.limits };
+  setSlider('roll', 0);
+  for (const k of ED_WRIST) setSlider(k, 0);
+  for (const k of ED_KEYS) { setText(ed.outs[k], ''); ed.inputs[k].removeAttribute('aria-valuetext'); }
+  ed.aRow.hidden = !isEncl(ed.family);
+  renderGrasp(design.family);
+}
+function onEditor(msg) {
+  if (msg.seq !== ed.seq) return; // a later request is on its way
+  if (!msg.design) { ed.design = null; editorLock(true); return; }
+  if (msg.running) { // a goal still runs (entered during a Random / Manual goal): its design, locked until it ends
+    ed.design = null;
+    editorStart(msg.design, msg.options);
+    editorLock(true);
+    return;
+  }
+  if (!ed.design) { // a new start: Keep, the current position, no roll, no move, no turn
+    ed.design = msg.design;
+    ed.noop = true;
+    editorStart(msg.design, msg.options);
+    editorLock(false);
+    worker.postMessage({ type: 'editor', seq: ++ed.seq, setting: editorSetting() });
+    return;
+  }
+  ed.options = msg.options;
+  ed.lim = { a: msg.applied?.aLimitsMm ?? ed.lim.a ?? A_MM, ...msg.design.limits };
+  for (const b of ed.grasp.children) { // the switch rules follow the setting (total turn, joint guards)
+    const o = ed.options.find((x) => x.family === b.dataset.family);
+    if (o?.enabled) b.removeAttribute('aria-disabled'); else b.setAttribute('aria-disabled', 'true');
+  }
+  for (const k of ED_KEYS) paintSlider(k);
+  if (msg.started) { editorLock(true); return; }
+  if (msg.custom) editorLock(false); // Go was refused (a no-op): the preview below
+  if (msg.goal) setGoal(msg.goal, msg.ghost, false); // a preview: no re-aim
+  const sn = msg.applied;
+  if (sn) { // the exact values of the goal that will run (clamped position / roll, clamped wrist)
+    const vals = { a: sn.aMm, roll: sn.rollDeg, ...sn.wrist };
+    for (const k of ED_KEYS) {
+      const text = fmt(vals[k], ED_DEG.has(k) ? '°' : ' mm', k !== 'a');
+      setText(ed.outs[k], text);
+      ed.inputs[k].setAttribute('aria-valuetext', text);
+    }
+    if (ed.settle) { // released: each thumb to the applied value; the preview follows when one moved
+      ed.settle = false;
+      let moved = false;
+      for (const k of ED_KEYS) {
+        if (k === 'a' && !isEncl(sn.family)) continue; // (no Position row; untouched, its value stays unsent)
+        const before = ed.inputs[k].value;
+        setSlider(k, vals[k]);
+        moved ||= ed.inputs[k].value !== before;
+      }
+      if (moved) editorChanged();
+    }
+  }
+  ed.noop = !sn || !!msg.noop;
+  ed.go.disabled = ed.busy || ed.noop;
+}
+ed.form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (ed.busy || !ed.design || ed.noop) return;
+  clearTimeout(ed.timer);
+  editorLock(true);
+  worker.postMessage({ type: 'custom', seq: ++ed.seq, setting: editorSetting() });
+  if (note.kind === 'done') note.until = 0;
+  pausedByPage = false;
+  wantPlay = true;
+  syncPlay();
+});
+editorLock(true);
 
 /** A click on an available node: queue it as the next goal (it starts once the running goal is done, at once when
  *  the runner waits); in Random chain the click switches to Manual first. It also starts a paused simulation. The
@@ -1354,6 +1762,7 @@ function queueTask(node) {
   if (note.kind === 'done') note.until = 0; // the click's own feedback ("Next: ...") replaces a success note
   if (lastChain) showChain({ ...lastChain, queued: node });
   say(`Next: ${node}, ${taskWords(node)}.`);
+  pausedByPage = false;
   wantPlay = true;
   syncPlay();
 }
@@ -1390,7 +1799,7 @@ function objectTabs(list, wanted) {
   const labelFor = (o) => o.label ?? o.name ?? o.id;
   const slug = (o) => labelFor(o).toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const chosen = (list.find((o) => o.id === wanted || slug(o) === wanted) ?? list[0]).id;
-  ui.objects.replaceChildren();
+  for (const b of ui.objects.querySelectorAll('[data-object]')) b.remove(); // (the track's thumb stays)
   for (const o of list) {
     slugOf.set(o.id, slug(o));
     labelOf.set(o.id, labelFor(o));

@@ -96,8 +96,9 @@
 //                         events.
 //     await step()        one control step (Episode.step, then the state machine); resolves to an array of events
 //                         (possibly empty), each {type, ...}:
-//                           'goal'    {node, index, goal, family, record, info}  a node's goal is installed;
-//                                     index = its 0-based position in the current chain
+//                           'goal'    {node, index, goal, family, record, info, routedFrom}  a node's goal is
+//                                     installed; index = its 0-based position in the current chain; routedFrom =
+//                                     the node the page shows for it (queue's routedFrom), else null
 //                           'latch'   {node, t, step}  t = latch time (s) since the goal was installed
 //                           'done'    {node, goalsDone}  DWELL steps after the latch
 //                           'timeout' {node}  no latch within TIMEOUT steps;  'drop' {node}  the training drop rule
@@ -119,15 +120,20 @@
 //     available()         node names buildable from the current design (Generator.candidates, one draw each, cached
 //                         per design; the chosen node uses its cached goal). Calling it before a goal completes
 //                         draws earlier than run_chain does: only matters when replaying Python's draws.
-//     queue(node)         manual mode: the next node; ignored (returns false) unless in available()
+//     queue(node, routedFrom = null)   manual mode: the next node; ignored (returns false) unless in available().
+//                         routedFrom (app/routing.js, the demo's routing): the node the viewer clicked when `node` is
+//                         the buildable subset that runs for it; kept with the goal (state.routedFrom, the 'goal'
+//                         event) and logged as routed_from; no draw
 //     setMode(mode)       'random' | 'manual'; an idle runner switched to random draws a node at its next step
 //     get state           {node, phase: 'reach' | 'dwell' | 'idle' | 'ended', goalsDone, goal, stepInGoal, queued,
-//                          family, record, attempts, timeoutsInRow, chainSteps, mode}
+//                          queuedFrom, routedFrom, family, record, attempts, timeoutsInRow, chainSteps, mode}; node /
+//                          queued are the executed (queued) nodes, routedFrom / queuedFrom their clicked nodes or null
 //     result()            the current chain in run_chain's return format {start_family, start_record, nodes_done,
 //                         timeouts, end, sim_s, log} (log entries as Python's: node, family, record, result, latch_s,
 //                         final_goal_mm, final_goal_deg, available, from_family (the design's family the node was
-//                         built from), available_nodes, g_available, available_try, info..., recovered_to; a
-//                         'no node available' entry: node null, result, from_family ... available_try)
+//                         built from), available_nodes, g_available, available_try, info..., recovered_to, and
+//                         routed_from (the clicked node) only for a routed goal; a 'no node available' entry: node
+//                         null, result, from_family ... available_try)
 // The Episode the runner drives: resetTo({handRoot, objectRoot, q, target}), setGoal(goal), await step(), and the
 // fields s (state; the drop rule reads s.objP, s.objR, s.links), errors (gate errors of the installed goal),
 // surfaceLocal (the object-frame surface samples), task.control.gate, policyDt.
@@ -253,7 +259,10 @@ export function decodeTable(table) {
     }
     const nF = q.length / n; // fingers per record (MANO 20, Sharpa 22)
     if (!Number.isInteger(nF)) throw new Error(`chain.json ${f}: ${q.length} finger values for ${n} records`);
-    families[f] = { n, nF, cP, cR, q, pd, ops, switch: e.switch, switch_E_r: e.switch_E_r ?? null,
+    // a (m): the record's fingertip-cluster centre on the rod's own +Y (object frame; the hands-on editor's position
+    // along the rod; editor_feasibility/scripts/export_axial.py), null in a table without it
+    const a = e.a ? Float64Array.from(e.a, (v) => v / sc.a) : null;
+    families[f] = { n, nF, cP, cR, q, pd, ops, a, switch: e.switch, switch_E_r: e.switch_E_r ?? null,
       switch_T_s: e.switch_T_s ?? null };
   }
   return { decoded: true, objectId: table.object_id, rod: table.rod, startFamilies: table.start_families, families };
@@ -616,10 +625,13 @@ export const dropped = (s, surfaceLocal) => surfaceGap(s, surfaceLocal) > S.DROP
 // ------------------------------------------------------------------------------------------------ runner
 const copy3 = (v) => Float64Array.from(v);
 
+/** Runner modes: random draws, manual queue, editor (custom goals only, ChainRunner.runCustom). */
+export const MODES = Object.freeze(['random', 'manual', 'editor']);
+
 export class ChainRunner {
   constructor({ episode, generator, rng = null, mode = 'random', onFailure = 'restart', maxNodes = Infinity,
     recover = true, dwell = S.DWELL, timeout = S.TIMEOUT } = {}) {
-    if (!['random', 'manual'].includes(mode)) throw new Error(`mode ${mode}`);
+    if (!MODES.includes(mode)) throw new Error(`mode ${mode}`);
     if (!['restart', 'end'].includes(onFailure)) throw new Error(`onFailure ${onFailure}`);
     this.episode = episode;
     this.gen = generator;
@@ -642,13 +654,17 @@ export class ChainRunner {
     this.goal = null;
     this.design = null;
     this.queued = null;
+    this.custom = null; // editor mode: the custom goal waiting to start (runCustom)
+    this.queuedFrom = null;
+    this.routedFrom = null;
     this._cands = null;
   }
 
   get state() {
     return {
       node: this.node, phase: this.phase, goalsDone: this.goalsDone ?? 0, goal: this.goal,
-      stepInGoal: this.stepInGoal ?? 0, queued: this.queued, family: this.design?.family ?? null,
+      stepInGoal: this.stepInGoal ?? 0, queued: this.queued, queuedFrom: this.queuedFrom ?? null,
+      routedFrom: this.routedFrom ?? null, family: this.design?.family ?? null,
       record: this.design?.record ?? null, attempts: this.attempts ?? 0, timeoutsInRow: this.timeoutsInRow ?? 0,
       chainSteps: this.chainSteps, mode: this.mode,
     };
@@ -669,8 +685,32 @@ export class ChainRunner {
   }
 
   setMode(mode) {
-    if (!['random', 'manual'].includes(mode)) throw new Error(`mode ${mode}`);
+    if (!MODES.includes(mode)) throw new Error(`mode ${mode}`);
     this.mode = mode;
+    if (mode !== 'editor') this.custom = null;
+  }
+
+  /** The current design {family, record, hP, hR, cP, cR, a} (copies; cP / cR the relation, a the cluster position
+   *  (m, null in a table without a): an exact editor goal's, else the record's), or null when ended. */
+  currentDesign() {
+    if (this.phase === 'ended' || !this.design) return null;
+    const d = this.design, r = this.gen.rec(d.family, d.record), t = this.gen.fam[d.family];
+    return { family: d.family, record: d.record, hP: Float64Array.from(d.hP), hR: Float64Array.from(d.hR),
+      cP: Float64Array.from(d.cP ?? r.cP), cR: Float64Array.from(d.cR ?? r.cR), a: d.a ?? (t.a ? t.a[d.record] : null) };
+  }
+
+  /** Editor mode: run ONE custom goal, record `record` of family `family` with the wrist goal (hP m, hR row-major)
+   *  and, when given, the exact relation cP (m) / cR (row-major) and cluster position a (m) of an editor goal (the
+   *  record's fingers; else the record's relation), under the same gate, dwell, timeout, drop rule and timeout recovery as a node goal. It starts at the next step
+   *  once the runner waits (at once when idle). The generator and its random stream are not used: no candidates are
+   *  built and nothing is drawn (gen.remember is not called). Returns false when ended or not in editor mode. */
+  runCustom({ family, record, hP, hR, cP = null, cR = null, a = null }, label = 'Goal') {
+    if (this.phase === 'ended' || this.mode !== 'editor') return false;
+    if (!this.gen.fam[family] || !(record >= 0 && record < this.gen.fam[family].n)) throw new Error('custom record');
+    if ((cP === null) !== (cR === null)) throw new Error('custom relation: cP and cR together');
+    this.custom = { family, record, hP: Float64Array.from(hP), hR: Float64Array.from(hR), label,
+      ...(cP === null ? {} : { cP: Float64Array.from(cP), cR: Float64Array.from(cR), a }) };
+    return true;
   }
 
   /** Node names buildable from the current design (cached candidates of that design). */
@@ -679,9 +719,10 @@ export class ChainRunner {
     return Object.keys(this._candidates());
   }
 
-  queue(node) {
+  queue(node, routedFrom = null) {
     if (!this.available().includes(node)) return false;
     this.queued = node;
+    this.queuedFrom = routedFrom;
     return true;
   }
 
@@ -710,7 +751,10 @@ export class ChainRunner {
     this.goalsDone = 0;
     this.timeoutsInRow = 0;
     this.queued = null;
+    this.custom = null;
+    this.queuedFrom = null;
     this.node = null;
+    this.routedFrom = null;
     this.chains += 1;
     this._cands = null;
     this._hold();
@@ -722,7 +766,7 @@ export class ChainRunner {
   async step() {
     const events = [];
     if (this.phase === 'ended') return events;
-    if (this.phase === 'idle' && (this.mode === 'random' || this.queued !== null)) {
+    if (this.phase === 'idle' && (this.mode === 'random' || this.queued !== null || this.custom)) {
       this._next(events);
       if (this.phase === 'ended') return events;
     }
@@ -783,14 +827,18 @@ export class ChainRunner {
 
   // ---------------------------------------------------------------------------------------------- internals
   _candidates() {
-    const d = this.design;
+    let d = this.design;
+    if (d.cP && this._cands === null) { // an exact editor goal's relation: the record-based modes go on from the
+      const nb = this.gen.nearest(d.cP, d.cR); // nearest record of that relation (the timeout recovery's rule)
+      d = this.design = { family: nb.family, record: nb.record, hP: d.hP, hR: d.hR };
+    }
     if (this._cands === null) this._cands = this.gen.candidates(d.family, d.record, d.hP, d.hR);
     return this._cands;
   }
 
   _makeGoal(d) {
     const { cP, cR, q } = this.gen.rec(d.family, d.record);
-    return makeGoal(d.hP, d.hR, cP, cR, q);
+    return makeGoal(d.hP, d.hR, d.cP ?? cP, d.cR ?? cR, q);
   }
 
   /** Install the hold goal of the current design (no node: the policy holds the designed grasp). */
@@ -804,6 +852,13 @@ export class ChainRunner {
   /** The design is ready for the next node: max nodes, then random draw / manual queue / idle. */
   _next(events) {
     if (this.attempts >= this.maxNodes) return this._end('max nodes reached', events);
+    if (this.mode === 'editor') { // no candidates (no draw): a custom goal when one is set, else the hold goal stays
+      const c = this.custom;
+      this.custom = null;
+      if (c) return this._installCustom(c, events);
+      this.phase = 'idle';
+      return undefined;
+    }
     const cands = this._candidates();
     const names = Object.keys(cands);
     if (!names.length) {
@@ -812,9 +867,10 @@ export class ChainRunner {
     }
     this.noNodeRestarts = 0;
     if (this.mode === 'random') return this._install(String(this.gen.rng.choice(names)), events);
-    const node = this.queued;
+    const node = this.queued, from = this.queuedFrom ?? null;
     this.queued = null;
-    if (node !== null && node in cands) return this._install(node, events);
+    this.queuedFrom = null;
+    if (node !== null && node in cands) return this._install(node, events, from);
     this.phase = 'idle'; // the current goal stays installed
     return undefined;
   }
@@ -827,7 +883,7 @@ export class ChainRunner {
       available_try: names.filter((n) => cands[n].info.switch_try?.differed === true) };
   }
 
-  _install(node, events) {
+  _install(node, events, routedFrom = null) {
     const built = this._cands[node];
     this.availableCount = Object.keys(this._cands).length;
     this.diag = this._diag(this._cands);
@@ -838,12 +894,33 @@ export class ChainRunner {
     this.episode.setGoal(this.goal);
     this.gate = new Gate(this.gateConfig);
     this.node = node;
+    this.routedFrom = routedFrom;
     this.nodeInfo = built.info;
     this.phase = 'reach';
     this.stepInGoal = 0;
     this.latched = -1;
     events.push({ type: 'goal', node, index: this.attempts, goal: this.goal, family: built.family,
-      record: built.record, info: built.info });
+      record: built.record, info: built.info, routedFrom });
+    this.attempts += 1;
+  }
+
+  _installCustom(c, events) {
+    this.availableCount = null;
+    this.diag = { from_family: this.design.family };
+    this._cands = null;
+    this.design = { family: c.family, record: c.record, hP: c.hP, hR: c.hR,
+      ...(c.cP ? { cP: c.cP, cR: c.cR, a: c.a } : {}) };
+    this.goal = this._makeGoal(this.design);
+    this.episode.setGoal(this.goal);
+    this.gate = new Gate(this.gateConfig);
+    this.node = c.label;
+    this.routedFrom = null;
+    this.nodeInfo = { custom: true };
+    this.phase = 'reach';
+    this.stepInGoal = 0;
+    this.latched = -1;
+    events.push({ type: 'goal', node: c.label, index: this.attempts, goal: this.goal, family: c.family,
+      record: c.record, info: this.nodeInfo, routedFrom: null, custom: true });
     this.attempts += 1;
   }
 
@@ -853,6 +930,7 @@ export class ChainRunner {
       latch_s: this.latched > 0 ? this.latched / this.stepsPerSecond : null,
       final_goal_mm: pyRound(1000 * e[0], 1), final_goal_deg: pyRound(degrees(e[1]), 1),
       available: this.availableCount, ...this.diag, ...this.nodeInfo,
+      ...(this.routedFrom ? { routed_from: this.routedFrom } : {}),
     });
   }
 

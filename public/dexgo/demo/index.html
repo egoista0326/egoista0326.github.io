@@ -44,6 +44,9 @@
     :root {
       --bg: #ffffff; --fg: #1e2528; --muted: #586366; --rule: #dde3e1;
       --accent: #438f87; --ink: #367a73; --ink-hover: #2b665f;
+      /* redesign spec r10 section 7: secondary text, control borders, the segmented track, the light-grey surface */
+      --fg-2: #586366; --line: #d2d6d5; --line-hover: #b9bfbd; --track: #eef0f0; --surface: #f5f5f7;
+      --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
       --sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
       --side: clamp(300px, 30vw, 380px); /* 300 px in the page's 800 px frame: the view gets 452 px */
       color-scheme: light;
@@ -65,35 +68,82 @@
       grid-template-areas: "controls controls" "view side";
     }
 
-    /* control row: the page's tab toggles (underline) and its text controls (Play / Pause demo, Reset) */
-    /* one row from a 780 px frame with the Hand group too (2026-11-22: gaps 24 / 12 px, were 32 / 20 px; at 800 px
-       "Manual" ends 35 px before "Pause demo", 11 px more than the gap the row needs; 16 px between the groups in
-       780-799 px frames, below) */
-    .controls { grid-area: controls; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
-    /* The side-by-side layout also runs in 780-799 px frames (the page's wide stage on 844-863 px landscape phones,
-       a standalone window): there the 24 px group gap no longer leaves room for one row. (Stacked, .controls is
-       display: contents and this does nothing.) */
-    @media (max-width: 799px) { .controls { column-gap: 16px; } }
-    .group { display: flex; align-items: center; gap: 4px 12px; }
-    .group-label { color: var(--muted); font-size: 14px; }
+    /* control row (owner 2026-11-23: redesign spec r10 section 5.3, Alternative B): one setup menu button
+       "MANO · Round" whose popover holds the Hand and Object segmented rows, then the Mode segmented control
+       [Random chain | Manual], then the round Pause / Play and Reset icon buttons at the right end. The page's
+       segmented control: track #eef0f0, a white thumb that slides to the pressed segment (app/main.js placeThumb).
+       About 450 px of the 768 px row in the page's 800 px frame, so a third Mode segment (the planned hands-on mode,
+       about +80 px) still fits one row. While a model loads, the setup button, the Mode segments and the icons show
+       at 45 % opacity. */
+    .controls { grid-area: controls; display: flex; align-items: center; gap: 8px 12px; min-height: 34px; }
+    .setup { position: relative; }
+    .setup-btn {
+      appearance: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 14px;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--bg); color: var(--fg); cursor: pointer;
+      font: 600 14px/1 var(--sans); white-space: nowrap;
+      transition: border-color 150ms var(--ease), background-color 150ms var(--ease), opacity 150ms var(--ease);
+    }
+    .setup-btn .setup-object { font-weight: 400; color: var(--fg-2); }
+    .setup-btn svg { width: 10px; height: 10px; flex: none; transition: transform 250ms var(--ease); }
+    .setup-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+    .setup-btn:hover, .setup-btn[aria-expanded="true"] { border-color: var(--line-hover); background: var(--surface); }
+    .setup-btn[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+    .setup-btn[aria-disabled="true"]:hover { border-color: var(--line); background: var(--bg); }
+    .pop {
+      position: absolute; top: calc(100% + 8px); left: 0; z-index: 3; width: 260px; padding: 12px 14px 14px;
+      border-radius: 14px; background: var(--bg); box-shadow: 0 10px 30px rgb(0 0 0 / 0.14), 0 0 0 1px rgb(0 0 0 / 0.04);
+    }
+    .pop:not([hidden]) { animation: dx-line-in 150ms var(--ease) both; }
+    .pop-label { margin: 0 0 6px; color: var(--fg-2); font-size: 13px; line-height: 1.3; }
+    .pop .seg + .pop-label { margin-top: 12px; }
+    .pop .seg { display: flex; }
+    .pop .seg .toggle { flex: 1; }
+    .seg {
+      position: relative; isolation: isolate; display: inline-flex; padding: 2px; border-radius: 10px;
+      background: var(--track); transition: opacity 150ms var(--ease);
+    }
+    .seg:has([aria-disabled="true"], :disabled) { opacity: 0.45; }
+    /* the thumb: placed under the pressed segment by app/main.js (--x, --w); it slides once placed (data-placed) */
+    .seg-thumb {
+      position: absolute; z-index: -1; top: 2px; bottom: 2px; left: 0; width: var(--w, 0px);
+      transform: translateX(var(--x, 0px)); border-radius: 8px; background: var(--bg);
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.04); pointer-events: none;
+    }
+    .seg[data-placed] .seg-thumb { transition: transform 250ms var(--ease), width 250ms var(--ease); }
     .toggle {
-      appearance: none; border: 0; border-bottom: 2px solid transparent; padding: 4px 0; background: none;
-      color: var(--muted); cursor: pointer; font: 600 16px/1.45 var(--sans); white-space: nowrap;
-      transition: color 150ms ease-out, border-color 150ms ease-out;
+      appearance: none; border: 0; height: 30px; padding: 0 12px; border-radius: 8px; background: transparent;
+      color: var(--fg-2); cursor: pointer; font: 500 14px/1 var(--sans); white-space: nowrap;
+      transition: color 150ms var(--ease);
     }
     .toggle:hover { color: var(--fg); }
-    .toggle[aria-pressed="true"] { border-bottom-color: var(--accent); color: var(--fg); }
+    .toggle[aria-pressed="true"] { color: var(--fg); font-weight: 600; }
+    /* before the thumb is placed (first paint), the pressed segment carries the thumb's look itself */
+    .seg:not([data-placed]) .toggle[aria-pressed="true"] { background: var(--bg); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
     .toggle:disabled, .toggle[aria-disabled="true"] { cursor: default; }
-    .toggle:disabled:hover, .toggle[aria-disabled="true"]:hover { color: var(--muted); }
-    .actions { display: flex; align-items: center; gap: 8px 24px; margin-left: auto; }
-    #play { min-width: 5.6em; text-align: left; } /* "Play demo" / "Pause demo" without the row moving */
-    .link {
-      appearance: none; border: 0; padding: 4px 0; background: none; color: var(--ink); cursor: pointer;
-      font: 600 16px/1.45 var(--sans); white-space: nowrap; text-decoration: underline; text-decoration-color: transparent;
-      text-underline-offset: 4px; transition: color 150ms ease-out, text-decoration-color 150ms ease-out;
+    .toggle:disabled:hover, .toggle[aria-disabled="true"]:hover { color: var(--fg-2); }
+    .toggle[aria-pressed="true"]:hover { color: var(--fg); }
+    .actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .icon-btn {
+      appearance: none; position: relative; display: grid; place-items: center; flex: none; width: 34px; height: 34px;
+      padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--bg); color: var(--fg);
+      cursor: pointer; transition: border-color 150ms var(--ease), background-color 150ms var(--ease), opacity 150ms var(--ease);
     }
-    .link:hover { color: var(--ink-hover); text-decoration-color: currentColor; }
-    .link:disabled { opacity: 0.45; cursor: default; }
+    .icon-btn svg { width: 14px; height: 14px; display: block; }
+    .icon-btn:hover:not(:disabled) { border-color: var(--line-hover); background: var(--surface); }
+    .icon-btn:active:not(:disabled) { background: var(--track); }
+    .icon-btn:disabled { opacity: 0.45; cursor: default; }
+    /* #play shows Pause while the demo runs and Play while it waits (data-paused, app/main.js setPlay) */
+    #play .i-play, #play[data-paused] .i-pause { display: none; }
+    #play[data-paused] .i-play { display: block; }
+    /* tooltips of the icon buttons (pointer devices; the buttons' names are their hidden labels), right-aligned so
+       they stay inside the frame */
+    @media (hover: hover) {
+      .icon-btn[data-tip]:hover::after, .icon-btn[data-tip]:focus-visible::after {
+        content: attr(data-tip); position: absolute; top: calc(100% + 6px); right: 0; z-index: 4; padding: 4px 8px;
+        border-radius: 6px; background: var(--fg); color: #fff; font: 500 13px/1.3 var(--sans); white-space: nowrap;
+        pointer-events: none; animation: dx-line-in 150ms var(--ease) 400ms both;
+      }
+    }
     .check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; cursor: pointer; }
     .check input { margin: 0; accent-color: var(--accent); }
 
@@ -131,7 +181,7 @@
        and the page scrolls, instead of growing upward over the control row (align-self: center did) */
     .side { grid-area: side; align-self: start; margin-block: auto; display: grid; gap: 16px; min-width: 0; }
     .status { display: grid; gap: 2px; align-content: start; min-height: calc(2 * 18px * 1.35 + 15px * 1.45 + 2 * 14px * 1.45 + 4px); }
-    .status p { margin: 0; }
+    .status p { margin: 0; text-wrap-style: pretty; } /* no lone last word; the longhand keeps the stacked note's nowrap */
     .task { font-size: 18px; line-height: 1.35; }
     .task b { margin-right: 4px; color: var(--ink); font-weight: 700; } /* + the space after it */
     .task b:empty { display: none; }
@@ -187,23 +237,36 @@
         gap: calc(8 * var(--u)) calc(16 * var(--u));
         grid-template-columns: auto minmax(0, 1fr);
         grid-template-rows: auto minmax(calc(150 * var(--u)), 1fr) auto auto;
-        grid-template-areas: "hands objects" "view view" "status status" "graph graph";
+        grid-template-areas: "setup actions" "view view" "status status" "graph graph";
       }
       .controls, .side { display: contents; }
       #view { margin-inline: calc(-12 * var(--u)); } /* full width: the width sets the hand's size */
-      .hands-group { grid-area: hands; }
-      .objects-group { grid-area: objects; justify-self: end; }
-      .modes-group { grid-area: view; justify-self: start; align-self: start; z-index: 1; }
-      .group { gap: calc(4 * var(--u)) calc(16 * var(--u)); }
-      .group-label { display: none; }
+      /* row 1: the setup menu left, Pause / Play and Reset right; the Mode segmented control over the view's top-left
+         corner (its whole width is free for a third Mode segment), its left edge on the setup menu's (the view's grid
+         area already starts at the 12u padding; only #view bleeds) */
+      .setup { grid-area: setup; justify-self: start; }
+      .modes-group { grid-area: view; justify-self: start; align-self: start; z-index: 1; margin-left: 0; }
+      .actions { grid-area: actions; justify-self: end; margin: 0; gap: calc(8 * var(--u)); }
+      .controls { min-height: 0; }
+      .setup-btn {
+        height: calc(34 * var(--u)); gap: calc(6 * var(--u)); padding: 0 calc(12 * var(--u)) 0 calc(14 * var(--u));
+        font-size: calc(14 * var(--u));
+      }
+      .setup-btn svg { width: calc(10 * var(--u)); height: calc(10 * var(--u)); }
+      .pop {
+        top: calc(100% + 8 * var(--u)); width: calc(260 * var(--u)); padding: calc(12 * var(--u)) calc(14 * var(--u)) calc(14 * var(--u));
+        border-radius: calc(14 * var(--u));
+      }
+      .pop-label { margin-bottom: calc(6 * var(--u)); font-size: calc(13 * var(--u)); }
+      .pop .seg + .pop-label { margin-top: calc(12 * var(--u)); }
+      .seg { padding: calc(2 * var(--u)); border-radius: calc(10 * var(--u)); }
+      .seg-thumb { top: calc(2 * var(--u)); bottom: calc(2 * var(--u)); border-radius: calc(8 * var(--u)); }
       .toggle {
-        font-size: calc(15 * var(--u)); padding: calc(2 * var(--u)) 0; border-bottom-width: calc(2 * var(--u));
+        height: calc(30 * var(--u)); padding: 0 calc(12 * var(--u)); border-radius: calc(8 * var(--u));
+        font-size: calc(14 * var(--u));
       }
-      .actions {
-        grid-area: view; justify-self: end; align-self: start; z-index: 1; margin: 0;
-        gap: calc(4 * var(--u)) calc(16 * var(--u));
-      }
-      .link { font-size: calc(15 * var(--u)); padding: calc(4 * var(--u)) 0; text-underline-offset: calc(4 * var(--u)); }
+      .icon-btn { width: calc(34 * var(--u)); height: calc(34 * var(--u)); }
+      .icon-btn svg { width: calc(14 * var(--u)); height: calc(14 * var(--u)); }
       .status, #marker-status { grid-area: status; }
       /* the graph at most 420 layout px wide (frames taller than 9:16), centred */
       .graph-box { grid-area: graph; justify-self: center; width: 100%; max-width: calc(420 * var(--u)); }
@@ -231,26 +294,110 @@
           linear-gradient(to bottom, transparent, #000 calc(24 * var(--u)), #000 calc(100% - 24 * var(--u)), transparent);
       }
     }
-    /* Frames under 316 px (phones under 336 px, where the page's stage is 100vw - 20 px): the Mode tabs and Play / Reset
-       share the view's top edge; a step smaller labels and gaps keep them apart. The legend's four items need about
+    /* Frames under 316 px (phones under 336 px, where the page's stage is 100vw - 20 px): the legend's four items need about
        288 px on one line (at --u 0.96, gaps 8 --u) and the frame gives 277-291: two rows of two (as the side-by-side
        legend), never "Goal" alone on a second line. */
     @media (max-width: 315px) {
-      .toggle, .link { font-size: calc(14 * var(--u)); }
-      .group, .actions { column-gap: calc(12 * var(--u)); }
       .legend { display: grid; grid-template-columns: auto auto; justify-content: center; column-gap: calc(16 * var(--u)); }
     }
     @media (prefers-reduced-motion: reduce) {
       * { transition-duration: 0s !important; }
       #loading:not([hidden]) { animation: none; }
     }
-    /* Forced colours (Windows contrast themes): the transparent underline of an unpressed tab would turn into the text
-       colour, so every tab looked pressed; only the pressed one keeps a (Highlight) underline. The legend's swatches
-       keep their own fills and borders: forced, all four were the same outlined box. */
+    /* Forced colours (Windows contrast themes): the thumb's white fill and shadow are dropped, so the pressed segment
+       gets a Highlight outline. The legend's swatches keep their own fills and borders: forced, all four were the same
+       outlined box. */
     @media (forced-colors: active) {
-      .toggle { border-bottom-color: Canvas; }
-      .toggle[aria-pressed="true"] { border-bottom-color: Highlight; }
+      .seg-thumb { border: 2px solid Highlight; }
+      .seg:not([data-placed]) .toggle[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
       .legend i, .legend .l-goal { forced-color-adjust: none; }
+    }
+    /* Set goal: the editor panel takes the graph's place (body[data-mode="editor"], app/main.js). It must fit the
+       page's 800 x 474 frame with every row shown (a wrap target: Position row; two rows of grasp chips): the status
+       keeps one line each for the task, the goals and the note (the note ellipsized, no second line), and the slider
+       rows are 24 px, 4 px apart (review M2: 28 px rows, 6 px apart, put Go below the frame). A small gap (.ed-pose)
+       splits the grasp rows (Grasp, Position, Roll) from the hand-pose rows (Right to Twist); the readout column
+       fits "+250 mm" (58 px; stacked 52 --u). Single choices (the grasp chips) are white with an ink outline when
+       pressed; Go is the only filled control. Sliders: a neutral track, a tick at the current state (--z: the current grip for Position, no change
+       for the others), the fill from it to the thumb (--v); both fractions of the track, set by app/main.js
+       paintSlider. */
+    body[data-mode="editor"] .graph-box, body:not([data-mode="editor"]) .editor-box { display: none; }
+    body[data-mode="editor"] .side { gap: 10px; }
+    body[data-mode="editor"] .status { min-height: calc(18px * 1.35 + 15px * 1.45 + 14px * 1.45 + 4px); }
+    body[data-mode="editor"] .note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .editor-box { --r: 8px; --tick: 12px; display: grid; gap: 4px; font-size: 14px; color: var(--fg); margin: 0; }
+    .ed-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 58px; align-items: center; gap: 8px; min-height: 24px; }
+    .ed-row.ed-pose { margin-top: 6px; }
+    .ed-row[hidden] { display: none; }
+    .ed-grasp { grid-template-columns: 64px minmax(0, 1fr); align-items: start; }
+    .ed-grasp > .ed-label { line-height: 28px; }
+    .ed-label { color: var(--muted); }
+    .ed-row output { font-variant-numeric: tabular-nums; text-align: right; color: var(--muted); white-space: nowrap; }
+    .ed-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ed-choice { font: inherit; font-size: 13px; line-height: 1.2; padding: 4px 10px; min-height: 28px; border-radius: 999px;
+      cursor: pointer; border: 1px solid var(--line); background: var(--bg); color: var(--fg-2);
+      transition: border-color 150ms var(--ease), color 150ms var(--ease), box-shadow 150ms var(--ease); }
+    .ed-choice:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--line-hover); color: var(--fg); }
+    .ed-choice[aria-pressed="true"], .ed-choice[aria-pressed="true"]:hover:not(:disabled) {
+      border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 0.5px var(--ink); }
+    .ed-choice:disabled { opacity: 0.55; cursor: default; } /* locked while a goal runs */
+    .ed-choice[aria-disabled="true"] { opacity: 0.4; cursor: default; } /* not offered from this grasp */
+    .editor-box input[type="range"] {
+      -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 24px; margin: 0; cursor: pointer;
+      background: linear-gradient(to right, transparent calc(var(--r) + (100% - 2 * var(--r)) * var(--z, 0.5) - 1px),
+        var(--fg-2) 0 calc(var(--r) + (100% - 2 * var(--r)) * var(--z, 0.5) + 1px), transparent 0) no-repeat center / 100% var(--tick);
+      --lo: calc(var(--r) + (100% - 2 * var(--r)) * min(var(--z, 0.5), var(--v, 0.5)));
+      --hi: calc(var(--r) + (100% - 2 * var(--r)) * max(var(--z, 0.5), var(--v, 0.5)));
+      /* the part of the track a guard forbids (app/main.js paintSlider --la / --lb, the worker's limits): washed out */
+      /* widths of the forbidden ends (0 when nothing is forbidden; else from the track's end to the limit) */
+      --la-x: calc(var(--r) * min(1, 1000 * var(--la, 0)) + (100% - 2 * var(--r)) * var(--la, 0));
+      --lb-x: calc(var(--r) * min(1, 1000 * (1 - var(--lb, 1))) + (100% - 2 * var(--r)) * (1 - var(--lb, 1)));
+      --ed-off: repeating-linear-gradient(to right, var(--bg) 0 3px, transparent 3px 6px); /* dashed: not allowed */
+    }
+    .ed-row.ed-blocked > .ed-label, .ed-row.ed-blocked > output { opacity: 0.45; } /* no room left on this slider */
+    .editor-box input[type="range"]::-webkit-slider-runnable-track {
+      height: 4px; border-radius: 2px;
+      background: var(--ed-off) left / var(--la-x) 100% no-repeat, var(--ed-off) right / var(--lb-x) 100% no-repeat,
+        linear-gradient(to right, var(--line) var(--lo), var(--accent) 0 var(--hi), var(--line) 0);
+    }
+    .editor-box input[type="range"]::-moz-range-track {
+      height: 4px; border-radius: 2px;
+      background: var(--ed-off) left / var(--la-x) 100% no-repeat, var(--ed-off) right / var(--lb-x) 100% no-repeat,
+        linear-gradient(to right, var(--line) var(--lo), var(--accent) 0 var(--hi), var(--line) 0);
+    }
+    .editor-box input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: calc(2 * var(--r)); height: calc(2 * var(--r)); margin-top: calc(2px - var(--r));
+      border-radius: 50%; border: 1px solid var(--line-hover); background: var(--bg); box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+    }
+    .editor-box input[type="range"]::-moz-range-thumb {
+      box-sizing: border-box; width: calc(2 * var(--r)); height: calc(2 * var(--r)); border-radius: 50%;
+      border: 1px solid var(--line-hover); background: var(--bg); box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+    }
+    .editor-box input[type="range"]:disabled { opacity: 0.45; cursor: default; }
+    .ed-actions { display: flex; justify-content: flex-end; }
+    .ed-go { font: inherit; font-weight: 600; min-width: 88px; min-height: 34px; padding: 6px 22px; border-radius: 999px;
+      border: 0; background: var(--ink); color: #fff; cursor: pointer; }
+    .ed-go:hover:not(:disabled) { background: var(--ink-hover); }
+    .ed-go:disabled { opacity: 0.45; cursor: default; }
+    .ed-choice:focus-visible, .ed-go:focus-visible, .editor-box input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    /* stacked (the page's 350 x 622 phone frame): the view keeps its room (editor review M2): the grasp chips in one
+       row without the "Grasp" label (the group keeps it as its name), 26 --u rows, the status one line each */
+    @media (max-width: 779px), (max-aspect-ratio: 1/1) {
+      body[data-mode="editor"] .status { min-height: calc((16 * 1.3 + 14 * 1.45 + 13 * 1.4 + 4) * var(--u)); }
+      .editor-box { --r: calc(8 * var(--u)); --tick: calc(11 * var(--u)); grid-area: graph; justify-self: center; width: 100%;
+        max-width: calc(420 * var(--u)); gap: calc(2 * var(--u)); font-size: calc(13 * var(--u)); }
+      .ed-row { grid-template-columns: calc(52 * var(--u)) minmax(0, 1fr) calc(52 * var(--u)); gap: calc(8 * var(--u));
+        min-height: calc(26 * var(--u)); }
+      .ed-row.ed-pose { margin-top: calc(4 * var(--u)); }
+      .ed-grasp { grid-template-columns: minmax(0, 1fr); padding-bottom: calc(2 * var(--u)); }
+      .ed-grasp > .ed-label { display: none; }
+      .ed-choices { gap: calc(4 * var(--u)); }
+      .ed-choice { font-size: calc(12.5 * var(--u)); padding: calc(2 * var(--u)) calc(8 * var(--u)); min-height: calc(26 * var(--u)); }
+      .editor-box input[type="range"] { height: calc(26 * var(--u)); }
+      .editor-box input[type="range"]::-webkit-slider-runnable-track { height: calc(4 * var(--u)); }
+      .editor-box input[type="range"]::-moz-range-track { height: calc(4 * var(--u)); }
+      .editor-box input[type="range"]::-webkit-slider-thumb { margin-top: calc(2 * var(--u) - var(--r)); }
+      .ed-go { min-height: calc(32 * var(--u)); min-width: calc(84 * var(--u)); padding: calc(4 * var(--u)) calc(20 * var(--u)); }
     }
   </style>
   <script type="importmap">
@@ -263,23 +410,38 @@
   <div class="demo" role="main">
     <h1 class="visually-hidden">DexGO interactive demo</h1>
     <div class="controls" role="group" aria-label="Demo controls">
-      <div class="group hands-group chain-only" role="group" aria-label="Hand">
-        <span class="group-label" aria-hidden="true">Hand</span>
-        <span id="hands" class="group"></span>
+      <!-- the setup menu (a disclosure: aria-expanded, app/main.js): its popover holds the Hand and Object rows; the
+           button reads the pressed hand and object ("MANO · Round") -->
+      <div class="setup chain-only">
+        <button type="button" id="setup" class="setup-btn" aria-expanded="false" aria-controls="setup-pop" aria-disabled="true">
+          <span class="visually-hidden">Hand and object: </span><span id="setup-hand">MANO</span><span class="setup-object"><span aria-hidden="true">·</span> <span id="setup-object">Round</span></span>
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5"/></svg>
+        </button>
+        <div id="setup-pop" class="pop" hidden>
+          <p id="hands-label" class="pop-label">Hand</p>
+          <div id="hands" class="seg" role="group" aria-labelledby="hands-label"><span class="seg-thumb" aria-hidden="true"></span></div>
+          <p id="objects-label" class="pop-label">Object</p>
+          <div id="objects" class="seg" role="group" aria-labelledby="objects-label"><span class="seg-thumb" aria-hidden="true"></span></div>
+        </div>
       </div>
-      <div class="group objects-group chain-only" role="group" aria-label="Object">
-        <span class="group-label" aria-hidden="true">Object</span>
-        <span id="objects" class="group"></span>
-      </div>
-      <div class="group modes-group chain-only" role="group" aria-label="Mode">
-        <span class="group-label" aria-hidden="true">Mode</span>
+      <div class="seg modes-group chain-only" role="group" aria-label="Mode">
+        <span class="seg-thumb" aria-hidden="true"></span>
         <button type="button" class="toggle" data-mode="random" aria-pressed="true" disabled>Random chain</button>
         <button type="button" class="toggle" data-mode="manual" aria-pressed="false" disabled>Manual</button>
+        <button type="button" class="toggle" data-mode="editor" aria-pressed="false" disabled>Set goal</button>
       </div>
       <div class="actions">
         <label id="colliders-toggle" class="check marker-only" hidden><input type="checkbox" id="colliders"> Show colliders</label>
-        <button type="button" id="play" class="link" disabled>Play demo</button>
-        <button type="button" id="reset" class="link" disabled>Reset</button>
+        <!-- named by their hidden labels ("Pause demo" / "Play demo", "Reset"), which the tooltips repeat -->
+        <button type="button" id="play" class="icon-btn" data-paused data-tip="Play demo" disabled>
+          <svg class="i-pause" viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="2" width="3.2" height="10" rx="0.8" fill="currentColor"/><rect x="8.3" y="2" width="3.2" height="10" rx="0.8" fill="currentColor"/></svg>
+          <svg class="i-play" viewBox="0 0 14 14" aria-hidden="true"><path d="M4 2.3v9.4a.6.6 0 0 0 .9.5l7.4-4.7a.6.6 0 0 0 0-1L4.9 1.8a.6.6 0 0 0-.9.5Z" fill="currentColor"/></svg>
+          <span id="play-label" class="visually-hidden">Play demo</span>
+        </button>
+        <button type="button" id="reset" class="icon-btn" data-tip="Reset" disabled>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.6 7a4.4 4.4 0 1 0 1.4-3.2"/><path d="M2.4 1.8v2.6H5"/></svg>
+          <span class="visually-hidden">Reset</span>
+        </button>
       </div>
     </div>
     <div id="view"> <!-- the canvas carries the view's name (role img, app/main.js) -->
@@ -301,6 +463,28 @@
           <span><i class="l-available"></i>Available next</span><span><i class="l-unavailable"></i>Not available</span>
           <span><i class="l-goal"></i>Goal</span></p>
       </div>
+      <!-- Set goal (app/main.js editor*, app/editor.js): exact goal (base grasp + exact roll / slide), the ghost shows it -->
+      <form id="editor" class="editor-box chain-only" aria-label="Set goal" novalidate>
+        <div class="ed-row ed-grasp"><span id="ed-grasp-label" class="ed-label">Grasp</span>
+          <div id="ed-grasp" class="ed-choices" role="group" aria-labelledby="ed-grasp-label"></div></div>
+        <div class="ed-row" data-for="a"><label for="ed-a" class="ed-label">Position</label>
+          <input id="ed-a" type="range" min="-50" max="55" step="1" value="0"><output for="ed-a" id="ed-a-out"></output></div>
+        <div class="ed-row"><label for="ed-roll" class="ed-label">Roll</label>
+          <input id="ed-roll" type="range" min="-90" max="90" step="1" value="0"><output for="ed-roll" id="ed-roll-out"></output></div>
+        <div class="ed-row ed-pose"><label for="ed-x" class="ed-label">Right</label>
+          <input id="ed-x" type="range" min="-250" max="250" step="1" value="0"><output for="ed-x" id="ed-x-out"></output></div>
+        <div class="ed-row"><label for="ed-y" class="ed-label">Away</label>
+          <input id="ed-y" type="range" min="-250" max="250" step="1" value="0"><output for="ed-y" id="ed-y-out"></output></div>
+        <div class="ed-row"><label for="ed-z" class="ed-label">Height</label>
+          <input id="ed-z" type="range" min="-150" max="150" step="1" value="0"><output for="ed-z" id="ed-z-out"></output></div>
+        <div class="ed-row"><label for="ed-turn" class="ed-label">Turn</label>
+          <input id="ed-turn" type="range" min="-90" max="90" step="1" value="0"><output for="ed-turn" id="ed-turn-out"></output></div>
+        <div class="ed-row"><label for="ed-tilt" class="ed-label">Tilt</label>
+          <input id="ed-tilt" type="range" min="-90" max="90" step="1" value="0"><output for="ed-tilt" id="ed-tilt-out"></output></div>
+        <div class="ed-row"><label for="ed-twist" class="ed-label">Twist</label>
+          <input id="ed-twist" type="range" min="-90" max="90" step="1" value="0"><output for="ed-twist" id="ed-twist-out"></output></div>
+        <div class="ed-actions"><button type="submit" id="ed-go" class="ed-go" disabled>Go</button></div>
+      </form>
       <div id="marker-status" class="marker-status marker-only" role="status"></div>
     </div>
   </div>

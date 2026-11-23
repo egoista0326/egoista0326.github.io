@@ -13,6 +13,11 @@
 //   the worker then holds the new start still for RESTART_HOLD_MS while the page fades it in.
 //   runner.available() draws from the RNG when its design changed, so it is called once per event batch that
 //   installs a goal (goal / restart / recover / end) and cached here, never per frame.
+// Routing (app/routing.js, owner 2026-11-22): the page's available set is offered(buildable): a node is offered when
+//   it or one of its capability subsets is buildable. A queued node runs itself or its first buildable subset
+//   (route); the runner executes and logs that node (routed_from = the clicked one), and everything posted to the page
+//   (chain.node, chain.queued, the events' node) names the clicked node, so the page never shows the difference.
+//   Random chain draws from the buildable nodes as before (runner); a click there switches to Manual and is routed.
 // - marker: assets/models/<tag>/ with the 4 start rows of task.json, one goal per row, 500-step episodes.
 // Draw stream (app/rng.js): seeded runs (?seed=<n>; the project page starts with 47, the posters' scene) keep the
 // seed for the first OPENING_GOALS goals installed since init (the curated opening), then re-seed from
@@ -32,26 +37,43 @@
 //                   | {type: 'init', scene: 'marker', model}
 //                   | {type: 'play'} | {type: 'pause'} | {type: 'reset', start?} | {type: 'object', object}
 //                   | {type: 'hand', hand, root, object} (hand: its id; root: its asset root relative to assets/)
-//                   | {type: 'mode', mode: 'random'|'manual'} | {type: 'queue', node}
+//                   | {type: 'mode', mode: 'random'|'manual'|'editor'} | {type: 'queue', node}
+//                   | {type: 'editor' | 'custom', seq, setting|null, awayDeg?} (Set goal: preview | run, editorMessage;
+//                     setting {family, aMm, rollDeg, wrist: {x, y, z (mm), turn, tilt, twist (deg)}, awayDeg}, relative
+//                     to the reached wrist; x / y along the page view's screen right and away from the viewer, awayDeg
+//                     the azimuth of its horizontal viewing direction, editor.js moveAxes)
 //   worker -> main: {type: 'model', geoms, policyDt, speed, nStarts?, object?, hand?}
-//                   | {type: 'frame', poses, hand, object, info, cut?, goal?, ghost?, events?, chain?}
+//                   | {type: 'editor', seq, design, options, phase, running, custom, applied?, noop?, goal?, ghost?,
+//                     started?}
+//                   | {type: 'frame', poses, hand, object, info, cut?, goal?, ghost?, events?, chain?, view?}
 //                   | {type: 'chain', chain} (after a mode change or a queued task: no new poses)
 //                   | {type: 'error', message, fatal} (fatal: init, an object switch or Reset failed)
 //   'mode' and 'queue' before the first runner exists (still loading) do not throw: the mode is kept for it.
-//   'mode' 'random' also clears the runner's queued task (a Manual pick never starts later by itself).
+//   'mode' 'random' or 'editor' also clears the runner's queued task (a Manual pick never starts later by itself).
+//   Leaving 'editor' for Random chain or Manual (review M4) starts a fresh run (cut 'reset') when the reached design
+//   offers no task (runner.available() empty: e.g. after far Set goal moves); Manual never shows a graph with
+//   nothing to click.
+//   frame.view: {turnDeg, palmDeg} on the frame whose step started a Set goal goal: its applied Turn (deg, about the
+//   vertical) and goal palm tilt (deg), for the page's camera (review M3: the view turns by the applied Turns, the
+//   heading of a palm-down pose is undefined).
 //   frame.cut: 'init' | 'load' (object) | 'hand' | 'reset' | 'restart' (no interpolation from the previous frame);
 //   frame.hand: wrist link position (3), rotation (9, row-major), the n - 6 finger angles; frame.ghost: 12 per
 //   geom (position, row-major rotation), geom order (model.geoms);
 //   frame.info: {step, time, simTime, playing, ...marker fields}; frame.chain: {node, phase, goalsDone, available,
-//   queued, mode, stepInGoal}; goalsDone counts the 'done' events since init, Reset or an object or hand switch.
+//   queued, mode, stepInGoal, executed, buildable}; goalsDone counts the 'done' events since init, Reset or an object
+//   or hand switch. node / queued / available: the shown (clicked, offered) names; executed (the runner's node) and
+//   buildable (runner.available()) are diagnostics for tools, the page does not read them.
 
 import loadMujoco from '../vendor/mujoco/mujoco.js';
 import { ChainRunner, Generator, generatorOptions } from '../engine/chain.js';
 import { fetchLoader } from '../engine/loader.js';
-import { Episode, goalConfiguration } from '../engine/loop.js';
+import { Episode, goalConfiguration, makeGoal } from '../engine/loop.js';
+import { Editor, handAxes, moveAxes } from './editor.js';
 import { MlpPolicy } from '../engine/mlp.js';
+import { mulTVec, sub3 } from '../engine/math.js';
 import { loadModel, World } from '../engine/world.js';
 import { cryptoSeed, reseedableRng } from './rng.js';
+import { offered, route, shownEvents } from './routing.js';
 
 const ASSETS = new URL('../assets/', import.meta.url).href;
 const OPENING_GOALS = 10; // a seeded run keeps its seed for this many goals (the curated opening), then re-seeds
@@ -62,7 +84,8 @@ const RESTART_HOLD_MS = 420; // a fresh start grasp stays still while the page f
 // catch-up debt (no bursts, nothing skipped). slowStepMs: test-only extra busy time per control step (?slowstep=<ms>).
 const SPEED = 2;
 
-let mujoco = null, policy = null, index = null, control = null, facts = null, rng = null, available = [];
+let mujoco = null, policy = null, index = null, control = null, facts = null, rng = null;
+let available = [], shown = []; // runner.available() of the current design (buildable); offered(available) (the page's)
 let scene = 'chain', world = null, episode = null, runner = null, objectId = null, mode = 'random';
 let handId = null; // the loaded hand (assets/hands.json id)
 const hands = new Map(); // hand id -> {policy, index, control, facts}, loaded the first time the hand is chosen
@@ -175,8 +198,10 @@ async function loadObject(id, cut, resume = false) {
  *  the page never shows a one-step 'paused' state that a click or a test could act on (timeout_cmp/NOPLAY.md). */
 function startRun(cut, resume = false) {
   completed = 0;
+  edBase = null;
+  editorView = null;
   const events = runner.restart();
-  available = runner.available();
+  cacheAvailable();
   countGoals(events);
   sentGoal = undefined;
   const resumes = resume && !ended();
@@ -267,11 +292,98 @@ function sendFrame(extra = {}, resuming = false) {
   post(msg, transfer);
 }
 
-/** The chain state the page shows (status line, graph). */
+/** Cache the buildable nodes of the runner's current design and the offered set the page draws. */
+function cacheAvailable() {
+  if (runner.mode === 'editor') { // the editor builds no nodes (no draw from the generator's stream)
+    available = shown = [];
+    return;
+  }
+  available = runner.available();
+  shown = offered(available);
+}
+
+/** The chain state the page shows (status line, graph): the clicked names of a routed goal / queue, the offered set;
+ *  executed and buildable: the runner's own (tools only). */
 function chainState() {
   const st = runner.state;
-  return { node: st.node ?? null, phase: st.phase, goalsDone: completed, available, queued: st.queued ?? null,
-    mode: st.mode, stepInGoal: st.stepInGoal };
+  return { node: st.routedFrom ?? st.node ?? null, phase: st.phase, goalsDone: completed, available: shown,
+    queued: st.queuedFrom ?? st.queued ?? null, mode: st.mode, stepInGoal: st.stepInGoal, executed: st.node ?? null,
+    buildable: available };
+}
+
+let editor = null; // the hands-on editor of the runner's generator (app/editor.js)
+// The reached pose the editor's goals are relative to: the measured wrist (position, rotation, wrist joints) taken
+// once at the first editor message after a goal ends (or a fresh start, a mode change), then kept for every preview
+// and for Go, so the guard edges do not move with the hold's small drift (a previewed goal is never refused at Go).
+let edBase = null;
+let editorView = null; // the camera view of the Set goal goal waiting to start (frame.view)
+const RAD = Math.PI / 180;
+
+/** The hand's forward / lateral axes in the wrist frame (editor.js handAxes): the surface links' mean position at
+ *  q = 0 relative to the wrist link, by forward kinematics on the world's scratch MjData (the simulation is
+ *  untouched). */
+function measuredHandAxes() {
+  const d = world.scratch, b = world.wrist;
+  d.qpos.set(world.data.qpos);
+  for (let i = 0; i < world.n; i++) d.qpos[world.qadr[i]] = 0;
+  world.mj.mj_kinematics(world.model, d);
+  const wp = d.xpos.subarray(3 * b, 3 * b + 3), wr = d.xmat.subarray(9 * b, 9 * b + 9), v = [0, 0, 0];
+  for (const l of world.links) {
+    const r = mulTVec(wr, sub3(d.xpos.subarray(3 * l, 3 * l + 3), wp));
+    for (let i = 0; i < 3; i++) v[i] += r[i] / world.links.length;
+  }
+  return handAxes(v, runner.gen.homeR);
+}
+
+/** Editor mode: every goal is set RELATIVE to the reached wrist (the measured wrist link pose and the current wrist
+ *  joints, world.state()), from the runner's current design (grasp, relation). The reply carries the grasp types
+ *  offered for the page's setting (Editor.offered: the switch rules), the per-axis limits of every wrist slider
+ *  (Editor.limits, whole mm / deg, each with the others at their values) and the exact goal of the setting
+ *  (Editor.goal, no snapping) with its ghost (a preview; 'custom' also runs it as ONE goal, ChainRunner.runCustom,
+ *  unless it is a no-op or a guard fails). While a goal runs (any mode's), the reply carries that goal's design with
+ *  running: true and no goal: the page shows the panel locked until the goal ends. */
+function editorMessage(msg) {
+  const d = runner.mode === 'editor' ? runner.currentDesign() : null;
+  if (!d) {
+    post({ type: 'editor', seq: msg.seq ?? 0, design: null, phase: runner.phase });
+    return;
+  }
+  if (editor?.gen !== runner.gen) editor = new Editor(runner.gen, measuredHandAxes());
+  const running = runner.phase === 'reach' || runner.phase === 'dwell';
+  if (running) edBase = null;
+  else if (!edBase) { const s = world.state(); edBase = { p: s.wristP, R: s.wristR, q3: s.q.slice(3, 6) }; }
+  const g = editor.gen, reached = edBase ?? (() => { const s = world.state(); return { p: s.wristP, R: s.wristR, q3: s.q.slice(3, 6) }; })();
+  const setting = msg.setting ?? { family: d.family, aMm: null, rollDeg: 0, wrist: {} };
+  // the move axes of the page's view (review S2): x / y along its screen right and away from the viewer
+  const away = setting.awayDeg ?? msg.awayDeg;
+  const base = Number.isFinite(away) ? { ...reached, move: moveAxes(away) } : reached;
+  const goal = running ? null : editor.goal(d, setting, base);
+  const zero = Object.fromEntries(['x', 'y', 'z', 'turn', 'tilt', 'twist'].map((k) => [k, 0]));
+  const design = { family: d.family, record: d.record, aMm: 1000 * d.a, palmDeg: editor.palmDeg(base.R),
+    limits: goal?.limits ?? editor.limits(zero, editor._ctx(base, d.cP, false)) };
+  const out = { type: 'editor', seq: msg.seq ?? 0, design, phase: runner.phase, running, custom: msg.type === 'custom',
+    options: editor.offered(d, setting, base, goal?.wrist ?? zero) };
+  const transfer = [];
+  if (goal && msg.setting) {
+    const full = makeGoal(goal.hP, goal.hR, goal.cP, goal.cR, g.rec(goal.family, goal.record).q);
+    out.applied = { family: goal.family, record: goal.record, aMm: 1000 * goal.a, rollDeg: goal.roll / RAD,
+      extraRollDeg: goal.extraRoll / RAD, slideMm: 1000 * goal.slide, wrist: goal.wrist, ok: goal.ok,
+      totalDeg: goal.totalDeg, palmDeg: goal.palmDeg, jointsDeg: goal.jointsDeg,
+      // the Position slider's limits (whole mm inside limitsA of an enclosure target)
+      aLimitsMm: goal.aLimits ? [Math.ceil(1000 * goal.aLimits[0] - 1e-6), Math.floor(1000 * goal.aLimits[1] + 1e-6)] : null,
+      from: { p: Array.from(base.p), palmDeg: design.palmDeg, jointsDeg: Array.from(base.q3, (v) => v / RAD) } };
+    out.noop = goal.noop || !goal.ok;
+    if (msg.type === 'custom' && !out.noop && runner.runCustom(goal, 'Goal')) {
+      out.started = true;
+      editorView = { turnDeg: goal.wrist.turn, palmDeg: goal.palmDeg };
+    } else {
+      out.goal = goalMessage(full);
+      out.ghost = ghostPoses(full);
+      transfer.push(out.ghost.buffer);
+    }
+  }
+  post(out, transfer);
+  if (out.started) post({ type: 'chain', chain: chainState() });
 }
 
 /** One control step; returns the extra hold (ms) before the next one. */
@@ -283,18 +395,21 @@ async function advance() {
     sendFrame();
     return 0;
   }
+  const running = { node: runner.node, from: runner.routedFrom ?? null };
   const events = await runner.step();
   steps += 1;
-  let hold = 0, cut, designChanged = false;
+  let hold = 0, cut, designChanged = false, view;
   for (const e of events) {
     if (e.type === 'done') completed += 1;
     else if (e.type === 'restart') { cut = 'restart'; hold = RESTART_HOLD_MS; }
+    else if (e.type === 'goal' && e.custom) { view = editorView ?? undefined; editorView = null; }
     if (e.type === 'goal' || e.type === 'restart' || e.type === 'recover' || e.type === 'end') designChanged = true;
   }
-  if (designChanged) available = runner.available();
+  if (designChanged) cacheAvailable();
+  if (designChanged || events.some((e) => e.type === 'done')) edBase = null; // a new reached pose for the editor
   countGoals(events);
   if (ended()) playing = false;
-  sendFrame({ cut, events: events.map(({ type, node, reason }) => ({ type, node, reason })) });
+  sendFrame({ cut, events: shownEvents(events, running), ...(view ? { view } : {}) });
   return hold;
 }
 
@@ -362,14 +477,26 @@ self.onmessage = async (e) => {
     } else if (msg.type === 'mode') {
       mode = msg.mode; // before the first runner exists (still loading) it is only remembered for it
       if (!runner) return;
+      const leaving = runner.mode === 'editor' && mode !== 'editor';
       runner.setMode(mode); // an idle runner switched to random draws its node at the next step
-      // Random chain forgets a Manual pick, as the page does (main.js wantedNext): the runner's random draw never
-      // reads `queued`, so a kept pick would start by itself after the next switch to Manual (review r9 round 5).
-      if (mode === 'random') runner.queued = null;
+      edBase = null;
+      editorView = null;
+      // Random chain and Set goal forget a Manual pick, as the page does (main.js wantedNext): neither reads `queued`,
+      // so a kept pick would start by itself after the next switch to Manual (review r9 round 5; editor review S3).
+      if (mode === 'random' || mode === 'editor') runner.queued = runner.queuedFrom = null;
+      cacheAvailable();
+      sentGoal = undefined; // the runner's goal and ghost again (the editor showed its own preview)
+      if (leaving && runner.phase !== 'ended' && !available.length) { // leaving Set goal with no task offered
+        startRun('reset', await settle());
+      } else if (!playing && runner.phase !== 'ended') sendFrame();
       post({ type: 'chain', chain: chainState() });
+    } else if (msg.type === 'editor' || msg.type === 'custom') {
+      if (!runner) return;
+      editorMessage(msg);
     } else if (msg.type === 'queue') {
       if (!runner) return;
-      runner.queue(msg.node);
+      const node = route(msg.node, runner.available()); // the clicked node or its first buildable subset
+      if (node !== null) runner.queue(node, node === msg.node ? null : msg.node);
       post({ type: 'chain', chain: chainState() });
     }
   } catch (err) {
