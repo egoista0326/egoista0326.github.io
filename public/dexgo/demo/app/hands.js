@@ -15,6 +15,12 @@
 //          1350, without it). Sharpa 600: framed by its parts' boxes (a goal hand far from the hand needs a wider
 //          view), at 1350 the hand or goal crossed the view's edge in 17-43 % of 0.1 s samples, at 600 in 0.7-1.8 %
 //          (seeds 47 and 7, 40 s each, 800 x 474, 350 x 622, 390 x 844, 1440 x 900; README "Hand choice").
+//   editorWristYDeg (optional) the Set goal editor's bound (deg) on the wrist y joint (app/editor.js Editor): MANO 75
+//          (its y joint turns the hand about the vertical; steps within 15 deg of the 90 deg lock 81.5 % with 17 drops,
+//          99.5 % elsewhere); without it no y-joint guard (Sharpa, owner 2026-11-23: its y joint is the tilt, harmless).
+//   editorEndMarginMm (optional) the Set goal Position slider's trim (mm) at an enclosure's thumb-side rod end (app/editor.js
+//          Editor.limitsA): Sharpa 10 (owner 2026-11-23: the thumb-side pinch is always offered; its records reach the
+//          slider's end there); without it 0 (MANO: its slider ends already sit 8-11 mm from that pinch).
 // The worker loads a hand's policy, objects, control and world facts from its root only when that hand is chosen, and
 // the page fetches its object list and render meshes then too (nothing of Sharpa is requested before).
 
@@ -23,7 +29,8 @@
  * @param {object} json the parsed file
  * @param {string} assetsUrl absolute URL of assets/ (ending in '/')
  * @returns {Array<{id: string, label: string, root: string, rootUrl: string, look: 'colliders' | 'visual',
- *   visualUrl: string | null}>} in tab order (the first is the default)
+ *   visualUrl: string | null, minScale: number | null, editorWristYDeg: number | null,
+ *   editorEndMarginMm: number | null}>} in tab order (the first is the default)
  */
 export function resolveHands(json, assetsUrl) {
   if (json?.format !== 'hands-v1' || !Array.isArray(json.hands) || !json.hands.length) {
@@ -38,7 +45,8 @@ export function resolveHands(json, assetsUrl) {
     }
     const root = h.root.endsWith('/') ? h.root : `${h.root}/`;
     return { id: h.id, label: h.label, root, rootUrl: new URL(root, assetsUrl).href, look: h.look,
-      visualUrl: h.look === 'visual' ? new URL(h.visual, assetsUrl).href : null, minScale: h.minScale ?? null };
+      visualUrl: h.look === 'visual' ? new URL(h.visual, assetsUrl).href : null, minScale: h.minScale ?? null,
+      editorWristYDeg: h.editorWristYDeg ?? null, editorEndMarginMm: h.editorEndMarginMm ?? null };
   });
 }
 

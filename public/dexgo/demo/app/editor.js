@@ -1,12 +1,18 @@
 // Hands-on editor (owner 2026-11-22/23): the reader sets ONE goal RELATIVE to the current reached pose (the measured
 // wrist when the previous goal ended; sliders start at zero after each goal, so turns and travel add up over goals):
-// a grasp type, a position along the rod (enclosure targets only), a roll, a move (x / y within a 25 cm radius, along
-// the view's screen right and away from the viewer (moveAxes, the page's camera); height +-15 cm) and a wrist rotation
-// (turn about the vertical, tilt about the hand's side axis, twist about the forearm, +-90 deg each, total <= 120 deg
-// per goal; with a grasp switch <= 60 deg; owner 2026-11-23: no palm rule, palm-down switches are accepted),
-// limits from editor_feasibility/relative_sweep/RESULTS.md section 6 (lead 2026-11-23). Absolute guards against the
-// fixed hand root (nearest Euler branch, as the controller): each wrist hinge within +-300 deg, wrist y joint <= 75 deg,
-// object goal within +-1.5 m of home (display bound; no policy workspace box). Every slider is clamped on its own
+// a grasp type, a position along the rod (enclosure targets only), a roll, a move (x / y along the view's screen right
+// and away from the viewer (moveAxes, the page's camera), height; the 3-D move length <= 80 cm, each slider clamped on
+// its own so the length stays within it) and a wrist rotation (turn about the vertical, tilt about the hand's side
+// axis, twist about the forearm, +-150 deg each, total <= 150 deg per goal for keep goals, <= 90 deg with a grasp
+// switch; owner 2026-11-23: no palm rule, palm-down switches are accepted; a switch is never refused for the slider
+// values, its goal clamps them to the nearest it allows, Manual goal UX), limits from
+// editor_feasibility/far_sweep/RESULTS.md section 1 (owner 2026-11-23, far_sweep adopted; the position errors the
+// actor reads saturate at 0.30 m, so a far goal reads as a constant-speed approach). Display floor (owner 2026-11-23):
+// the object goal never below the object's height at the chain's start minus 15 cm (the Height slider is clamped
+// there, visibly; Editor.startHeight). Absolute guards against the
+// fixed hand root (nearest Euler branch, as the controller): each wrist hinge within +-300 deg, the wrist y joint within
+// the hand's own guard when it has one (assets/hands.json editorWristYDeg: MANO 75 deg, its turn about the vertical;
+// Sharpa none, owner 2026-11-23: its y joint is the tilt, measured harmless), object goal within +-1.5 m of home (display bound; no policy workspace box). Every slider is clamped on its own
 // (Editor.limits; no coupled pull-back).
 // No snapping (owner 2026-11-23, Set goal MUST): the rods are regular (uniform cross-section), so a grasp rolled about
 // the rod's long axis, or an enclosure slid along it, stays a valid grasp. The goal relation is a base relation (Keep:
@@ -16,9 +22,13 @@
 // flats; editor_feasibility/exact_roll). Pure functions over a Generator (no DOM, no draw).
 //
 // Names (RESULTS.md section 2): E_n / E_r enclosures (rod +Y at the pinky / thumb side), T_b / T_s pinches at the rod's
-// +Y / -Y end. a (m): a record's fingertip-cluster centre on the rod's own +Y (table field a). Roll: the turn about the
+// +Y / -Y end (the page's chips name them by the rod's +Y: app/grasp_labels.js). Grasp rules (owner 2026-11-23): a
+// reversal (same type, other end) is never offered; every other type's family is, the thumb-side pinch included (no
+// offset gate); instead an enclosure's Position slider is trimmed by the hand's end margin (hands.json
+// editorEndMarginMm, Sharpa 10 mm) at the rod end of its thumb-side pinch.
+// a (m): a record's fingertip-cluster centre on the rod's own +Y (table field a). Roll: the turn about the
 // rod's +Y from the start record to a record, after tilting the start's rod axis onto the record's (editor_lib.roll_tilt;
-// the tables' roll sign). Offset of a switch: depth of the enclosure's cluster from the pinched end minus the pinch's.
+// the tables' roll sign).
 import { add3, matmul, matmulT, matTmul, mulVec, nearestEulerXyzFromMatrix, rotationAngle } from '../engine/math.js';
 import { rot } from '../engine/chain.js';
 
@@ -26,21 +36,21 @@ const RAD = Math.PI / 180;
 export const LIMITS = Object.freeze({
   A_MM: Object.freeze([-50, 55]), // position slider (enclosure targets), mm of the cluster centre
   ROLL_DEG: 90, // roll slider
-  // per goal, relative to the reached wrist (relative_sweep/RESULTS.md section 6, lead 2026-11-23)
-  MOVE_R_M: 0.25, Z_M: 0.15, ROT_DEG: 90, // move radius in x / y, height; turn / tilt / twist each
-  TOTAL_DEG: 120, // the total wrist turn of one goal (trained)
-  SWITCH_TOTAL_DEG: 60, // with a grasp switch: the total turn (owner 2026-11-23: no palm-past-sideways rule)
+  // per goal, relative to the reached wrist (far_sweep/RESULTS.md section 1, owner 2026-11-23)
+  MOVE_M: 0.80, // the 3-D wrist move length |(x, y, z)| of one goal, every goal (keep or switch)
+  XY_M: 0.80, Z_M: 0.50, ROT_DEG: 150, // slider spans: x / y each, height; turn / tilt / twist each
+  TOTAL_DEG: 150, // the total wrist turn of one keep goal (far_sweep: keep goals 120-150 deg 94-100 %)
+  SWITCH_TOTAL_DEG: 90, // with a grasp switch: the total turn (owner 2026-11-23: 90 deg; no palm-past-sideways rule)
+  FLOOR_M: 0.15, // display floor: the object goal at least the chain start's object height minus this (m)
   // absolute, against the fixed hand root
   HINGE_DEG: 300, // each wrist hinge (nearest Euler branch) within +-300 deg of the root
-  PITCH_DEG: 75, // wrist y joint on the controller's nearest Euler branch (the trained max_wrist_pitch_deg; _rotOk)
   DISPLAY_M: 1.5, // object goal within +-1.5 m of home per world axis (scene / camera bound; no policy box)
-  THUMB_OFFSET_M: 0.05, // thumb-side pinch only beyond this offset
   SIGMA_A_M: 0.01, SIGMA_ROLL: 10 * RAD, SAME_TILT: 20 * RAD, // base-record scales (bench rule B), same-type tilt
 });
 /** The wrist keys of a setting (slider units: x / y / z mm, x / y along the base's move axes (moveAxes; default the
  *  world axes), z world up; turn / tilt / twist deg) and their spans. */
 export const WRIST_KEYS = Object.freeze(['x', 'y', 'z', 'turn', 'tilt', 'twist']);
-export const SPAN = Object.freeze({ x: 1000 * LIMITS.MOVE_R_M, y: 1000 * LIMITS.MOVE_R_M, z: 1000 * LIMITS.Z_M,
+export const SPAN = Object.freeze({ x: 1000 * LIMITS.XY_M, y: 1000 * LIMITS.XY_M, z: 1000 * LIMITS.Z_M,
   turn: LIMITS.ROT_DEG, tilt: LIMITS.ROT_DEG, twist: LIMITS.ROT_DEG });
 const AXES = ['x', 'y', 'z'], ROT_KEYS = ['turn', 'tilt', 'twist'];
 const clampTo = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -67,12 +77,9 @@ export const ENCLOSURES = ['E_n', 'E_r'];
 export const PINCHES = ['T_b', 'T_s'];
 /** The reversed family of the same type: never offered (no trained goal holds it). */
 export const REVERSAL = Object.freeze({ E_n: 'E_r', E_r: 'E_n', T_b: 'T_s', T_s: 'T_b' });
-/** The thumb-side pinch of an enclosure (offered only beyond LIMITS.THUMB_OFFSET_M). */
+/** The thumb-side pinch of an enclosure: at the rod end that the enclosure's thumb side faces (E_n: -Y, E_r: +Y). */
 export const THUMB_SIDE = Object.freeze({ E_n: 'T_s', E_r: 'T_b' });
 const isEnc = (f) => f === 'E_n' || f === 'E_r';
-
-/** Switch offset (m) of enclosure cluster aE and pinch cluster aT of pinch family t (the ends cancel). */
-export const switchOffset = (aE, aT, t) => (t === 'T_b' ? aT - aE : aE - aT);
 
 /** Roll (table sign, rad; NaN when the axes are > 150 deg apart) and tilt (rad) from rotation cRi (9) to each record
  *  of cRk (9 n, row-major): editor_lib.roll_tilt with Editor._roll_tilt's sign. */
@@ -104,9 +111,16 @@ const median = (arr) => {
 export class Editor {
   /** @param {object} gen the runner's Generator (its table must ship a; read only)
    *  @param {{fwd: number[], lat: number[]}|null} axes the hand's forward / lateral unit axes in the wrist frame
-   *    (handAxes; the worker measures them at q = 0); null: a stand-in pair orthogonal to the palm normal (tests) */
-  constructor(gen, axes = null) {
+   *    (handAxes; the worker measures them at q = 0); null: a stand-in pair orthogonal to the palm normal (tests)
+   *  @param {{wristYDeg?: number|null}} hand the hand's guards: wristYDeg (deg) the wrist y joint's bound on the
+   *    controller's nearest Euler branch (assets/hands.json editorWristYDeg: MANO 75, the trained max_wrist_pitch_deg,
+   *    where y is the turn about the vertical); null: no y-joint guard (Sharpa, owner 2026-11-23);
+   *    endMarginMm (mm, >= 0) the Position slider's trim at an enclosure's thumb-side end (limitsA; hands.json
+   *    editorEndMarginMm: Sharpa 10, owner 2026-11-23; none 0) */
+  constructor(gen, axes = null, { wristYDeg = null, endMarginMm = null } = {}) {
     this.gen = gen;
+    this.wristYDeg = wristYDeg;
+    this.endMarginM = (endMarginMm ?? 0) / 1000;
     const h = gen.homeR;
     this.palmN = [h[6], h[7], h[8]]; // palm normal in the wrist frame: homeR^T e_z (palm up at home)
     ({ fwd: this.fwd, lat: this.lat } = axes ?? handAxes([h[0], h[1], h[2]], h));
@@ -120,24 +134,21 @@ export class Editor {
     }
   }
 
-  /** Position slider limits (m) of enclosure family f: LIMITS.A_MM within the family's record range. */
+  /** Position slider limits (m) of enclosure family f: LIMITS.A_MM within the family's record range, trimmed by the
+   *  hand's end margin at the end of f's thumb-side pinch (owner 2026-11-23: E_n's lower end, toward -Y where T_s
+   *  sits; E_r's upper end, toward +Y where T_b sits), so the hand does not hold the rod right at that end. */
   limitsA(f) {
-    return [Math.max(LIMITS.A_MM[0] / 1000, this.rangeA[f][0]), Math.min(LIMITS.A_MM[1] / 1000, this.rangeA[f][1])];
+    const lo = Math.max(LIMITS.A_MM[0] / 1000, this.rangeA[f][0]), hi = Math.min(LIMITS.A_MM[1] / 1000, this.rangeA[f][1]);
+    const m = this.endMarginM;
+    return THUMB_SIDE[f] === 'T_s' ? [lo + m, hi] : THUMB_SIDE[f] === 'T_b' ? [lo, hi - m] : [lo, hi];
   }
 
-  /** [{family, enabled}] of the grasp types offered from (f0, i0) with the current cluster position a0 (m; default the
-   *  record's): keep (family f0) first, then the other type's families of this generator. The reversal is never
-   *  listed; the thumb-side pinch is disabled unless the offset to that family's median pinch exceeds
-   *  LIMITS.THUMB_OFFSET_M. */
-  options(f0, i0, a0 = this.fam[f0].a[i0]) {
-    const out = [{ family: f0, enabled: true, keep: true }];
+  /** [{family, enabled, keep}] of the grasp types offered from family f0: keep (f0) first, then the other type's
+   *  families of this generator, all enabled (owner 2026-11-23: the thumb-side pinch always; offered() keeps a switch
+   *  enabled whenever its base record exists). The reversal is never listed. */
+  options(f0) {
     const others = (isEnc(f0) ? PINCHES : ENCLOSURES).filter((f) => this.gen.fams.includes(f));
-    for (const f of others) {
-      let enabled = true;
-      if (THUMB_SIDE[f0] === f) enabled = switchOffset(a0, this.medianA[f], f) > LIMITS.THUMB_OFFSET_M;
-      out.push({ family: f, enabled, keep: false });
-    }
-    return out;
+    return [{ family: f0, enabled: true, keep: true }, ...others.map((f) => ({ family: f, enabled: true, keep: false }))];
   }
 
   /** a* (m), the goal's cluster position. Enclosure targets: the slider aMm (mm) clamped to limitsA(f); an untouched
@@ -152,20 +163,17 @@ export class Editor {
   }
 
   /** The base record of a grasp change to family f from (f0, i0) with the current relation rotation cR0 (9; default
-   *  the record's) and cluster position a0 (m): the record of f nearest (a*, roll 0), i.e. nearest the current relation
+   *  the record's): the record of f nearest (a*, roll 0), i.e. nearest the current relation
    *  (editor_run.Editor.record's score: ((a - a*) / 10 mm)^2 + ((roll - 0) / 10 deg)^2, first minimum; same-type
-   *  targets with tilt <= 20 deg when any); with thumbRule the thumb-side pinch only among records beyond the offset
-   *  limit. Deterministic (no draw). -> {record, a, roll (from the current relation, table sign), tilt} or null */
-  baseRecord(f0, i0, f, aStar, { thumbRule = true, cR0 = null, a0 = null } = {}) {
+   *  targets with tilt <= 20 deg when any). Deterministic (no draw). -> {record, a, roll (from the current relation, table sign), tilt} or null */
+  baseRecord(f0, i0, f, aStar, { cR0 = null } = {}) {
     if (REVERSAL[f0] === f) throw new Error(`reversal ${f0} -> ${f}`);
     const t = this.fam[f], s0 = this.fam[f0];
     const { roll, tilt } = rollTilt(cR0 ?? s0.cR.subarray(9 * i0, 9 * i0 + 9), t.cR, t.n);
     const score = new Float64Array(t.n);
-    const limitThumb = thumbRule && THUMB_SIDE[f0] === f, aE = a0 ?? s0.a[i0];
     for (let k = 0; k < t.n; k++) {
       const v = ((t.a[k] - aStar) / LIMITS.SIGMA_A_M) ** 2 + (roll[k] / LIMITS.SIGMA_ROLL) ** 2;
-      score[k] = Number.isFinite(v) && !(limitThumb && !(switchOffset(aE, t.a[k], f) > LIMITS.THUMB_OFFSET_M))
-        ? v : Infinity;
+      score[k] = Number.isFinite(v) ? v : Infinity;
     }
     if (isEnc(f0) === isEnc(f)) {
       let any = false;
@@ -197,6 +205,13 @@ export class Editor {
       base.p[2] + (w.z ?? 0) / 1000);
   }
 
+  /** The object's height (m, world) at a chain start with record i of family f: the hand at home (wrist joints 0,
+   *  homeP / homeR) holding that record, homeP_z + (homeR cP)_z (engine/chain.js startState). */
+  startHeight(f, i) {
+    const cP = this.fam[f].cP.subarray(3 * i, 3 * i + 3), h = this.gen.homeR;
+    return this.gen.homeP[2] + h[6] * cP[0] + h[7] * cP[1] + h[8] * cP[2];
+  }
+
   /** Palm tilt (deg) of wrist rotation r (9, world): the palm normal's angle from world up (0 palm up as at home,
    *  90 sideways, 180 palm down). */
   palmDeg(r) {
@@ -212,20 +227,24 @@ export class Editor {
   }
 
   /** The guard context of the reached base {p, R, q3 (rad, the current wrist joints; default: the branch nearest 0),
-   *  move} for relation cP and a switch or not: each absolute limit relaxed to the base's own value when the base
-   *  already exceeds it (each hinge to its own joint's value; so the zero setting always passes). */
+   *  move, startZ (m, world: the object's height at the chain's start, startHeight; default the height of relation
+   *  cP held at home)} for relation cP and a switch or not: each absolute limit relaxed to the base's own value when
+   *  the base already exceeds it (each hinge to its own joint's value, the floor to the current object height; so the
+   *  zero setting always passes). */
   _ctx(base, cP, sw) {
     const q3 = base.q3 ?? nearestEulerXyzFromMatrix(matTmul(this.gen.rootR, base.R), [0, 0, 0]);
     const g = this.gen, obj0 = add3(base.p, mulVec(base.R, cP));
     return { base, q3, cP, sw,
       hinge: Array.from(q3, (v) => Math.max(LIMITS.HINGE_DEG, Math.abs(v) / RAD) + 1e-6),
-      pitch: Math.max(LIMITS.PITCH_DEG, Math.abs(q3[1]) / RAD) + 1e-6,
-      bound: [0, 1, 2].map((i) => Math.max(LIMITS.DISPLAY_M, Math.abs(obj0[i] - g.homeP[i])) + 1e-9) };
+      pitch: this.wristYDeg == null ? Infinity : Math.max(this.wristYDeg, Math.abs(q3[1]) / RAD) + 1e-6,
+      bound: [0, 1, 2].map((i) => Math.max(LIMITS.DISPLAY_M, Math.abs(obj0[i] - g.homeP[i])) + 1e-9),
+      floor: Math.min((base.startZ ?? g.homeP[2] + mulVec(g.homeR, cP)[2]) - LIMITS.FLOOR_M, obj0[2]) - 1e-9 };
   }
 
   /** Rotation checks of rotation r (the goal's) in guard context c: total turn of the goal (<= TOTAL_DEG; a switch
    *  SWITCH_TOTAL_DEG), each wrist hinge within +-HINGE_DEG (c.hinge, per joint)
-   *  and the wrist y joint within +-PITCH_DEG, both on the controller's nearest branch. (The branch-free
+   *  and the wrist y joint within +-wristYDeg (c.pitch; none without the hand's guard), both on the controller's
+   *  nearest branch. (The branch-free
    *  |asin (R_root^T r)[0, 2]| of the trained sampler passes again beyond 90 + 15 deg, where the same rotation reads
    *  as y = 180 - y with x / z flipped;
    *  the controller instead follows y past 90: MANO's turn about the vertical, measured drops near the lock.) */
@@ -236,13 +255,15 @@ export class Editor {
     return Math.abs(e[1]) <= c.pitch && e.every((v, i) => Math.abs(v) <= c.hinge[i]);
   }
 
-  /** Position checks of setting w with goal rotation r: the move radius in x / y, the height, the object goal within
-   *  the display bound (per world axis, from home). */
+  /** Position checks of setting w with goal rotation r: the 3-D move length (<= MOVE_M), the slider spans, the object
+   *  goal within the display bound (per world axis, from home) and not below the display floor (c.floor). */
   _posOk(w, r, c) {
-    if (Math.hypot(w.x, w.y) > LIMITS.MOVE_R_M * 1000 + 1e-9 || Math.abs(w.z) > LIMITS.Z_M * 1000 + 1e-9) return false;
+    const x = w.x ?? 0, y = w.y ?? 0, z = w.z ?? 0;
+    if (Math.hypot(x, y, z) > LIMITS.MOVE_M * 1000 + 1e-9) return false;
+    if (Math.max(Math.abs(x), Math.abs(y)) > SPAN.x + 1e-9 || Math.abs(z) > SPAN.z + 1e-9) return false;
     const rc = mulVec(r, c.cP), p = this._moved(c.base, w), g = this.gen;
     for (let i = 0; i < 3; i++) if (Math.abs(p[i] + rc[i] - g.homeP[i]) > c.bound[i]) return false;
-    return true;
+    return p[2] + rc[2] >= c.floor;
   }
 
   /** Whether wrist setting w passes every guard in context c. */
@@ -276,19 +297,30 @@ export class Editor {
     return [lo, hi];
   }
 
-  /** The grasp types offered from design d (goal()) for setting {aMm, rollDeg} with the wrist setting w (slider
-   *  units; the applied one): options() rules first; a grasp switch only when w passes the switch rule (total turn
-   *  <= SWITCH_TOTAL_DEG) and the guards with that switch's own goal relation (its base record, roll and slide:
-   *  _target). Any palm tilt (owner 2026-11-23: the palm-past-sideways rule is removed).
-   *  base: the reached wrist {p, R, q3, move}. -> [{family, enabled, keep}] */
-  offered(d, setting, base, w = setting.wrist ?? {}) {
-    const a0 = d.a ?? this.fam[d.family].a[d.record];
-    const wz = Object.fromEntries(WRIST_KEYS.map((k) => [k, w[k] ?? 0]));
-    return this.options(d.family, d.record, a0).map((o) => {
+  /** The grasp types offered from design d (goal()) for setting {aMm, rollDeg}: options() rules only (a reversal never,
+   *  the thumb-side pinch always), a switch enabled whenever its goal relation exists (_target: a base record of the
+   *  target family). Never greyed by the wrist sliders (owner 2026-11-23, Manual goal UX): goal() clamps a setting past
+   *  what the switch allows (total turn <= SWITCH_TOTAL_DEG, joint guards, move cap, height floor) to the nearest
+   *  admissible one. Any palm tilt (owner 2026-11-23: the palm-past-sideways rule is removed). -> [{family, enabled,
+   *  keep}] */
+  offered(d, setting) {
+    return this.options(d.family).map((o) => {
       if (o.keep || !o.enabled) return o;
-      const t = this._target(d, { ...setting, family: o.family });
-      return { ...o, enabled: !!t && this.ok(wz, this._ctx(base, t.rel.cP, true)) };
+      return { ...o, enabled: !!this._target(d, { ...setting, family: o.family }) };
     });
+  }
+
+  /** The largest uniform shrink of setting w toward 0 (keys: the scaled keys) that passes test: for n = N .. 0 (N the
+   *  largest |w[k]| of those keys, whole slider units), each key truncated to w[k] n / N, so the largest one is exactly
+   *  n and the direction of the change is kept. The zero setting is the last candidate. -> the setting */
+  _shrink(w, keys, test) {
+    const N = Math.max(0, ...keys.map((k) => Math.round(Math.abs(w[k]))));
+    for (let n = N; n > 0; n--) {
+      const t = { ...w };
+      for (const k of keys) t[k] = Math.trunc((w[k] * n) / N);
+      if (test(t)) return t;
+    }
+    return { ...w, ...Object.fromEntries(keys.map((k) => [k, 0])) };
   }
 
   /** The goal relation of setting {family f, aMm, rollDeg} from design d (goal()): the base relation (Keep: the
@@ -304,7 +336,7 @@ export class Editor {
     const cP0 = d.cP ?? s0.cP.subarray(3 * d.record, 3 * d.record + 3);
     if (!sw) rb = { record: d.record, cP: cP0, cR: cR0, a: a0, roll: 0 };
     else {
-      const b = this.baseRecord(d.family, d.record, f, aStar, { cR0, a0 });
+      const b = this.baseRecord(d.family, d.record, f, aStar, { cR0 });
       if (!b) return null;
       const t = this.fam[f];
       rb = { ...b, cP: t.cP.subarray(3 * b.record, 3 * b.record + 3), cR: t.cR.subarray(9 * b.record, 9 * b.record + 9) };
@@ -321,17 +353,18 @@ export class Editor {
    *  the current relation is exactly the slider's (clamped to +-ROLL_DEG): the base is rolled by rollDeg minus its own
    *  roll; an enclosure target is slid exactly to a* (aimA); a pinch is not slid. The fingers q* (and their PD target)
    *  are the base record's. Each wrist key is clamped on its own to its slider span, then to its interval of
-   *  limits() (the others at their values). -> {family, record, cP, cR, a, roll, extraRoll, slide, hP, hR, wrist (the
+   *  limits() (the others at their values); a switch's rotation past SWITCH_TOTAL_DEG is first scaled down uniformly
+   *  to it, and a switch setting the per-axis clamp leaves failing is shrunk uniformly until it passes (ok always
+   *  true for a switch: a chip click clamps the sliders, owner 2026-11-23). -> {family, record, cP, cR, a, roll, extraRoll, slide, hP, hR, wrist (the
    *  applied setting), limits, aLimits (m: the Position slider's limitsA of an enclosure target, else null), ok (every
    *  guard passes), totalDeg, palmDeg, jointsDeg, noop (Keep with no roll, no slide and every wrist key 0: nothing to
    *  run)} or null (a disabled or unknown grasp type). */
   goal(d, setting, base = { p: d.hP, R: d.hR }) {
-    const f = setting.family, a0 = d.a ?? this.fam[d.family].a[d.record];
-    const sw = f !== d.family;
+    const f = setting.family, sw = f !== d.family;
     const req = Object.fromEntries(WRIST_KEYS.map((k) => [k, clampTo(setting.wrist?.[k] ?? 0, -SPAN[k], SPAN[k])]));
-    // the grasp rules gate a switch; its total-turn cap is applied by the clamp below (a request past it is clamped,
-    // never refused)
-    const opt = this.options(d.family, d.record, a0).find((o) => o.family === f);
+    // the grasp rules gate a switch (offered); its caps are applied by the clamp below (a request past them is
+    // clamped, never refused)
+    const opt = this.options(d.family).find((o) => o.family === f);
     if (!opt || !opt.enabled) return null;
     const t = this._target(d, setting);
     if (!t) return null;
@@ -339,10 +372,23 @@ export class Editor {
     // per-axis clamp, one key at a time as the page's sliders (no coupled pull-back): the rotations against the
     // rotation guards, then the moves against the clamped rotations, then the rotations again with the display bound
     // of the clamped moves; an admissible request passes unchanged. The returned limits are the applied setting's.
-    const c = this._ctx(base, rel.cP, sw), w = { ...req };
+    const c = this._ctx(base, rel.cP, sw);
+    let w = { ...req };
+    // a switch (owner 2026-11-23, Manual goal UX: its chip is never greyed by the sliders): a rotation past the
+    // switch's total-turn cap is first scaled down uniformly to it (turn / tilt / twist in proportion, nearest along
+    // the asked direction), then clamped per axis as any setting
+    const capped = (t) => rotationAngle(matmulT(this.pose(base, t).hR, base.R)) / RAD <= LIMITS.SWITCH_TOTAL_DEG + 1e-6;
+    if (sw && !capped(w)) w = this._shrink(w, ROT_KEYS, capped);
+    const asked = { ...w };
     for (const k of ROT_KEYS) w[k] = clampTo(w[k], ...this.interval(k, w, c, true));
     for (const k of AXES) w[k] = clampTo(w[k], ...this.interval(k, w, c));
     for (const k of ROT_KEYS) w[k] = clampTo(w[k], ...this.interval(k, w, c));
+    // a switch: the moves once more toward the asked values with the final rotations (a move the rotations' full
+    // guards, e.g. the height floor of the new relation, blocked in the move pass is not lost)
+    if (sw) for (const k of AXES) w[k] = clampTo(asked[k], ...this.interval(k, { ...w, [k]: asked[k] }, c));
+    // never a dead end for a switch: a setting the per-axis clamp leaves failing (non-convex guard sets) is shrunk
+    // uniformly toward the reached pose (the zero setting always passes, _ctx)
+    if (sw && !this.ok(w, c)) w = this._shrink(w, WRIST_KEYS, (t) => this.ok(t, c));
     const lim = this.limits(w, c);
     const { hP, hR } = this.pose(base, w);
     const noop = !sw && Math.abs(roll) < 0.5 * RAD && Math.abs(slide) < 5e-4 && WRIST_KEYS.every((k) => w[k] === 0);

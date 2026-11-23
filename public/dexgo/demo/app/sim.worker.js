@@ -88,6 +88,8 @@ let mujoco = null, policy = null, index = null, control = null, facts = null, rn
 let available = [], shown = []; // runner.available() of the current design (buildable); offered(available) (the page's)
 let scene = 'chain', world = null, episode = null, runner = null, objectId = null, mode = 'random';
 let handId = null; // the loaded hand (assets/hands.json id)
+let wristYDeg = null; // its Set goal wrist y-joint guard (hands.json editorWristYDeg; null: none)
+let endMarginMm = null; // its Set goal Position trim at the thumb-side end (hands.json editorEndMarginMm; null: 0)
 const hands = new Map(); // hand id -> {policy, index, control, facts}, loaded the first time the hand is chosen
 let opening = 0, goalsDrawn = 0; // goals the seed is kept for (0: re-seeded); goals installed since init
 let playing = false, timer = null, sentGoal = undefined, slowStepMs = 0;
@@ -118,7 +120,7 @@ async function init(msg) {
     [mujoco, policy] = await Promise.all([loadMujoco({ printErr }), MlpPolicy.load(fetchLoader(ASSETS))]);
     await loadMarker(msg.model);
   } else {
-    [mujoco] = await Promise.all([loadMujoco({ printErr }), useHand(msg.hand, msg.root)]);
+    [mujoco] = await Promise.all([loadMujoco({ printErr }), useHand(msg.hand, msg.root, msg.wristYDeg, msg.endMarginMm)]);
     const seeded = Number.isFinite(msg.seed);
     rng = reseedableRng(seeded ? msg.seed : cryptoSeed());
     opening = seeded ? (msg.opening ?? OPENING_GOALS) : 0;
@@ -128,8 +130,9 @@ async function init(msg) {
 }
 
 /** Make a hand current: its policy, objects index (its settings.timeout_steps checked here), control block and world
- *  facts (fetched once, from its root). */
-async function useHand(id, root) {
+ *  facts (fetched once, from its root), and its editor guard yDeg (the page's hands.json editorWristYDeg; null: none)
+ *  and Position trim margin (mm; hands.json editorEndMarginMm; null: 0). */
+async function useHand(id, root, yDeg = null, margin = null) {
   if (!hands.has(id)) {
     const base = new URL(root, ASSETS).href, objects = fetchLoader(new URL('objects/', base).href);
     const [mlp, idx] = await Promise.all([MlpPolicy.load(fetchLoader(base)), objects.json('index.json')]);
@@ -142,6 +145,8 @@ async function useHand(id, root) {
   }
   ({ policy, index, control, facts } = hands.get(id));
   handId = id;
+  wristYDeg = yDeg ?? null;
+  endMarginMm = margin ?? null;
 }
 
 /** End the seeded opening: the stream continues from a crypto seed (after OPENING_GOALS goals, a Reset or a switch). */
@@ -337,7 +342,7 @@ function measuredHandAxes() {
 
 /** Editor mode: every goal is set RELATIVE to the reached wrist (the measured wrist link pose and the current wrist
  *  joints, world.state()), from the runner's current design (grasp, relation). The reply carries the grasp types
- *  offered for the page's setting (Editor.offered: the switch rules), the per-axis limits of every wrist slider
+ *  offered (Editor.offered: the grasp rules; never greyed by the sliders, goal() clamps a switch), the per-axis limits of every wrist slider
  *  (Editor.limits, whole mm / deg, each with the others at their values) and the exact goal of the setting
  *  (Editor.goal, no snapping) with its ghost (a preview; 'custom' also runs it as ONE goal, ChainRunner.runCustom,
  *  unless it is a no-op or a guard fails). While a goal runs (any mode's), the reply carries that goal's design with
@@ -348,11 +353,14 @@ function editorMessage(msg) {
     post({ type: 'editor', seq: msg.seq ?? 0, design: null, phase: runner.phase });
     return;
   }
-  if (editor?.gen !== runner.gen) editor = new Editor(runner.gen, measuredHandAxes());
+  if (editor?.gen !== runner.gen) editor = new Editor(runner.gen, measuredHandAxes(), { wristYDeg, endMarginMm });
   const running = runner.phase === 'reach' || runner.phase === 'dwell';
   if (running) edBase = null;
-  else if (!edBase) { const s = world.state(); edBase = { p: s.wristP, R: s.wristR, q3: s.q.slice(3, 6) }; }
-  const g = editor.gen, reached = edBase ?? (() => { const s = world.state(); return { p: s.wristP, R: s.wristR, q3: s.q.slice(3, 6) }; })();
+  // startZ: the object's height at the chain's start (the display floor, editor.js LIMITS.FLOOR_M)
+  const measured = () => { const s = world.state(); return { p: s.wristP, R: s.wristR, q3: s.q.slice(3, 6),
+    startZ: runner.startFamily ? editor.startHeight(runner.startFamily, runner.startRecord) : undefined }; };
+  if (!running && !edBase) edBase = measured();
+  const g = editor.gen, reached = edBase ?? measured();
   const setting = msg.setting ?? { family: d.family, aMm: null, rollDeg: 0, wrist: {} };
   // the move axes of the page's view (review S2): x / y along its screen right and away from the viewer
   const away = setting.awayDeg ?? msg.awayDeg;
@@ -362,7 +370,7 @@ function editorMessage(msg) {
   const design = { family: d.family, record: d.record, aMm: 1000 * d.a, palmDeg: editor.palmDeg(base.R),
     limits: goal?.limits ?? editor.limits(zero, editor._ctx(base, d.cP, false)) };
   const out = { type: 'editor', seq: msg.seq ?? 0, design, phase: runner.phase, running, custom: msg.type === 'custom',
-    options: editor.offered(d, setting, base, goal?.wrist ?? zero) };
+    options: editor.offered(d, setting) };
   const transfer = [];
   if (goal && msg.setting) {
     const full = makeGoal(goal.hP, goal.hR, goal.cP, goal.cR, g.rec(goal.family, goal.record).q);
@@ -472,7 +480,7 @@ self.onmessage = async (e) => {
       if (scene !== 'chain' || msg.hand === handId) return;
       const was = await settle();
       endOpening();
-      await useHand(msg.hand, msg.root);
+      await useHand(msg.hand, msg.root, msg.wristYDeg, msg.endMarginMm);
       await loadObject(msg.object, 'hand', was);
     } else if (msg.type === 'mode') {
       mode = msg.mode; // before the first runner exists (still loading) it is only remembered for it

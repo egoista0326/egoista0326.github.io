@@ -12,7 +12,8 @@
 //              reference q_B*; the fields the viewer ghost reads (wristP / wristR, objectP / objectR, fingerRef)
 //   node       R roll, T slide, G grasp switch (E_n <-> T_b, with er also E_r <-> T_b, with ts also E_n / E_r <->
 //              T_s), RT / RG / TG / RTG composites, L relocation; a name ending in L adds a relocation (new wrist
-//              goal near home); nodes without L keep H*
+//              goal near home; from a wrist goal outside the home region whose near sampler fails, a step back
+//              toward it: Generator.towardHome, owner bug 2026-11-23); nodes without L keep H*
 //   latch      the demo gate (15 mm / 15 deg on object goal and relation, 0.05 m/s, 1 rad/s) held 3 control steps
 //
 // Options (chain_mujoco.py "Options", 2026-11-21; all off = v2 exactly; index.json "options" per object, mapped by
@@ -78,7 +79,8 @@
 //                         decoded); facts: world_facts.json;
 //                         nodes: the allowed node set (index.json "nodes"), iterated in GENERATOR_ORDER. Methods
 //                         (Python name): rec, op (_op), roll, slide, slideRoll (slide_roll), switch, chain, inHand
-//                         (in_hand), relocation, build, nearest, candidates, remember, hasPartner (has_partner),
+//                         (in_hand), relocation, atHome (at_home), boxGap (box_gap), towardHome
+//                         (toward_home), build, nearest, candidates, remember, hasPartner (has_partner),
 //                         _first; field last = {roll, slide} ('+' | '-' | null, the sign rule's memory). A built
 //                         design is {family, record, hP, hR, info}; info as Python's dict (roll_deg, slide_m, switch,
 //                         switch_pair, switch_try, wrist_step_m, wrist_turn_deg).
@@ -534,6 +536,66 @@ export class Generator {
         return { hP: p, hR: r, info: { wrist_step_m: pyRound(step, 3), wrist_turn_deg: pyRound(turn, 1) } };
       }
     }
+    if (this.atHome(hP, hR)) return null;
+    return this.towardHome(hP, hR, cP, tries);
+  }
+
+  /** The wrist goal lies in the home region: |x|, |y| <= RELOC_XY, |z| <= RELOC_Z from home, turn <= HOME_TURN_DEG
+   *  (at_home). */
+  atHome(hP, hR) {
+    const d = sub3(hP, this.homeP);
+    return Math.abs(d[0]) <= S.RELOC_XY && Math.abs(d[1]) <= S.RELOC_XY && Math.abs(d[2]) <= S.RELOC_Z
+      && degrees(rotationAngle(matmulT(hR, this.homeR))) <= S.HOME_TURN_DEG;
+  }
+
+  /** Distance (m) of an object goal from the keyframe box, 0 inside (box_gap). */
+  boxGap(g) {
+    let s2 = 0;
+    for (let a = 0; a < 3; a++) {
+      const e = Math.max(Math.max(this.boxLow[a] - g[a], g[a] - this.boxHigh[a]), 0);
+      s2 += e * e;
+    }
+    return Math.sqrt(s2);
+  }
+
+  /** Relocation back toward the home region (owner bug 2026-11-23: after far Manual goals no L was buildable), only
+   *  when the wrist goal lies outside it and the near sampler failed (toward_home): a home-region sample (p_h, R_h)
+   *  drawn as in relocation; the wrist moves toward p_h by at most STEP_M[1] and turns toward R_h by at most
+   *  TURN_DEG[1] (the per-goal limits, so a few goals reach the region). Checks: step >= STEP_M[0], turn >=
+   *  TURN_DEG[0], object step <= MAX_OBJECT_STEP_M; pitch and box need not hold yet but must not get worse (|sin y| <=
+   *  max(sin PITCH_DEG, the current one), the object goal no farther from the keyframe box than the current one).
+   *  info.toward_home = true. */
+  towardHome(hP, hR, cP, tries = S.RELOCATION_TRIES) {
+    const rng = this.rng;
+    const g0 = add3(hP, mulVec(hR, cP));
+    const gap0 = this.boxGap(g0);
+    const sinY0 = Math.abs(matTmul(this.rootR, hR)[2]);
+    for (let t = 0; t < tries; t++) {
+      const u = [rng.uniform(-S.RELOC_XY, S.RELOC_XY), rng.uniform(-S.RELOC_XY, S.RELOC_XY),
+        rng.uniform(-S.RELOC_Z, S.RELOC_Z)];
+      const q = add3(this.homeP, u);
+      const v = sub3(q, hP);
+      const dist = norm(v);
+      const p = dist > S.STEP_M[1] ? add3(hP, v.map((x) => x * (S.STEP_M[1] / dist))) : q;
+      const step = norm(sub3(p, hP));
+      if (step < S.STEP_M[0]) continue;
+      const a = rng.normal(3);
+      const rH = matmul(rot(a, radians(rng.uniform(0, S.HOME_TURN_DEG))), this.homeR);
+      const dR = matmulT(rH, hR);
+      const theta = degrees(rotationAngle(dR));
+      if (theta > 175.0) continue; // the turn axis is ill-conditioned near a half turn: draw again
+      const r = theta > S.TURN_DEG[1]
+        ? matmul(rot([dR[7] - dR[5], dR[2] - dR[6], dR[3] - dR[1]], radians(S.TURN_DEG[1])), hR) : rH;
+      const turn = degrees(rotationAngle(matmulT(r, hR)));
+      if (turn < S.TURN_DEG[0]) continue;
+      const sinY = Math.abs(matTmul(this.rootR, r)[2]);
+      const g = add3(p, mulVec(r, cP));
+      if (sinY <= Math.max(Math.sin(radians(S.PITCH_DEG)), sinY0) && norm(sub3(g, g0)) <= S.MAX_OBJECT_STEP_M
+        && this.boxGap(g) <= gap0) {
+        return { hP: p, hR: r,
+          info: { wrist_step_m: pyRound(step, 3), wrist_turn_deg: pyRound(turn, 1), toward_home: true } };
+      }
+    }
     return null;
   }
 
@@ -555,8 +617,8 @@ export class Generator {
       hR = reloc.hR;
       Object.assign(info, reloc.info);
     }
-    const g = add3(hP, mulVec(hR, cP));
-    if (!this._inBox(g)) return null;
+    // a relocation checked its own object goal (towardHome: no farther from the box)
+    if (!node.endsWith('L') && !this._inBox(add3(hP, mulVec(hR, cP)))) return null;
     return { family: f2, record: i2, hP: Float64Array.from(hP), hR: Float64Array.from(hR), info };
   }
 

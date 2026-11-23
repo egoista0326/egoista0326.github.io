@@ -50,6 +50,8 @@ import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { fetchLoader } from '../engine/loader.js';
 import { AxesOverlay } from './axes_overlay.js';
 import { SKIN } from './config.js';
+import { deadbandAim, goalViewDir } from './follow.js';
+import { graspRows } from './grasp_labels.js';
 import { ROWS, TaskGraph, taskWords } from './graph.js';
 import { decodeVisual, partOffsets, resolveHands } from './hands.js';
 
@@ -70,7 +72,41 @@ const ui = {
   colliders: $('colliders'), collidersToggle: $('colliders-toggle'), objects: $('objects'), hands: $('hands'),
   modes: [...document.querySelectorAll('[data-mode]')], code: $('task-code'), words: $('task-words'),
   goals: $('goals'), note: $('note'), graph: $('graph'), marker: $('marker-status'), announce: $('announce'),
+  modeDesc: $('mode-desc'),
 };
+// the Mode segments' names and the one-line description under them (owner 2026-11-23); ids stay random / manual /
+// editor (worker, routing, tools)
+const MODE_NAMES = { random: 'Random chain', manual: 'Selected task', editor: 'Manual goal' };
+const MODE_DESC = {
+  random: 'Tasks are picked at random, one after another.',
+  manual: 'Pick a task on the graph; its goal is randomly generated.',
+  editor: 'Set the target grasp and object pose, then press Go.',
+};
+/** Show mode as the pressed Mode segment and its description (#mode-desc, the group's aria-describedby). */
+function showMode(mode) {
+  for (const b of ui.modes) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+  if (MODE_DESC[mode]) setText(ui.modeDesc, MODE_DESC[mode]);
+  placeModeDesc();
+}
+/** The description as a callout of the pressed Mode segment: centred under it, clamped to the view column
+ *  (--desc-x from the column's left edge), its notch under the segment's centre (--tip, from its own left edge);
+ *  kept on resize with the thumbs (placeThumb) and the setup menu. */
+function placeModeDesc() {
+  const d = ui.modeDesc;
+  const on = ui.modes[0].parentElement.querySelector('.toggle[aria-pressed="true"]');
+  if (!on || !on.offsetWidth || !d.offsetWidth) return;
+  const demo = d.parentElement, cs = getComputedStyle(demo), side = document.querySelector('.side');
+  const box = d.getBoundingClientRect(), seg = on.getBoundingClientRect();
+  const left = box.left - (parseFloat(getComputedStyle(d).marginLeft) || 0);
+  const right = getComputedStyle(side).display === 'contents'
+    ? demo.getBoundingClientRect().right - parseFloat(cs.paddingRight)
+    : side.getBoundingClientRect().left - parseFloat(cs.columnGap);
+  const centre = seg.left + seg.width / 2;
+  const x = Math.max(0, Math.min(centre - box.width / 2 - left, right - left - box.width));
+  d.style.setProperty('--desc-x', `${x}px`);
+  d.style.setProperty('--tip', `${centre - left - x}px`);
+  if (!d.hasAttribute('data-placed')) requestAnimationFrame(() => d.setAttribute('data-placed', ''));
+}
 document.body.dataset.scene = SCENE;
 const LOCAL = new URL('../assets/mano_local/', import.meta.url).href;
 const ASSETS = new URL('../assets/', import.meta.url).href;
@@ -664,6 +700,11 @@ function applyPoses(alpha) {
 // or a portrait view. Chain scene: fixed per object (load, Reset), aimed at the start grasp with the measured motion
 // (CHAIN_VIEW) in view; a fresh start after a failure keeps the camera (the start grasps share the home pose).
 function snapCamera(target, distance, direction = CAMERA_DIRECTION) {
+  // a cut ends the viewer's orbit momentum (OrbitControls' damping applied it after the cut: Reset 3 deg off at
+  // Sharpa's frame rate); update() without damping spends it on the old pose, overwritten next
+  controls.enableDamping = false;
+  controls.update();
+  controls.enableDamping = true;
   controls.target.copy(target);
   camera.position.copy(target).addScaledVector(direction, distance);
   setZoomBounds(distance);
@@ -714,18 +755,27 @@ function frameChain(objP, handP) {
 const FOLLOW = { tau: 0.35, margin: 0.045, scale: [1350, 3200], extent: 0.279 }; // s, m, px/m, m
 const CAMERA_MODE = params.get('camera');
 const follow = { target: new THREE.Vector3(), distance: 1, manual: 0, applied: 0, snap: true, reserve: 0,
-  anchor: new THREE.Vector3(), anchorDistance: 0, reaim: true, heading: 0, dir: null };
+  anchor: new THREE.Vector3(), anchorDistance: 0, reaim: true, heading: 0, dir: null, drop: 0,
+  lastDir: new THREE.Vector3() };
 // Set goal camera (lead 2026-11-23, relative_sweep/RESULTS.md section 6): the once-per-goal re-aim stays; for editor
-// goals the zoom-out floor is EDITOR_VIEW.scale px per metre (the hand's own floor when lower: Sharpa 600), so the
-// largest relative goals (p95 span 0.55 m) fit; at each started editor goal the view turns about the vertical by
+// goals the zoom-out floor is EDITOR_VIEW.scale px per metre (the hand's own floor when lower: Sharpa 600) or, when
+// that is tighter, the distance at which EDITOR_VIEW.extent (m) fills the view's shorter side (owner 2026-11-23,
+// far_sweep caps: moves up to 80 cm, so spans of hand, object and goal ghost up to about 1 m fit the 800 x 474 view at
+// >= 431 px/m and the 350 px wide phone view at >= 318 px/m; the follow camera still zooms out only as far as the span
+// needs); at each started editor goal the view turns about the vertical by
 // that goal's applied Turn (the worker's frame.view.turnDeg: R* = Rz(turn) R ..., so the same side of the hand stays
 // in view after accumulated turns; review M3: a heading read from the goal rotation is undefined palm down, where it
 // swung the view by up to 128 deg on a goal with Turn 0), the viewer's orbit azimuth kept, and its elevation follows
 // the goal palm: the default 35 deg up to a sideways palm, falling linearly to EDITOR_VIEW.lowDeg at palm down (from
 // above, the back of the hand covers the rod). follow.dir: the direction the view eases to (time constant
 // FOLLOW.tau); follow.heading: the sum (deg) of the turns applied since the last cut (leaving Set goal or a fresh
-// start in it turns the view back by it).
-const EDITOR_VIEW = { scale: 800, lowDeg: 8 };
+// start in it turns the view back by it). Owner bug 2026-11-23 (the viewer's orbit snapped back on release): the turn
+// and the elevation are both RELATIVE to the view at the goal start (the viewer's orbit kept): the elevation changes by
+// the goal palm's drop (follow.drop, rad: 0 up to a sideways palm, EDITOR_VIEW.lowDeg - 35 deg palm down) minus the
+// drop applied before (it was set absolutely, so every Go reset the viewer's elevation); and a viewer's drag that
+// turns the view drops any eased turn still to go (follow.dir, followStep), which pulled the view back after the
+// release for about 3 s after a goal start or a mode switch.
+const EDITOR_VIEW = { scale: 800, extent: 1.1, lowDeg: 8 }; // px/m, m, deg
 const VIEW_ELEVATION = Math.asin(CHAIN_VIEW.direction[2] / Math.hypot(...CHAIN_VIEW.direction)); // rad (35 deg)
 const DIAG = params.has('diag'); // tools: body data-overflow = whether the span leaves the view (followStep)
 const fwDir = new THREE.Vector3();
@@ -735,14 +785,34 @@ const editorGoals = () => document.body.dataset.mode === 'editor';
 function editorCamera({ turnDeg, palmDeg }) {
   if (!following()) return;
   const base = follow.dir ?? fwDir.subVectors(camera.position, controls.target).normalize();
-  const az = Math.atan2(base.y, base.x) + THREE.MathUtils.degToRad(turnDeg);
   follow.heading += turnDeg;
-  const low = THREE.MathUtils.degToRad(EDITOR_VIEW.lowDeg), palm = Math.min(180, Math.max(90, palmDeg));
-  const el = VIEW_ELEVATION + ((low - VIEW_ELEVATION) * (palm - 90)) / 90;
-  follow.dir = new THREE.Vector3(Math.cos(el) * Math.cos(az), Math.cos(el) * Math.sin(az), Math.sin(el));
+  const { dir, drop } = goalViewDir(base.toArray(), turnDeg, palmDeg, follow.drop, VIEW_ELEVATION, EDITOR_VIEW.lowDeg);
+  follow.drop = drop;
+  follow.dir = new THREE.Vector3(...dir);
 }
-/** The default view direction again after editor goals (leaving Set goal, a fresh start in it). */
+/** The default view direction again after editor goals (a fresh start in Set goal). */
 const editorCameraBack = () => editorCamera({ turnDeg: -follow.heading, palmDeg: 0 });
+/** A mode switch (owner 2026-11-23: after far Manual goals, Selected task kept the wide view that hid the floor): the
+ *  chain modes' default view again, eased (FOLLOW.tau; paused: FOLLOW.pauseTau and the pauseCap snap), not a cut:
+ *  automatic zoom with the new mode's zoom-out floor (Manual goal keeps its wider EDITOR_VIEW floor while active), a
+ *  fresh aim at the current span (the deadband's zoom-out-only distance starts again), the default direction
+ *  (CHAIN_VIEW: azimuth 225 deg, elevation 35 deg; the editor turns and the viewer's orbit undone). */
+function restoreView() {
+  if (!following()) return;
+  if (follow.manual) follow.distance = camera.position.distanceTo(controls.target); // ease out of a viewer zoom
+  follow.manual = 0;
+  follow.reaim = true;
+  follow.heading = 0;
+  follow.drop = 0;
+  follow.dir = new THREE.Vector3(...CHAIN_VIEW.direction).normalize();
+  follow.frozen = false;
+  // owner bug 2026-11-23 (after high / far Manual goals the switched view showed no grid): the grid 0.16 m below the
+  // lowest hand collider or object again, as at page load (floorUnder only lowered it, or raised it past 0.4 m)
+  const zs = [...handMeshes.map(([m]) => m.matrix.elements[14]), ...objectMeshes.map((m) => m.matrix.elements[14])];
+  if (floor.userData.origin && zs.length) floor.position.z = Math.min(...zs) - 0.16;
+  if (!lastInfo?.playing) pausedAt = performance.now(); // paused: the short pause ease, not an instant snap
+  kick();
+}
 /** Azimuth (deg from world +x toward +y, whole degrees) of the view's horizontal viewing direction, the one it eases
  *  to when it turns: Set goal's Right / Away sliders (#ed-x / #ed-y) move along screen right and away from the viewer
  *  (the worker's setting.awayDeg, editor.js moveAxes; review S2: world x / y had no on-screen reference). */
@@ -807,7 +877,7 @@ function followAim() {
   // zoomed out at least FOLLOW.scale[0] px per metre, or the hand's own floor (assets/hands.json minScale: Sharpa 600)
   const floor = hand?.minScale ?? FOLLOW.scale[0];
   const far = Math.max(H / (2 * t * (editorGoals() ? Math.min(floor, EDITOR_VIEW.scale) : floor)),
-    (FOLLOW.extent * H) / (2 * t * Math.min(W, usable)));
+    ((editorGoals() ? EDITOR_VIEW.extent : FOLLOW.extent) * H) / (2 * t * Math.min(W, usable)));
   const distance = THREE.MathUtils.clamp(fit, near, far);
   // target: the span's centre on the image plane at the points' mean depth, raised by half the reserve so the span
   // sits centred in the usable part of the view
@@ -835,14 +905,15 @@ function followStep(dt) {
     follow.anchorDistance = raw;
     follow.reaim = false;
   }
-  { // deadband: shift the anchor only by what the span would leave of FOLLOW.dead of the half view; zoom out only
+  { // deadband: shift the anchor only by what the span would leave of FOLLOW.dead of the half view; zoom out only.
+    // A span wider than that (a far Manual goal at the zoom-out floor) centres the anchor on it (app/follow.js; the
+    // earlier per-side shift reflected the anchor about the span's centre every frame: owner bug 2026-11-23)
     const d = (follow.anchorDistance = Math.max(follow.anchorDistance, raw));
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), H = Math.max(1, ui.view.clientHeight);
     const fy = (H - follow.reserve) / H, [x0, x1, y0, y1] = fw.box, { r, u, f } = fw;
     const ax = follow.anchor.dot(r), ay = follow.anchor.dot(u) - (follow.reserve / H) * d * t;
     const hw = d * t * camera.aspect * FOLLOW.dead - FOLLOW.margin, hh = d * t * fy * FOLLOW.dead - FOLLOW.margin;
-    const ex = Math.max(0, x1 - (ax + hw)) - Math.max(0, ax - hw - x0);
-    const ey = Math.max(0, y1 - (ay + hh)) - Math.max(0, ay - hh - y0);
+    const ex = deadbandAim(ax, x0, x1, hw) - ax, ey = deadbandAim(ay, y0, y1, hh) - ay;
     follow.anchor.addScaledVector(r, ex).addScaledVector(u, ey).addScaledVector(f, fw.depth - follow.anchor.dot(f));
     fw.raw.copy(follow.anchor);
     raw = d;
@@ -864,13 +935,17 @@ function followStep(dt) {
   follow.distance += (raw - follow.distance) * k;
   setZoomBounds(follow.distance); // the viewer's zoom stays within ZOOM.range of the automatic distance
   const direction = fw.p.subVectors(camera.position, controls.target).normalize();
-  if (follow.dir) { // an editor goal's view turn (EDITOR_VIEW), eased as the target
+  // the viewer turns the view (a drag moved it off the direction applied last frame): the viewer's orbit wins, an eased
+  // turn still to go is dropped (owner bug 2026-11-23: it pulled the view back after the release)
+  if (follow.dir && orbiting && direction.angleTo(follow.lastDir) > 1e-6) follow.dir = null;
+  if (follow.dir) { // an editor goal's view turn (EDITOR_VIEW) or a mode switch's default view, eased as the target
     direction.lerp(follow.dir, k).normalize();
     if (k === 1 || direction.angleTo(follow.dir) < 1e-4) follow.dir = null;
   }
   controls.target.copy(follow.target);
   follow.applied = follow.manual || follow.distance;
   camera.position.copy(follow.target).addScaledVector(direction, follow.applied);
+  follow.lastDir.copy(direction);
   aimStudio(follow.target);
   const height = 2 * follow.applied * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
   axisLength = Math.min(LOOK.axisFraction * Math.max(height, height * camera.aspect), LOOK.axisMax);
@@ -889,51 +964,79 @@ function followStep(dt) {
 }
 
 // --------------------------------------------------------------------------------------------- world reference
-// A very light floor grid, fixed in the world 16 cm below the start wrist (5 cm cells, 1 px lines at most 22 %
-// dark, fading out radially within 0.5 m), so a relocation reads against it while the camera follows. (A trail of the object
-// centre was tried and dropped: over composite goals the centre loops and the trail read as a scribble.) Drawn first, in the ghost pass, so the ghost,
-// the hand and the object all draw over it. Placed at load and Reset (the start grasps share the home pose); in Set
-// goal moved along at each started goal (floorUnder, review S3: far relocations left it behind).
+// A very light floor grid 16 cm below the start wrist (5 cm cells, 1 px lines at most 22 % dark), so a relocation reads
+// against it while the camera follows. (A trail of the object centre was tried and dropped: over composite goals the
+// centre loops and the trail read as a scribble.) Drawn first, in the ghost pass, so the ghost, the hand and the object
+// all draw over it. Owner 2026-11-23: grid lines wherever the view is (before, a 1.2 m patch left far positions on a
+// bare floor): the lines keep their world positions (whole cells from floor.userData.origin, set at load and Reset),
+// the 4 m patch is recentred under the view target every frame in whole cells (floorFollow, so it never ends), and the
+// radial fade (alpha x (1 - r / R)^1.5) is computed per fragment around the view target's x, y with
+// R = FLOOR.fadeView x the larger side of the view at the target, within FLOOR.fade (m; 0.51 m in the chain modes'
+// zoom, as before; wider at Manual goal's far zoom). The z: placeFloor, floorUnder (Manual goal).
 const FLOOR_CELL = 0.05; // m
-const floor = (() => { // 1 px lines (a textured plane was 10 x slower under software rendering)
-  const half = 0.6, cell = FLOOR_CELL, piece = 0.025, n = Math.round((2 * half) / cell);
-  const pos = [], col = [];
-  const alpha = (x, y) => 0.22 * Math.max(0, 1 - Math.hypot(x, y) / (0.85 * half)) ** 1.5; // radial fade
+const FLOOR = { half: 2, piece: 0.25, alpha: 0.22, fade: [0.51, 1.9], fadeView: 0.6 }; // m, m, -, m, -
+const floor = (() => { // 1 px lines, the fade in the fragment shader (a textured plane was 10 x slower under software
+  // rendering). Lines in FLOOR.piece pieces: whole 4 m lines crossing the camera plane were dropped by SwiftShader
+  // (no grid at all); 5184 vertices for the 4 m patch (the earlier per-vertex fade: 4608 for 1.2 m)
+  const n = Math.round((2 * FLOOR.half) / FLOOR_CELL), m = Math.round((2 * FLOOR.half) / FLOOR.piece), pos = [];
   for (let i = 0; i <= n; i++) {
-    const c = -half + i * cell;
-    for (let a = -half; a < half - 1e-9; a += piece) {
-      for (const [x0, y0, x1, y1] of [[c, a, c, a + piece], [a, c, a + piece, c]]) {
-        pos.push(x0, y0, 0, x1, y1, 0);
-        col.push(0.118, 0.145, 0.157, alpha(x0, y0), 0.118, 0.145, 0.157, alpha(x1, y1));
-      }
+    const c = -FLOOR.half + i * FLOOR_CELL;
+    for (let j = 0; j < m; j++) {
+      const a = -FLOOR.half + j * FLOOR.piece, b = a + FLOOR.piece;
+      pos.push(c, a, 0, c, b, 0, a, c, 0, b, c, 0);
     }
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
-  const mesh = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true,
-    depthWrite: false, toneMapped: false }));
+  const material = new THREE.ShaderMaterial({
+    uniforms: { centre: { value: new THREE.Vector2() }, radius: { value: FLOOR.fade[0] },
+      colour: { value: new THREE.Vector3(0.118, 0.145, 0.157) }, alpha: { value: FLOOR.alpha } },
+    vertexShader: `varying vec2 vXY;
+      void main() {
+        vXY = (modelMatrix * vec4(position, 1.0)).xy;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `uniform vec2 centre; uniform float radius; uniform vec3 colour; uniform float alpha; varying vec2 vXY;
+      void main() {
+        float a = alpha * pow(max(0.0, 1.0 - distance(vXY, centre) / radius), 1.5);
+        if (a < 0.001) discard;
+        gl_FragColor = vec4(colour, a);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true, depthWrite: false, toneMapped: false });
+  const mesh = new THREE.LineSegments(geo, material);
   mesh.layers.set(GHOST);
   mesh.renderOrder = -1;
   mesh.visible = false;
+  mesh.frustumCulled = false; // recentred every frame
   scene.add(mesh);
   return mesh;
 })();
 
 function placeFloor(objP, handP) {
   floor.position.set((objP[0] + handP[0]) / 2, (objP[1] + handP[1]) / 2, handP[2] - 0.16);
-  floor.userData.origin = floor.position.clone(); // the cells' world positions (floorUnder keeps them)
+  floor.userData.origin = floor.position.clone(); // the cells' world positions (floorFollow keeps them)
   floor.visible = true;
 }
-/** Set goal: the grid under a started goal, centred between the hand and the goal wrist in whole cells from its
- *  origin (the lines keep their world positions); lowered when a wrist or object (now or at the goal) comes within
- *  0.16 m of it, raised to that when they are all more than 0.4 m above it. points: world positions (3 each). */
-function floorUnder(handP, goalP, points) {
-  const o = floor.userData.origin, c = FLOOR_CELL;
-  if (!o) return;
-  const snap = (v, v0) => v0 + Math.round((v - v0) / c) * c, low = Math.min(...points.map((q) => q[2])) - 0.16;
-  const z = low < floor.position.z || low - floor.position.z > 0.24 ? low : floor.position.z;
-  floor.position.set(snap((handP[0] + goalP[0]) / 2, o.x), snap((handP[1] + goalP[1]) / 2, o.y), z);
+/** Every frame: the grid patch under the view target in whole cells from its origin (the lines keep their world
+ *  positions) and the fade centred on the target, its radius from the view's size at the target (FLOOR). */
+function floorFollow() {
+  const o = floor.userData.origin;
+  if (!floor.visible || !o) return;
+  const c = FLOOR_CELL, at = controls.target, { centre, radius } = floor.material.uniforms;
+  floor.position.x = o.x + Math.round((at.x - o.x) / c) * c;
+  floor.position.y = o.y + Math.round((at.y - o.y) / c) * c;
+  centre.value.set(at.x, at.y);
+  const h = 2 * camera.position.distanceTo(at) * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  radius.value = THREE.MathUtils.clamp(FLOOR.fadeView * Math.max(h, h * camera.aspect), ...FLOOR.fade);
+}
+/** Set goal: the grid's height at a started goal: lowered when a wrist or object (now or at the goal) comes within
+ *  0.16 m of it, raised to that when they are all more than 0.4 m above it (x, y: floorFollow). points: world
+ *  positions (3 each). */
+function floorUnder(points) {
+  if (!floor.userData.origin) return;
+  const low = Math.min(...points.map((q) => q[2])) - 0.16;
+  if (low < floor.position.z || low - floor.position.z > 0.24) floor.position.z = low;
 }
 
 // --------------------------------------------------------------------------------------------- goal, axes
@@ -1113,7 +1216,7 @@ function showChain(c) {
   // while a hand or object switch loads, no node is a button (the new model's runner would drop a pick made now)
   graph.set({ current: active ? c.node : null, available: c.available ?? [], queued: manual ? (c.queued ?? null) : null,
     selectable: c.phase !== 'ended' && !switching });
-  for (const b of ui.modes) b.setAttribute('aria-pressed', String(b.dataset.mode === c.mode));
+  showMode(c.mode);
   if (manual && !active && c.phase !== 'ended' && !c.queued && (previous?.node !== c.node || previous?.phase !== c.phase)) {
     say('Select the next task on the graph.');
   }
@@ -1302,7 +1405,7 @@ function onFrame(msg) {
   if ('goal' in msg) setGoal(msg.goal, msg.ghost);
   if (msg.view) { // a Set goal goal started: the view turns by its Turn (EDITOR_VIEW), the grid comes along
     editorCamera(msg.view);
-    if (msg.goal) floorUnder(msg.hand, msg.goal.wristP, [msg.hand, msg.goal.wristP, msg.object, msg.goal.objectP]);
+    if (msg.goal) floorUnder([msg.hand, msg.goal.wristP, msg.object, msg.goal.objectP]);
   }
   const events = msg.events ?? [];
   for (const e of events) if (e.type === 'goal' && e.node === wantedNext) wantedNext = null; // the clicked task runs
@@ -1345,7 +1448,7 @@ function onFrame(msg) {
     if (msg.cut !== 'restart' && SCENE === 'chain') placeFloor(objP, handP);
     else if (floor.userData.origin) floor.position.copy(floor.userData.origin); // a fresh start at home: the grid too
     if (msg.cut !== 'restart') follow.manual = 0; // load, Reset, an object or hand switch: automatic zoom again
-    if (msg.cut !== 'restart') { follow.heading = 0; follow.dir = null; } // frameChain's default view
+    if (msg.cut !== 'restart') { follow.heading = 0; follow.drop = 0; follow.dir = null; } // frameChain's default view
     else if (editing) editorCameraBack(); // a fresh start at the home pose: Set goal's default view again
     // frameChain's snap moved the camera: not a viewer zoom (followStep reads a distance other than the one it applied
     // as one; before 2026-11-22 every Reset and object switch left the view at the fixed camera's zoom, 1594 instead of
@@ -1466,10 +1569,13 @@ function placeThumb(seg) {
   seg.style.setProperty('--w', `${on.offsetWidth}px`);
   thumb.style.visibility = '';
   if (!seg.hasAttribute('data-placed')) requestAnimationFrame(() => seg.setAttribute('data-placed', ''));
+  if (seg === ui.modes[0].parentElement) placeModeDesc();
 }
 const segs = [ui.hands, ui.objects, ui.modes[0].parentElement];
 const thumbs = new ResizeObserver((entries) => { for (const e of entries) placeThumb(e.target); });
 for (const seg of segs) thumbs.observe(seg);
+// the Mode control moves when the setup menu's label changes width ("MANO" / "Sharpa"): keep the callout on it
+new ResizeObserver(() => placeModeDesc()).observe(document.querySelector('.setup'));
 
 /** The setup menu button: it names the pressed hand and object ("MANO · Round", also while a switch loads) and
  *  answers only while no model loads (aria-disabled, not disabled, so a keyboard user keeps the focus on it). */
@@ -1541,17 +1647,16 @@ ui.reset.onclick = () => {
     worker.postMessage({ type: 'reset' });
   }
 };
-const MODE_NAMES = { random: 'Random chain', manual: 'Manual', editor: 'Set goal' };
 for (const b of ui.modes) {
   b.onclick = () => {
     if (b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-disabled') === 'true') return; // (a switch)
     if (b.dataset.mode !== 'manual') wantedNext = null; // Random chain and Set goal forget a Manual pick (worker too)
-    if (document.body.dataset.mode === 'editor') editorCameraBack(); // the default view back
-    for (const o of ui.modes) o.setAttribute('aria-pressed', String(o === b));
+    showMode(b.dataset.mode);
     worker.postMessage({ type: 'mode', mode: b.dataset.mode });
     document.body.dataset.mode = b.dataset.mode;
+    restoreView(); // the default view back (eased), in the new mode's zoom limits
     if (b.dataset.mode === 'editor') editorFresh();
-    say(`${MODE_NAMES[b.dataset.mode]}.`);
+    say(`${MODE_NAMES[b.dataset.mode]}. ${MODE_DESC[b.dataset.mode]}`);
   };
 }
 
@@ -1563,13 +1668,19 @@ for (const b of ui.modes) {
 // Sliders: Position is the fingertip-cluster centre along the object (mm, absolute; enclosure targets only); Roll,
 // Right / Away (#ed-x / #ed-y: the move along the view's screen right and away from the viewer, awayDeg), Height,
 // Turn, Tilt and Twist are changes RELATIVE to the reached pose (0 = no change; after each goal
-// they start at zero again, so turns and travel add up). The tracks span the full per-goal ranges (Move +-250 mm,
-// Height +-150 mm, rotations +-90 deg); the part a guard forbids (the worker's limits: each slider's interval with
+// they start at zero again, so turns and travel add up). The tracks span the per-goal ranges (Right / Away +-800 mm,
+// Height +-500 mm, rotations +-150 deg; far_sweep, owner 2026-11-23: the 3-D move length <= 800 mm, the total turn
+// <= 150 deg, <= 90 deg with a switch, the object goal not below the start height - 15 cm, each enforced by the
+// per-axis clamp); the part a guard forbids (the worker's limits: each slider's interval with
 // the others at their values) is washed out and the thumb stops at its edge (each slider clamped on its own, no
 // coupled pull-back); a slider with no room left is greyed. The tick marks the current state (Position: the current
 // grip; its track also reaches a current grip outside -50..55 mm, washed out), the fill the asked change. On release,
 // on a grasp choice and after an orbit of the view, each thumb moves to the value the goal applies, and the preview
-// follows, so a thumb always matches its readout. A greyed grasp choice does nothing (review M1).
+// follows, so a thumb always matches its readout. A greyed grasp choice does nothing (review M1); the slider values
+// never grey a grasp switch (owner 2026-11-23): its click clamps the sliders to what that switch allows.
+// Grasp chips (owner 2026-11-23, app/grasp_labels.js): one row per type (Wrap, Pinch), named by the object's +Y (the
+// green arrow, a green Y glyph); the current type's row holds only Keep with the current grasp's name, the other
+// type's row its two families; reversals are not shown.
 const ed = { form: $('editor'), grasp: $('ed-grasp'), go: $('ed-go'), aRow: document.querySelector('[data-for="a"]'),
   inputs: {}, outs: {}, seq: 0, design: null, options: [], family: null, busy: true, timer: 0, noop: true,
   touchedA: false, settle: false, zeroA: 0, lim: {} };
@@ -1590,11 +1701,12 @@ for (const k of ED_KEYS) {
   ed.inputs[k].addEventListener('change', () => { ed.settle = true; editorChanged(); });
 }
 const isEncl = (f) => f === 'E_n' || f === 'E_r';
-/** Button text of target family f from start family f0 (the rod end named by the hand's side). */
-function graspName(f0, f) {
-  if (f === f0) return 'Keep';
-  if (isEncl(f0)) return (f0 === 'E_n') === (f === 'T_b') ? 'Pinch, little-finger end' : 'Pinch, thumb end';
-  return (f0 === 'T_b') === (f === 'E_n') ? 'Wrap, end to little finger' : 'Wrap, end to thumb';
+/** The grasp name of label l (grasp_labels.js GRASP_LABEL) as nodes: sign, the green Y glyph, the rest. */
+function graspNameNodes(l) {
+  const y = document.createElement('span');
+  y.className = 'ed-y';
+  y.textContent = 'Y';
+  return [l.sign, y, l.rest];
 }
 /** The track of slider k: the tick at the current state (--z), the fill from it to the thumb (--v), as fractions. */
 function paintSlider(k) {
@@ -1642,26 +1754,56 @@ function editorChanged() {
   clearTimeout(ed.timer); // at most one preview request per frame of slider motion
   ed.timer = setTimeout(() => worker?.postMessage({ type: 'editor', seq: ++ed.seq, setting: editorSetting() }), 30);
 }
-function renderGrasp(f0) {
-  ed.grasp.replaceChildren(...ed.options.map((o) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'ed-choice';
-    b.textContent = graspName(f0, o.family);
-    b.dataset.family = o.family;
-    b.setAttribute('aria-pressed', String(o.family === ed.family));
-    if (!o.enabled) b.setAttribute('aria-disabled', 'true');
-    b.disabled = ed.busy;
-    b.onclick = () => { // (Enter / Space on a focused chip too) the live offer, not the one this chip was drawn with
-      const live = ed.options.find((x) => x.family === b.dataset.family);
-      if (!live?.enabled || ed.busy || ed.family === live.family) return;
-      ed.family = live.family;
-      ed.settle = true; // the thumbs move to what the new grasp applies (a switch caps the turn at 60 deg)
-      for (const x of ed.grasp.children) x.setAttribute('aria-pressed', String(x.dataset.family === ed.family));
-      editorChanged();
-    };
-    return b;
+function renderGrasp() {
+  ed.grasp.replaceChildren(...graspRows(ed.options).map((row) => {
+    const group = document.createElement('div'), label = document.createElement('span');
+    const chips = document.createElement('div');
+    group.className = 'ed-type';
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', row.type);
+    label.className = 'ed-label';
+    label.textContent = row.type;
+    label.setAttribute('aria-hidden', 'true');
+    chips.className = 'ed-chips';
+    chips.append(...row.chips.map(graspChip));
+    group.append(label, chips);
+    return group;
   }));
+}
+/** The chip of offered option o with its label (graspRows): Keep (the current grasp's name beside it) or a family. */
+function graspChip(o) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'ed-choice';
+  if (o.keep) {
+    const cur = document.createElement('span');
+    cur.className = 'ed-cur';
+    cur.append(...graspNameNodes(o.label));
+    b.append('Keep', cur);
+    b.dataset.keep = 'true';
+    b.setAttribute('aria-label', `Keep the current grasp: ${o.label.spoken}`);
+  } else {
+    b.append(...graspNameNodes(o.label));
+    b.setAttribute('aria-label', o.label.spoken);
+  }
+  b.dataset.family = o.family;
+  b.setAttribute('aria-pressed', String(o.family === ed.family));
+  if (!o.enabled) b.setAttribute('aria-disabled', 'true');
+  b.disabled = ed.busy;
+  b.onclick = () => { // (Enter / Space on a focused chip too) the live offer, not the one this chip was drawn with
+    const live = ed.options.find((x) => x.family === b.dataset.family);
+    if (!live?.enabled || ed.busy || ed.family === live.family) return;
+    ed.family = live.family;
+    // the thumbs move to what the new grasp applies: a switch clamps every slider to the nearest values it allows
+    // (total turn <= 90 deg, joint guards, move cap, height floor; editor.js goal), so its chip is never greyed by
+    // the sliders (owner 2026-11-23, Manual goal UX) and Go is enabled once the clamped preview is in
+    ed.settle = true;
+    for (const x of ed.grasp.querySelectorAll('button')) {
+      x.setAttribute('aria-pressed', String(x.dataset.family === ed.family));
+    }
+    editorChanged();
+  };
+  return b;
 }
 const fmt = (v, unit, signed = false) => {
   const r = Math.round(v) === 0 ? 0 : Math.round(v);
@@ -1682,7 +1824,7 @@ function editorStart(design, options) {
   for (const k of ED_WRIST) setSlider(k, 0);
   for (const k of ED_KEYS) { setText(ed.outs[k], ''); ed.inputs[k].removeAttribute('aria-valuetext'); }
   ed.aRow.hidden = !isEncl(ed.family);
-  renderGrasp(design.family);
+  renderGrasp();
 }
 function onEditor(msg) {
   if (msg.seq !== ed.seq) return; // a later request is on its way
@@ -1703,7 +1845,7 @@ function onEditor(msg) {
   }
   ed.options = msg.options;
   ed.lim = { a: msg.applied?.aLimitsMm ?? ed.lim.a ?? A_MM, ...msg.design.limits };
-  for (const b of ed.grasp.children) { // the switch rules follow the setting (total turn, joint guards)
+  for (const b of ed.grasp.querySelectorAll('button')) { // the grasp rules (Editor.offered; not the sliders)
     const o = ed.options.find((x) => x.family === b.dataset.family);
     if (o?.enabled) b.removeAttribute('aria-disabled'); else b.setAttribute('aria-disabled', 'true');
   }
@@ -1754,7 +1896,7 @@ editorLock(true);
 function queueTask(node) {
   wantedNext = node;
   if (lastChain && lastChain.mode !== 'manual') {
-    for (const b of ui.modes) b.setAttribute('aria-pressed', String(b.dataset.mode === 'manual'));
+    showMode('manual');
     worker.postMessage({ type: 'mode', mode: 'manual' });
     lastChain = { ...lastChain, mode: 'manual' };
   }
@@ -1895,7 +2037,8 @@ async function selectHand(id) {
     counts.restarts = counts.drops = counts.timeouts = 0;
     note.until = 0;
     wantedNext = null;
-    worker.postMessage({ type: 'hand', hand: entry.id, root: entry.root, object });
+    worker.postMessage({ type: 'hand', hand: entry.id, root: entry.root, wristYDeg: entry.editorWristYDeg,
+      endMarginMm: entry.editorEndMarginMm, object });
   } catch (err) {
     console.error(`hand ${id}: ${err?.message ?? err}`);
     const dim = Number(getComputedStyle(renderer.domElement).opacity);
@@ -1920,7 +2063,9 @@ if (SCENE === 'marker') {
     const [list] = await Promise.all([objectIndex(hand), lookOf(hand)]);
     const object = objectTabs(list, params.get('object'));
     look = looks.get(hand.id);
-    worker.postMessage({ type: 'init', scene: 'chain', hand: hand.id, root: hand.root, object, mode: 'random',
+    worker.postMessage({ type: 'init', scene: 'chain', hand: hand.id, root: hand.root, wristYDeg: hand.editorWristYDeg,
+      endMarginMm: hand.editorEndMarginMm,
+      object, mode: 'random',
       seed: SEED, opening: OPENING, slowStep: SLOW_STEP });
   })().catch((err) => fail(`hands / object list: ${err?.message ?? err}`));
 }
@@ -1940,6 +2085,12 @@ const stats = { n: 0, interval: 0, update: 0, render: 0, overlay: 0, last: 0, ho
   why: { playing: 0, interpolation: 0, ghost: 0, camera: 0, controls: 0 } }; // frames that kept the loop running
 window.viewerStats = stats;
 window.viewerCamera = () => [...camera.position.toArray(), ...controls.target.toArray()];
+// window.viewerFloor() (tests): the floor grid's visibility, patch position, fade centre and radius, the view target,
+// the hand (first collider) and the grid origin (m, world)
+window.viewerFloor = () => ({ visible: floor.visible, position: floor.position.toArray(),
+  centre: floor.material.uniforms.centre.value.toArray(), radius: floor.material.uniforms.radius.value,
+  target: controls.target.toArray(), origin: floor.userData.origin?.toArray() ?? null,
+  hand: handMeshes.length ? new THREE.Vector3().setFromMatrixPosition(handMeshes[0][0].matrix).toArray() : null });
 const mean = (old, x, n) => old + (x - old) / Math.min(n, 120);
 let rafId = 0, inFrame = false, toldReady = false;
 // window.viewerSpan() (tests): the view (CSS px) and the projected boxes [x0, y0, x1, y1] (CSS px, view frame) of the
@@ -1994,6 +2145,7 @@ function animate(now) {
   // happens every frame, so its result counts only while the viewer orbits or zooms and for ORBIT_DAMPING_MS after
   // (the damping decays to about 1 % by then)
   const damping = controls.update() && (orbiting || now - orbitEnd < ORBIT_DAMPING_MS);
+  floorFollow();
   const t1 = performance.now();
   renderer.clear();
   camera.layers.set(GHOST); // goal ghost first: the real frame is drawn over it
